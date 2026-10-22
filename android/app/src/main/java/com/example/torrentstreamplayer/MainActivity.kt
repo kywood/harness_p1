@@ -63,7 +63,6 @@ fun MagnetLinkInputScreen() {
                     errorMessage = "Magnet link cannot be empty"
                 } else {
                     errorMessage = null
-                    // TODO: Implement download logic
                 }
             },
             modifier = Modifier.fillMaxWidth()
