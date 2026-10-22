@@ -14,3 +14,4 @@ local.properties
 .env.*
 *.keystore
 *.jks
+.aider*

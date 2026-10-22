@@ -4,13 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,29 +19,64 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             TorrentStreamPlayerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                MagnetLinkInputScreen()
             }
         }
     }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+fun MagnetLinkInputScreen() {
+    var magnetLink by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Torrent Stream Player",
+            style = MaterialTheme.typography.headlineMedium
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = magnetLink,
+            onValueChange = { magnetLink = it },
+            label = { Text("Magnet Link") },
+            isError = errorMessage != null,
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage.orEmpty(),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                if (magnetLink.trim().isEmpty()) {
+                    errorMessage = "Magnet link cannot be empty"
+                } else {
+                    errorMessage = null
+                    // TODO: Implement download logic
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Download")
+        }
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun MagnetLinkInputScreenPreview() {
     TorrentStreamPlayerTheme {
-        Greeting("Android")
+        MagnetLinkInputScreen()
     }
 }
