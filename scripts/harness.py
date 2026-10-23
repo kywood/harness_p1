@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+# AI Harness Controller
 import argparse
 import os
 import subprocess
@@ -68,6 +69,7 @@ def ask_ai(instruction, name):
         "--no-auto-commits",
         "--no-auto-test",
         "--yes",
+        "--edit-format", "udiff",
         "--file",
         "android/app/src/main/java/com/example/torrentstreamplayer/MainActivity.kt",
         "--message", instruction,
