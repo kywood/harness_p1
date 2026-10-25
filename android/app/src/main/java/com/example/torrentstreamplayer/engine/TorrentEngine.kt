@@ -28,6 +28,8 @@ class TorrentEngine(private val context: Context) {
     private var checkpoint: TorrentCheckpoint? = null
     internal val seekRequests = SeekRequestTracker()
     private var priorityWindow = IntRange.EMPTY
+    private var backgroundPiecePriority = -1
+    private var playbackByteOffset = 0L
     private val _pieceMap = MutableStateFlow(PieceMapSnapshot.EMPTY)
     val pieceMap = _pieceMap.asStateFlow()
     private val downloadRoot = File(context.cacheDir, "torrent_downloads")
@@ -303,15 +305,20 @@ class TorrentEngine(private val context: Context) {
         val absoluteTorrentOffset = selectedFileStartOffset + fileByteOffset
         val requestedPiece = (absoluteTorrentOffset / pieceLength).toInt()
             .coerceIn(firstPieceIndex, lastPieceIndex)
-        val startPieceIndex = SequentialPiecePlan.nextMissing(requestedPiece, lastPieceIndex, handle::havePiece) ?: return
+        val startPieceIndex = SequentialPiecePlan.nextMissing(requestedPiece, lastPieceIndex, handle::havePiece) ?: requestedPiece
         val window = SequentialPiecePlan.window(startPieceIndex, lastPieceIndex)
-        if (window == priorityWindow) return
+        val background = PlaybackDownloadPolicy.backgroundPriority(playbackByteOffset, selectedFileLength,
+            selectedFileStartOffset, pieceLength, handle::havePiece)
+        if (window == priorityWindow && background == backgroundPiecePriority) return
         try {
-            for (p in firstPieceIndex..lastPieceIndex)
-                handle.piecePriority(p, Priority.fromSwig(SequentialPiecePlan.priority(p, window)))
+            if (background != backgroundPiecePriority) {
+                for (p in firstPieceIndex..lastPieceIndex)
+                    handle.piecePriority(p, Priority.fromSwig(SequentialPiecePlan.priority(p, window, background)))
+                backgroundPiecePriority = background
+            }
             for (p in priorityWindow) if (p !in window) {
                 handle.resetPieceDeadline(p)
-                handle.piecePriority(p, Priority.IGNORE)
+                handle.piecePriority(p, Priority.fromSwig(background))
             }
             priorityWindow = window
             for (request in SequentialPiecePlan.requests(startPieceIndex, lastPieceIndex, handle::havePiece)) {
@@ -338,17 +345,23 @@ class TorrentEngine(private val context: Context) {
         }
     }
 
-    @Synchronized internal fun prioritizeRequest(offset: Long, generation: Long) {
-        if (seekRequests.isCurrent(generation)) prioritizeOffset(offset)
+    @Synchronized internal fun prioritizeRequest(offset: Long, generation: Long, exactRange: Boolean = false) {
+        if (!seekRequests.isCurrent(generation)) return
+        playbackByteOffset = offset
+        if (seekRequests.isCurrent(generation) && (exactRange || !isByteDownloaded(offset))) prioritizeOffset(offset)
     }
 
-    @Synchronized fun beginSeek() {
+    @Synchronized fun beginSeek(targetMs: Long = 0, durationMs: Long = 0) {
         seekRequests.beginSeek()
         runCatching {
             currentHandle?.clearPieceDeadlines()
-            priorityWindow.forEach { currentHandle?.piecePriority(it, Priority.IGNORE) }
+            priorityWindow.forEach { currentHandle?.piecePriority(it, Priority.LOW) }
         }
         priorityWindow = IntRange.EMPTY
+        if (localVideo == null) SeekDownloadHint.offset(targetMs, durationMs, selectedFileLength)?.let {
+            playbackByteOffset = it
+            runCatching { prioritizeOffset(it) }.onFailure { error -> Log.w(TAG, "Seek prefetch failed", error) }
+        }
     }
 
     fun isPlaybackReady(): Boolean {
@@ -415,6 +428,8 @@ class TorrentEngine(private val context: Context) {
         activeRun++
         _pieceMap.value = PieceMapSnapshot.EMPTY
         priorityWindow = IntRange.EMPTY
+        backgroundPiecePriority = -1
+        playbackByteOffset = 0L
         worker?.interrupt()
         worker = null
         runCatching { checkpoint?.save(1500) }

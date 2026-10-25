@@ -8,7 +8,7 @@ lifecycleRuntimeKtx = "2.6.1"
 activityCompose = "1.8.0"
 kotlin = "2.2.10"
 composeBom = "2026.02.01"
-libvlc = "3.6.0-eap5"
+libvlc = "3.7.5"
 nanohttpd = "2.3.1"
 libtorrent4j = "2.1.0.0"
 

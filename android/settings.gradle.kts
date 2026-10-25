@@ -23,5 +23,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "TorrentStreamPlayer"
+rootProject.name = "PiecePlay"
 include(":app")

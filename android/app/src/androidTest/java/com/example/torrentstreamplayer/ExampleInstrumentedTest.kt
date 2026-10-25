@@ -15,10 +15,21 @@ import org.junit.Assert.*
  */
 @RunWith(AndroidJUnit4::class)
 class ExampleInstrumentedTest {
+    @Test fun launcherIconLoadsAsAdaptiveArtwork() {
+        val app = InstrumentationRegistry.getInstrumentation().targetContext
+        val icon = app.applicationInfo.loadIcon(app.packageManager)
+        assertTrue(icon is android.graphics.drawable.AdaptiveIconDrawable)
+        val bitmap = android.graphics.Bitmap.createBitmap(512, 512, android.graphics.Bitmap.Config.ARGB_8888)
+        icon.setBounds(0, 0, 512, 512); icon.draw(android.graphics.Canvas(bitmap))
+        java.io.File(app.cacheDir, "icon-preview.png").outputStream().use {
+            assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+        }
+    }
     @Test
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.example.torrentstreamplayer", appContext.packageName)
+        assertEquals("com.gamenuri.pieceplay", appContext.packageName)
+        assertEquals("PiecePlay", appContext.getString(appContext.applicationInfo.labelRes))
     }
 }

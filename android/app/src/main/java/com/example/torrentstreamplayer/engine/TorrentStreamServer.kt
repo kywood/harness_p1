@@ -57,7 +57,7 @@ class TorrentStreamServer(
 
         // Inform torrent engine to prioritize requested byte offset in LibTorrent
         val generation = torrentEngine.seekRequests.acceptRequest()
-        torrentEngine.prioritizeRequest(startByte, generation)
+        torrentEngine.prioritizeRequest(startByte, generation, exactRange = true)
 
         val contentLength = endByte - startByte + 1
 

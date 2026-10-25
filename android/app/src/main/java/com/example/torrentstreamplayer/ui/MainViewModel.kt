@@ -19,10 +19,12 @@ import com.example.torrentstreamplayer.engine.SavedMagnet
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    val torrentEngine = TorrentEngine(application.applicationContext)
-    private val history = MagnetHistory(TorrentCache(
+    private val engine = lazy { TorrentEngine(application.applicationContext) }
+    val torrentEngine: TorrentEngine get() = engine.value
+    internal val isTorrentEngineInitialized: Boolean get() = engine.isInitialized()
+    private val history by lazy { MagnetHistory(TorrentCache(
         java.io.File(application.noBackupFilesDir, "magnet_history"), "0".repeat(64),
-        TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt))
+        TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)) }
     private var inputJob: Job? = null
     fun savedMagnets(): List<SavedMagnet> = history.list()
     fun deleteSavedMagnet(magnet: String) = history.delete(magnet)
@@ -105,12 +107,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun stopStream() {
         inputJob?.cancel()
         requestVersion++
-        torrentEngine.stop()
+        if (engine.isInitialized()) engine.value.stop()
         _uiState.value = StreamUiState.Idle
     }
 
     override fun onCleared() {
         super.onCleared()
-        torrentEngine.stop()
+        if (engine.isInitialized()) engine.value.stop()
     }
 }

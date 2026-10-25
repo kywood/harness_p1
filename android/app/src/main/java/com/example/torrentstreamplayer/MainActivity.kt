@@ -32,7 +32,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             TorrentStreamPlayerTheme {
                 val uiState by viewModel.uiState.collectAsState()
-                val pieces by viewModel.torrentEngine.pieceMap.collectAsState()
+                val pieces by if (uiState is StreamUiState.Buffering)
+                    viewModel.torrentEngine.pieceMap.collectAsState()
+                else remember { mutableStateOf(PieceMapSnapshot.EMPTY) }
                 var showFiles by remember { mutableStateOf(false) }
                 var showHistory by remember { mutableStateOf(false) }
 

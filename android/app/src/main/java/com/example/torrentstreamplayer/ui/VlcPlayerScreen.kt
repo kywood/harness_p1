@@ -152,7 +152,7 @@ fun VlcPlayerScreen(
         if (holder == null || totalLengthMs <= 0) return
         val position = target.coerceIn(0, totalLengthMs)
         seekUi = seekUi.requested(position, totalLengthMs)
-        torrentEngine.beginSeek()
+        torrentEngine.beginSeek(position, totalLengthMs)
         holder.mediaPlayer.time = position
         currentTimeMs = position
         sliderPosition = position.toFloat() / totalLengthMs

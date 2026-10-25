@@ -1,6 +1,13 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+}
+
+val uploadProperties = Properties().apply {
+    val propertiesFile = rootProject.file(".signing/upload.properties")
+    if (propertiesFile.exists()) propertiesFile.inputStream().use { load(it) }
 }
 
 android {
@@ -10,17 +17,28 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.torrentstreamplayer"
+        applicationId = "com.gamenuri.pieceplay"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("upload") {
+            if (uploadProperties.isNotEmpty()) {
+                storeFile = rootProject.file(uploadProperties.getProperty("storeFile"))
+                storePassword = uploadProperties.getProperty("storePassword")
+                keyAlias = uploadProperties.getProperty("keyAlias")
+                keyPassword = uploadProperties.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("upload")
             optimization {
                 enable = false
             }
