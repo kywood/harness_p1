@@ -8,10 +8,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,6 +51,12 @@ fun VlcPlayerScreen(
     onBackClicked: () -> Unit
 ) {
     val context = LocalContext.current
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val activity = remember(context) { VideoOrientation.activity(context) }
+    DisposableEffect(activity) {
+        val previous = activity?.requestedOrientation
+        onDispose { if (previous != null) activity?.requestedOrientation = previous }
+    }
     val streamServer = remember(torrentEngine) { TorrentStreamServer(0, torrentEngine) }
     val pieces by torrentEngine.pieceMap.collectAsState()
     var isPlaying by remember { mutableStateOf(true) }
@@ -62,9 +66,12 @@ fun VlcPlayerScreen(
     var totalLengthMs by remember { mutableLongStateOf(0L) }
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isSeeking by remember { mutableStateOf(false) }
+    var swipeStartMs by remember { mutableLongStateOf(0) }
+    var swipePreviewMs by remember { mutableStateOf<Long?>(null) }
     var seekUi by remember { mutableStateOf(SeekUiState()) }
 
     var showControls by remember { mutableStateOf(true) }
+    var showSeekBarOnly by remember { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(VideoZoomState()) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
 
@@ -84,8 +91,11 @@ fun VlcPlayerScreen(
     }
 
     // Auto-hide controls timer
-    LaunchedEffect(showControls, isPlaying, zoom) {
-        if (showControls && isPlaying) {
+    LaunchedEffect(showSeekBarOnly, isSeeking) {
+        if (showSeekBarOnly && !isSeeking) { delay(1800); showSeekBarOnly = false }
+    }
+    LaunchedEffect(showControls, isPlaying, zoom, isSeeking) {
+        if (showControls && isPlaying && !isSeeking) {
             delay(3500)
             showControls = false
         }
@@ -151,12 +161,35 @@ fun VlcPlayerScreen(
     fun seekTo(target: Long) {
         if (holder == null || totalLengthMs <= 0) return
         val position = target.coerceIn(0, totalLengthMs)
-        seekUi = seekUi.requested(position, totalLengthMs)
+        seekUi = seekUi.requested(position, totalLengthMs, currentTimeMs)
         torrentEngine.beginSeek(position, totalLengthMs)
         holder.mediaPlayer.time = position
         currentTimeMs = position
         sliderPosition = position.toFloat() / totalLengthMs
     }
+    val tapSeek by rememberUpdatedState<(androidx.compose.ui.geometry.Offset, Float) -> Unit>({ offset, width ->
+        DoubleTapSeek.target(offset.x, width, seekUi.targetMs ?: currentTimeMs, totalLengthMs)?.let { seekTo(it) }
+    })
+    val toggleControls by rememberUpdatedState { showControls = !showControls; showSeekBarOnly = false }
+    val transform by rememberUpdatedState<(androidx.compose.ui.geometry.Offset, androidx.compose.ui.geometry.Offset, Float) -> Unit>({ focus, pan, factor ->
+        zoom = zoom.transformed(factor, pan.x, pan.y, viewport.width.toFloat(), viewport.height.toFloat(), focus.x, focus.y)
+    })
+    val swipeEnabled by rememberUpdatedState { PlayerOverlayPolicy.canSwipe(holder != null, totalLengthMs) }
+    val panEnabled by rememberUpdatedState { !showControls && zoom.scale > 1f }
+    val swipeMove by rememberUpdatedState<(Float) -> Unit>({ distance ->
+        swipePreviewMs = SwipeSeek.target(distance, viewport.width.toFloat(), swipeStartMs, totalLengthMs)
+        swipePreviewMs?.let { sliderPosition = it.toFloat() / totalLengthMs }
+    })
+    val swipeStart by rememberUpdatedState {
+        if (!showControls) showSeekBarOnly = true
+        swipeStartMs = seekUi.targetMs ?: currentTimeMs; swipePreviewMs = swipeStartMs; isSeeking = true
+    }
+    val swipeEnd by rememberUpdatedState<(Boolean) -> Unit>({ commit ->
+        if (!commit) showSeekBarOnly = false
+        val target = swipePreviewMs; swipePreviewMs = null; isSeeking = false
+        if (commit && target != null) seekTo(target)
+        else if (totalLengthMs > 0) sliderPosition = currentTimeMs.toFloat() / totalLengthMs
+    })
 
     Box(
         modifier = Modifier
@@ -165,16 +198,12 @@ fun VlcPlayerScreen(
             .clipToBounds()
             .onSizeChanged { viewport = it }
             .pointerInput(Unit) {
-                detectTransformGestures { focus, pan, factor, _ ->
-                    zoom = zoom.transformed(factor, pan.x, pan.y,
-                        viewport.width.toFloat(), viewport.height.toFloat(), focus.x, focus.y)
-                }
+                detectVideoSwipeGestures({ swipeEnabled() }, { panEnabled() },
+                    { swipeStart() }, { swipeMove(it) }, { swipeEnd(it) }, { focus, pan, factor -> transform(focus, pan, factor) })
             }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                showControls = !showControls
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { toggleControls() },
+                    onDoubleTap = { tapSeek(it, size.width.toFloat()) })
             },
         contentAlignment = Alignment.Center
     ) {
@@ -233,7 +262,7 @@ fun VlcPlayerScreen(
                 }
             )
 
-            if (seekUi.waiting) {
+            if (seekUi.waiting && showControls) {
                 Column(Modifier.align(Alignment.TopCenter).padding(top = 140.dp).background(PlaybackColors.Panel)
                     .padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = PlaybackColors.Accent)
@@ -242,6 +271,11 @@ fun VlcPlayerScreen(
                 }
             }
             // Animated Controls Overlay
+            if (PlayerOverlayPolicy.seekBarOnly(showControls, showSeekBarOnly)) {
+                SwipeSeekBar(sliderPosition, totalLengthMs > 0, Modifier.align(Alignment.BottomCenter),
+                    onChange = { sliderPosition = it; isSeeking = true },
+                    onFinished = { isSeeking = false; if (totalLengthMs > 0) seekTo((sliderPosition * totalLengthMs).toLong()) })
+            }
             AnimatedVisibility(
                 visible = showControls,
                 enter = fadeIn(),
@@ -259,7 +293,7 @@ fun VlcPlayerScreen(
                             .fillMaxWidth()
                             .align(Alignment.TopCenter)
                             .background(Color.Black.copy(alpha = 0.6f))
-                            .padding(12.dp)
+                            .padding(horizontal = 12.dp, vertical = if (landscape) 2.dp else 12.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -274,10 +308,15 @@ fun VlcPlayerScreen(
                             }
                             Text(
                                 text = fileName,
+                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                 color = Color.White,
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.weight(1f)
                             )
+                            VideoOrientationButton()
+                            if (landscape) Text("↓ ${formatSpeed(downloadSpeedBytes)} · ${downloadProgress.toInt()}% · ${numPeers}p",
+                                color = PlaybackColors.Accent, fontSize = 12.sp, maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 8.dp))
                             TextButton(onClick = {
                                 zoom = zoom.transformed(0.8f, 0f, 0f,
                                     viewport.width.toFloat(), viewport.height.toFloat())
@@ -297,7 +336,7 @@ fun VlcPlayerScreen(
                         }
 
                         // Download Speed & Peers Pill
-                        Surface(
+                        if (!landscape) Surface(
                             shape = RoundedCornerShape(12.dp),
                             color = Color.White.copy(alpha = 0.15f),
                             modifier = Modifier
@@ -406,12 +445,14 @@ fun VlcPlayerScreen(
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
                             .background(PlaybackColors.Panel)
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
+                            .padding(horizontal = 24.dp, vertical = if (landscape) 6.dp else 16.dp)
                     ) {
+                        if (!landscape) Text("재생 위치 · 시간 기준", color = PlaybackColors.Download,
+                            style = MaterialTheme.typography.labelSmall)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp),
+                                .height(if (landscape) 40.dp else 48.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             // Playback Position Slider
@@ -438,13 +479,14 @@ fun VlcPlayerScreen(
                             )
                         }
 
-                        PieceMap(pieces, Modifier.fillMaxWidth().padding(bottom = 8.dp), Color.White)
+                        PieceMap(pieces, Modifier.fillMaxWidth().padding(bottom = if (landscape) 4.dp else 8.dp),
+                            Color.White, inlineInfo = landscape)
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "재생 ${formatTime(currentTimeMs)}",
+                                text = "재생 ${formatTime(swipePreviewMs ?: currentTimeMs)}",
                                 color = Color.White,
                                 style = MaterialTheme.typography.bodySmall
                             )

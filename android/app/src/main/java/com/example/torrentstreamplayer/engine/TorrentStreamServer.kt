@@ -57,16 +57,19 @@ class TorrentStreamServer(
 
         // Inform torrent engine to prioritize requested byte offset in LibTorrent
         val generation = torrentEngine.seekRequests.acceptRequest()
-        torrentEngine.prioritizeRequest(startByte, generation, exactRange = true)
+        val readId = torrentEngine.openRead(startByte, generation)
+        torrentEngine.prioritizeRequest(startByte, generation, exactRange = true, readId = readId)
 
         val contentLength = endByte - startByte + 1
 
         val torrentInputStream = VerifiedTorrentInputStream(
             videoFile, startByte, endByte + 1,
-            torrentEngine::isByteDownloaded, { torrentEngine.prioritizeRequest(it, generation) },
+            torrentEngine::isByteDownloaded, { torrentEngine.prioritizeRequest(it, generation, readId = readId) },
             { isAlive && torrentEngine.isStreamingFile(videoFile) &&
                 torrentEngine.seekRequests.isCurrent(generation) }, torrentEngine::readablePieceBytes,
-            prefetch = { torrentEngine.prioritizeRequest(it, generation) }
+            prefetch = { torrentEngine.prioritizeRequest(it, generation, readId = readId) },
+            canWait = { torrentEngine.seekRequests.isPriorityCurrent(generation) },
+            onClosed = { torrentEngine.closeRead(readId) }
         )
 
         val mimeType = getMimeType(videoFile.name)

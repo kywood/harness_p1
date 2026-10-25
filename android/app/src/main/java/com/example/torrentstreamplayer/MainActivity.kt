@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,15 +30,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enableEdgeToEdge()
         setContent {
             TorrentStreamPlayerTheme {
                 val uiState by viewModel.uiState.collectAsState()
-                val pieces by if (uiState is StreamUiState.Buffering)
+                val pieces by if (uiState is StreamUiState.Buffering || uiState is StreamUiState.FetchingMetadata)
                     viewModel.torrentEngine.pieceMap.collectAsState()
                 else remember { mutableStateOf(PieceMapSnapshot.EMPTY) }
                 var showFiles by remember { mutableStateOf(false) }
                 var showHistory by remember { mutableStateOf(false) }
+                val downloadTask by viewModel.downloads.state.collectAsState()
+                val activeKey = downloadTask.key
+                val activeDownload by if (showHistory && activeKey != null)
+                    viewModel.downloads.engine.activeDownload.collectAsState()
+                else remember { mutableStateOf<com.example.torrentstreamplayer.engine.DownloadSnapshot?>(null) }
+                val metadata by if (uiState is StreamUiState.FetchingMetadata || uiState is StreamUiState.Buffering)
+                    viewModel.torrentEngine.metadataDetails.collectAsState()
+                else remember { mutableStateOf(com.example.torrentstreamplayer.engine.MetadataDetails()) }
+                androidx.activity.compose.BackHandler(enabled = com.example.torrentstreamplayer.ui.AppBackPolicy.returnsToInput(uiState, showFiles, showHistory)) {
+                    viewModel.stopStream()
+                }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Box(
@@ -46,11 +60,16 @@ class MainActivity : ComponentActivity() {
                     ) {
                         if (showFiles) {
                             StoredFilesScreen(viewModel.torrentEngine::storedFiles,
-                                viewModel.torrentEngine::deleteStoredFile, onBack = { showFiles = false })
+                                viewModel::deleteStoredFile, onBack = { showFiles = false })
                         } else if (showHistory) {
                             MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
                                 onPlay = { showHistory = false; viewModel.startStreaming(it) },
-                                onBack = { showHistory = false })
+                                onBack = { showHistory = false }, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
+                                onStopDownload = viewModel.downloads::stop, activeKey = activeKey,
+                                activeProgress = activeDownload?.let { it.size to it.downloaded },
+                                activePieces = activeDownload?.pieces ?: PieceMapSnapshot.EMPTY,
+                                downloadError = downloadTask.error,
+                                downloadSpeedBytes = downloadTask.speed)
                         } else when (val state = uiState) {
                             is StreamUiState.Idle -> {
                                 MagnetLinkInputScreen(
@@ -63,8 +82,9 @@ class MainActivity : ComponentActivity() {
 
                             is StreamUiState.FetchingMetadata -> {
                                 LoadingScreen(
-                                    title = "Fetching Torrent Metadata...",
-                                    subtitle = "Connecting to peers and retrieving video info",
+                                    title = if (metadata.hasMetadata) "토렌트 정보 수신 완료" else "토렌트 정보 가져오는 중…",
+                                    subtitle = "파일 정보와 연결 상태를 확인합니다.",
+                                    details = { com.example.torrentstreamplayer.ui.MetadataDetailsPanel(metadata, pieces) },
                                     onCancel = { viewModel.stopStream() }
                                 )
                             }
@@ -73,6 +93,7 @@ class MainActivity : ComponentActivity() {
                                 BufferingScreen(
                                     state = state,
                                     pieces = pieces,
+                                    details = { com.example.torrentstreamplayer.ui.MetadataDetailsPanel(metadata, pieces) },
                                     onCancel = { viewModel.stopStream() }
                                 )
                             }
@@ -152,10 +173,10 @@ fun MagnetLinkInputScreen(
         ) {
             Text("Stream & Auto Play")
         }
-        TextButton(onClick = onOpenFiles, modifier = Modifier.padding(top = 12.dp)) {
-            Text("저장 파일 관리")
+        TextButton(onClick = onOpenHistory, modifier = Modifier.padding(top = 12.dp)) {
+            Text("재생 목록")
         }
-        TextButton(onClick = onOpenHistory) { Text("저장된 마그넷 목록") }
+        TextButton(onClick = onOpenFiles) { Text("저장 파일 관리") }
     }
 }
 
@@ -163,11 +184,13 @@ fun MagnetLinkInputScreen(
 fun LoadingScreen(
     title: String,
     subtitle: String,
+    details: @Composable () -> Unit = {},
     onCancel: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -175,6 +198,7 @@ fun LoadingScreen(
         CircularProgressIndicator(modifier = Modifier.size(64.dp))
         Spacer(modifier = Modifier.height(24.dp))
         Text(text = title, style = MaterialTheme.typography.titleLarge)
+        details()
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = subtitle,
@@ -193,7 +217,8 @@ fun LoadingScreen(
 fun BufferingScreen(
     state: StreamUiState.Buffering,
     onCancel: () -> Unit,
-    pieces: PieceMapSnapshot = PieceMapSnapshot.EMPTY
+    pieces: PieceMapSnapshot = PieceMapSnapshot.EMPTY,
+    details: (@Composable () -> Unit)? = null
 ) {
     val speedKb = state.downloadSpeedBytes / 1024
     val speedMb = speedKb / 1024.0
@@ -206,6 +231,7 @@ fun BufferingScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -217,7 +243,7 @@ fun BufferingScreen(
         )
         Spacer(modifier = Modifier.height(16.dp))
 
-        PieceMap(pieces, Modifier.fillMaxWidth())
+        if (details != null) details() else PieceMap(pieces, Modifier.fillMaxWidth())
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -226,7 +252,7 @@ fun BufferingScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Buffering: ${state.progress.toInt()}%",
+                text = (if (state.autoPlay) "Buffering: " else "다운로드: ") + "${state.progress.toInt()}%",
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(

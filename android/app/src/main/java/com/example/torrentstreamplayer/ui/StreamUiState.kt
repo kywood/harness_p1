@@ -7,7 +7,8 @@ sealed interface StreamUiState {
         val fileName: String,
         val totalSize: Long,
         val progress: Float,
-        val downloadSpeedBytes: Long
+        val downloadSpeedBytes: Long,
+        val autoPlay: Boolean = true
     ) : StreamUiState
     data class Playing(
         val fileName: String

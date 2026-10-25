@@ -25,13 +25,24 @@ class TorrentEngine(private val context: Context) {
     @Volatile var localVideo: File? = null
         private set
     private var worker: Thread? = null
+    private val retiredWorkers = java.util.concurrent.CopyOnWriteArrayList<Thread>()
+    private val closingCheckpoints = java.util.concurrent.CopyOnWriteArrayList<TorrentCheckpoint>()
+    internal val isDownloading: Boolean get() = currentHandle != null && sessionManager?.isRunning == true && worker?.isAlive == true
     private var checkpoint: TorrentCheckpoint? = null
     internal val seekRequests = SeekRequestTracker()
     private var priorityWindow = IntRange.EMPTY
     private var backgroundPiecePriority = -1
     private var playbackByteOffset = 0L
+    @Volatile private var startupPieces: Set<Int> = emptySet()
+    private var startupIndex: StartupIndexState? = null
+    private val readDemands = ReadDemandRegistry()
+    private var priorityPins: Set<Int> = emptySet()
     private val _pieceMap = MutableStateFlow(PieceMapSnapshot.EMPTY)
     val pieceMap = _pieceMap.asStateFlow()
+    private val _metadataDetails = MutableStateFlow(MetadataDetails())
+    internal val metadataDetails = _metadataDetails.asStateFlow()
+    private val _activeDownload = MutableStateFlow<DownloadSnapshot?>(null)
+    internal val activeDownload = _activeDownload.asStateFlow()
     private val downloadRoot = File(context.cacheDir, "torrent_downloads")
     private val stateRoot = File(context.cacheDir, "torrent_state")
     private val diskStore = TorrentDiskStore(listOf(downloadRoot, stateRoot))
@@ -90,7 +101,8 @@ class TorrentEngine(private val context: Context) {
         magnetUrl: String,
         onMetadataReceived: (fileName: String, fileSize: Long) -> Unit,
         onProgress: (progress: Float, downloadSpeedBytes: Long) -> Unit,
-        onError: (String) -> Unit
+        onError: (String) -> Unit,
+        prioritizePlayback: Boolean = true
     ) {
         val key = try { MagnetIdentity.key(magnetUrl) }
         catch (_: Exception) { onError("Invalid magnet link or info hash"); return }
@@ -105,9 +117,15 @@ class TorrentEngine(private val context: Context) {
         worker = Thread {
             try {
                 Log.d(TAG, "Fetching magnet metadata...")
+                val cachedMetadata = cache.read("metadata")
+                _metadataDetails.value = MetadataDetails(phase = if (cachedMetadata == null)
+                    "네트워크 세션 준비 중…" else "저장된 토렌트 정보 확인 중…",
+                    source = if (cachedMetadata == null) "네트워크" else "저장된 메타데이터")
                 val (metadataBytes, session) = try {
-                    MetadataStartup.load(cache.read("metadata"), { ensureStarted(run) },
-                        { Thread.sleep(500) }) { it.fetchMagnet(magnetUrl, 45, downloadDir) }
+                    MetadataStartup.load(cachedMetadata, { ensureStarted(run) }, { Thread.sleep(500) }) { session ->
+                        MetadataMonitor(session) { if (run == activeRun) _metadataDetails.value = it }
+                            .fetch(magnetUrl, downloadDir)
+                    }
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error in fetchMagnet", t)
                     null to null
@@ -132,6 +150,8 @@ class TorrentEngine(private val context: Context) {
                 }
 
                 val fileStorage = torrentInfo.files()
+                _metadataDetails.value = _metadataDetails.value.received(torrentInfo.name(), fileStorage.numFiles(),
+                    torrentInfo.totalSize(), torrentInfo.numPieces(), torrentInfo.pieceLength().toLong())
                 runCatching { cache.write("metadata", metadataBytes) }
                 val numFiles = fileStorage.numFiles()
 
@@ -177,11 +197,19 @@ class TorrentEngine(private val context: Context) {
                 val selectedRange = getFilePieceRange(torrentInfo, bestFileIndex)
                 firstPieceIndex = selectedRange.first
                 lastPieceIndex = selectedRange.second
+                startupPieces = StartupBufferPlan.required(maxFileSize, startOffset,
+                    torrentInfo.pieceLength().toLong(), candidate.extension).takeIf { prioritizePlayback } ?: emptySet()
+                startupIndex = StartupIndexState(candidate, maxFileSize, startOffset,
+                    torrentInfo.pieceLength().toLong(), candidate.extension).takeIf { prioritizePlayback }
+                Log.d(TAG, "Initial playback requires ${startupPieces.size} verified pieces")
                 _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { false }
                 if (cache.isComplete(candidate, maxFileSize)) {
                     _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { true }
                     localVideo = candidate
                     downloadProgress = 100f
+                    _activeDownload.value = DownloadSnapshot(maxFileSize, maxFileSize, candidate.path, _pieceMap.value)
+                    _metadataDetails.value = _metadataDetails.value.copy(downloadedBytes = maxFileSize, videoSize = maxFileSize)
+                    runCatching { cache.write("progress", _activeDownload.value!!.encode()) }
                     onMetadataReceived(candidate.name, maxFileSize)
                     onProgress(100f, 0L)
                     return@Thread
@@ -201,6 +229,9 @@ class TorrentEngine(private val context: Context) {
                 }
 
                 var lastCheckpoint = System.nanoTime()
+                var lastProgressSave = 0L
+                val selectedPieceLength = torrentInfo.pieceLength().toLong()
+                val downloadCheckpoint = checkpoint
 
                 // Ascending deadlines follow playback; native sequential mode would favor the file start.
                 try {
@@ -240,26 +271,41 @@ class TorrentEngine(private val context: Context) {
                     return@Thread
                 }
 
-                prioritizeOffset(0L)
+                if (prioritizePlayback) prioritizeOffset(0L)
+                startupPieces.filterNot { it in priorityWindow }.forEach { handle.setPieceDeadline(it, 5000) }
                 onMetadataReceived(selectedVideoFile?.name ?: "Video", selectedFileLength)
+                _metadataDetails.value = _metadataDetails.value.copy(phase = if (prioritizePlayback)
+                    "초기 재생용 조각 확보 중…" else "파일 다운로드 중…")
 
                 // Progress polling loop
                 while (run == activeRun && activeSession.isRunning && currentHandle != null) {
                     try {
                         val status = handle.status(TorrentHandle.QUERY_PIECES)
+                        updateStartupIndex()
                         advanceDownloadWindow()
                         val pieces = status.pieces()
                         if (pieces.size() > lastPieceIndex)
                             _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex,
                                 havePiece = pieces::getBit)
-                        val map = _pieceMap.value
-                        val progress = if (map.total > 0) map.verified * 100f / map.total else 0f
+                        val verifiedBytes = VerifiedDownload.bytes(maxFileSize, startOffset,
+                            selectedPieceLength) { it < pieces.size() && pieces.getBit(it) }
+                        val progress = (verifiedBytes.toDouble() * 100 / maxFileSize).toFloat()
                         val speed = status.downloadPayloadRate().toLong()
                         val peers = status.numPeers()
+                        if (run != activeRun) return@Thread
 
                         downloadProgress = progress
+                        val snapshot = DownloadSnapshot(maxFileSize, verifiedBytes, candidate.path, _pieceMap.value)
+                        _activeDownload.value = snapshot
+                        _metadataDetails.value = _metadataDetails.value.copy(downloadedBytes = verifiedBytes, videoSize = maxFileSize)
+                        downloadCheckpoint?.latestProgress = snapshot
+                        if (System.nanoTime() - lastProgressSave >= 5_000_000_000L) {
+                            downloadCheckpoint?.saveProgress(downloadCheckpoint.latestProgress)
+                            lastProgressSave = System.nanoTime()
+                        }
                         downloadSpeedBytes = speed
                         numPeers = peers
+                        _metadataDetails.value = _metadataDetails.value.connected(peers)
                         if (System.nanoTime() - lastCheckpoint >= 15_000_000_000L) {
                             checkpoint?.save()
                             lastCheckpoint = System.nanoTime()
@@ -271,6 +317,10 @@ class TorrentEngine(private val context: Context) {
                             checkpoint?.save(1500)
                             runCatching { cache.recordComplete(candidate, maxFileSize) }
                             downloadProgress = 100f
+                            val completeMap = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { true }
+                            _activeDownload.value = DownloadSnapshot(maxFileSize, maxFileSize, candidate.path, completeMap)
+                            runCatching { cache.write("progress", _activeDownload.value!!.encode()) }
+                            _metadataDetails.value = _metadataDetails.value.copy(phase = "다운로드 완료")
                             downloadSpeedBytes = 0L
                             _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { true }
                             onProgress(100f, 0L)
@@ -290,6 +340,14 @@ class TorrentEngine(private val context: Context) {
         }.also { it.start() }
     }
 
+    @Synchronized private fun updateStartupIndex() {
+        val handle = currentHandle ?: return
+        val index = startupIndex ?: return
+        val added = index.update(handle::havePiece) - startupPieces
+        if (added.isEmpty()) return
+        startupPieces = startupPieces + added
+        added.forEach { handle.piecePriority(it, Priority.TOP_PRIORITY); handle.setPieceDeadline(it, 1000) }
+    }
     @Synchronized private fun advanceDownloadWindow() {
         if (priorityWindow.isEmpty()) return
         val pieceLength = currentHandle?.torrentFile()?.pieceLength()?.toLong() ?: return
@@ -307,20 +365,35 @@ class TorrentEngine(private val context: Context) {
             .coerceIn(firstPieceIndex, lastPieceIndex)
         val startPieceIndex = SequentialPiecePlan.nextMissing(requestedPiece, lastPieceIndex, handle::havePiece) ?: requestedPiece
         val window = SequentialPiecePlan.window(startPieceIndex, lastPieceIndex)
-        val background = PlaybackDownloadPolicy.backgroundPriority(playbackByteOffset, selectedFileLength,
-            selectedFileStartOffset, pieceLength, handle::havePiece)
-        if (window == priorityWindow && background == backgroundPiecePriority) return
+        val offsets = readDemands.offsets().filter { it in 0 until selectedFileLength }
+        val pins = startupPieces + offsets.flatMap { offset ->
+            val first = ((selectedFileStartOffset + offset) / pieceLength).toInt()
+            val missing = SequentialPiecePlan.nextMissing(first, lastPieceIndex, handle::havePiece) ?: first
+            SequentialPiecePlan.window(missing, lastPieceIndex).toList()
+        }
+        val background = (offsets.ifEmpty { listOf(playbackByteOffset) }).minOf { position ->
+            PlaybackDownloadPolicy.backgroundPriority(position, selectedFileLength,
+                selectedFileStartOffset, pieceLength, handle::havePiece)
+        }
+        if (window == priorityWindow && background == backgroundPiecePriority && pins == priorityPins) return
         try {
             if (background != backgroundPiecePriority) {
                 for (p in firstPieceIndex..lastPieceIndex)
-                    handle.piecePriority(p, Priority.fromSwig(SequentialPiecePlan.priority(p, window, background)))
+                    handle.piecePriority(p, Priority.fromSwig(StartupBufferPlan.priority(p, window, pins, background)))
                 backgroundPiecePriority = background
             }
             for (p in priorityWindow) if (p !in window) {
-                handle.resetPieceDeadline(p)
-                handle.piecePriority(p, Priority.fromSwig(background))
+                if (p !in pins) handle.resetPieceDeadline(p)
+                handle.piecePriority(p, Priority.fromSwig(StartupBufferPlan.priority(p, window, pins, background)))
             }
             priorityWindow = window
+            for (p in priorityPins - pins) if (p !in window) {
+                handle.resetPieceDeadline(p); handle.piecePriority(p, Priority.fromSwig(background))
+            }
+            for (p in pins - priorityPins) {
+                handle.piecePriority(p, Priority.TOP_PRIORITY); handle.setPieceDeadline(p, 1000)
+            }
+            priorityPins = pins
             for (request in SequentialPiecePlan.requests(startPieceIndex, lastPieceIndex, handle::havePiece)) {
                 handle.piecePriority(request.piece, Priority.fromSwig(request.priority))
                 handle.setPieceDeadline(request.piece, request.deadlineMs)
@@ -345,30 +418,62 @@ class TorrentEngine(private val context: Context) {
         }
     }
 
-    @Synchronized internal fun prioritizeRequest(offset: Long, generation: Long, exactRange: Boolean = false) {
-        if (!seekRequests.isCurrent(generation)) return
-        playbackByteOffset = offset
+    @Synchronized internal fun prioritizeRequest(offset: Long, generation: Long, exactRange: Boolean = false, readId: Long? = null) {
+        if (!seekRequests.isPriorityCurrent(generation)) return
+        if (readId != null) readDemands.update(readId, offset)
         if (seekRequests.isCurrent(generation) && (exactRange || !isByteDownloaded(offset))) prioritizeOffset(offset)
     }
 
+    @Synchronized internal fun openRead(offset: Long, generation: Long): Long =
+        if (seekRequests.isPriorityCurrent(generation)) readDemands.open(offset) else -1
+    internal fun closeRead(id: Long) { readDemands.close(id) }
+
     @Synchronized fun beginSeek(targetMs: Long = 0, durationMs: Long = 0) {
         seekRequests.beginSeek()
+        readDemands.clear()
         runCatching {
             currentHandle?.clearPieceDeadlines()
-            priorityWindow.forEach { currentHandle?.piecePriority(it, Priority.LOW) }
+            (priorityWindow.toSet() + priorityPins).forEach { currentHandle?.piecePriority(it, Priority.LOW) }
         }
         priorityWindow = IntRange.EMPTY
         if (localVideo == null) SeekDownloadHint.offset(targetMs, durationMs, selectedFileLength)?.let {
+            priorityPins = emptySet()
             playbackByteOffset = it
             runCatching { prioritizeOffset(it) }.onFailure { error -> Log.w(TAG, "Seek prefetch failed", error) }
         }
     }
 
-    fun isPlaybackReady(): Boolean {
+    fun isPlaybackReady(): Boolean = playbackReady()
+    @Synchronized internal fun requestPlayback(): Boolean {
+        if (localVideo != null) return true
+        val info = currentHandle?.torrentFile() ?: return false
+        startupPieces = StartupBufferPlan.required(selectedFileLength, selectedFileStartOffset,
+            info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
+        startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
+            info.pieceLength().toLong(), selectedVideoFile!!.extension)
+        beginSeek(0, 1)
+        return true
+    }
+    @Synchronized internal fun releasePlaybackPriority() {
+        seekRequests.beginSeek()
+        startupPieces = emptySet(); startupIndex = null
+        readDemands.clear()
+        runCatching { currentHandle?.clearPieceDeadlines()
+            for (piece in firstPieceIndex..lastPieceIndex) currentHandle?.piecePriority(piece, Priority.DEFAULT) }
+        priorityWindow = IntRange.EMPTY; priorityPins = emptySet(); backgroundPiecePriority = -1
+    }
+    private fun playbackReady(): Boolean {
         if (localVideo != null) return true
         val handle = currentHandle ?: return false
         if (firstPieceIndex < 0 || lastPieceIndex < 0) return false
+        if (startupIndex?.ready == false) return false
         return try {
+            val required = startupPieces
+            if (required.isNotEmpty()) {
+                val ready = StartupBufferPlan.ready(required, handle::havePiece)
+                if (ready) { startupPieces = emptySet(); Log.d(TAG, "Initial verified playback buffer ready") }
+                return ready
+            }
             val info = handle.torrentFile() ?: return false
             TorrentPlayback.startupReady(selectedFileLength, selectedFileStartOffset,
                 info.pieceLength().toLong(), handle::havePiece)
@@ -416,6 +521,25 @@ class TorrentEngine(private val context: Context) {
         }
         return resolved.magnet
     }
+    internal fun savedMagnet(entry: SavedMagnet): SavedMagnet = SavedDownloadLookup(downloadRoot) { key ->
+        TorrentCache(stateRoot, key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
+    }.enrich(entry)
+
+    internal fun deleteTorrentFiles(magnet: String, protectedFiles: List<File>) {
+        val key = MagnetIdentity.key(magnet)
+        val cache = TorrentCache(stateRoot, key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
+        val legacy = cache.read("metadata")?.let { bytes -> TorrentInfo.bdecode(bytes).files().let { files ->
+            (0 until files.numFiles()).map { files.filePath(it) } } }.orEmpty()
+        val remembered = cache.read("progress")?.let { runCatching { DownloadSnapshot.decode(it).path }.getOrNull() }
+            ?.let { File(it).canonicalFile }?.takeIf { it.toPath().startsWith(downloadRoot.canonicalFile.toPath()) &&
+                !it.toPath().startsWith(File(downloadRoot, key).canonicalFile.toPath()) }
+            ?.relativeTo(downloadRoot.canonicalFile)?.invariantSeparatorsPath
+        TorrentRemoval(downloadRoot, stateRoot).delete(key, legacy + listOfNotNull(remembered), protectedFiles)
+    }
+    internal fun awaitStoppedWrites() {
+        retiredWorkers.toList().forEach { it.join(5000); check(!it.isAlive) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }; retiredWorkers.remove(it) }
+        closingCheckpoints.toList().forEach { it.awaitClosed(); closingCheckpoints.remove(it) }
+    }
     @Synchronized fun deleteStoredFile(path: String): Boolean {
         check(currentHandle == null && localVideo == null && worker?.isAlive != true) {
             "Stop streaming before deleting stored files"
@@ -427,13 +551,23 @@ class TorrentEngine(private val context: Context) {
     fun stop() {
         activeRun++
         _pieceMap.value = PieceMapSnapshot.EMPTY
+        _metadataDetails.value = MetadataDetails()
+        _activeDownload.value = null
         priorityWindow = IntRange.EMPTY
         backgroundPiecePriority = -1
         playbackByteOffset = 0L
+        startupPieces = emptySet()
+        startupIndex = null
+        readDemands.clear()
+        priorityPins = emptySet()
         worker?.interrupt()
+        retiredWorkers.removeAll { !it.isAlive }
+        worker?.takeIf { it.isAlive }?.let { retiredWorkers.add(it) }
         worker = null
         runCatching { checkpoint?.save(1500) }
         checkpoint?.close()
+        closingCheckpoints.removeAll { it.isClosed }
+        checkpoint?.takeUnless { it.isClosed }?.let { closingCheckpoints.add(it) }
         checkpoint = null
         localVideo = null
         try {
