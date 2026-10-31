@@ -4,7 +4,9 @@ import com.example.torrentstreamplayer.engine.TorrentEngine
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 internal data class DownloadTaskState(val key: String? = null, val speed: Long = 0,
-    val error: String? = null, val title: String? = null, val complete: Boolean = false)
+    val error: String? = null, val title: String? = null, val complete: Boolean = false) {
+    val activeCount: Int get() = if (key != null && !complete && error == null) 1 else 0
+}
 internal class DownloadController(private val scope: CoroutineScope,
     private val createEngine: () -> TorrentEngine,
     private val save: suspend (String) -> Unit,

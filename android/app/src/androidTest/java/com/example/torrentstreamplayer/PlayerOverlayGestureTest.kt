@@ -37,7 +37,7 @@ class PlayerOverlayGestureTest {
         try { instrumentation.sendPointerSync(event) } finally { event.recycle() }
         Thread.sleep(30)
     }
-    @Test fun hiddenSwipeShowsOnlyTimelineAndPinchCancelsSeek() {
+    @Test fun enabledSwipeCommitsAndPinchCancelsSeek() {
         val commits = AtomicInteger(); val cancellations = AtomicInteger(); val transforms = AtomicInteger()
         val bounds = AtomicReference<Rect>(); val previewVisible = AtomicBoolean()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -45,7 +45,7 @@ class PlayerOverlayGestureTest {
                 var preview by remember { mutableStateOf(false) }
                 var position by remember { mutableFloatStateOf(0.25f) }
                 Box(Modifier.fillMaxSize().onGloballyPositioned { bounds.set(it.boundsInWindow()) }.pointerInput(Unit) {
-                    detectVideoSwipeGestures({ PlayerOverlayPolicy.canSwipe(true, 3600000) }, { false },
+                    detectVideoSwipeGestures({ PlayerOverlayPolicy.canSwipe(true, 3600000, true) }, { false },
                         { preview = true }, { position = (0.25f + it / size.width).coerceIn(0f, 1f) },
                         { if (it) commits.incrementAndGet() else { cancellations.incrementAndGet(); preview = false } },
                         { _, _, _ -> transforms.incrementAndGet() })
@@ -82,6 +82,33 @@ class PlayerOverlayGestureTest {
         }
     }
     @Test fun inlinePieceInformationAndLegendOccupyOneCompactRow() {
+        verifyInlinePieceLayout()
+    }
+    @Test fun hiddenHorizontalDragNeverSeeksAndStillPansWhenZoomed() {
+        for (zoomed in listOf(false, true)) verifyHiddenDrag(zoomed)
+    }
+    private fun verifyHiddenDrag(zoomed: Boolean) {
+        val bounds = AtomicReference<Rect>(); val seeks = AtomicInteger(); val pans = AtomicInteger()
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity -> activity.setContent {
+                Box(Modifier.fillMaxSize().onGloballyPositioned { bounds.set(it.boundsInWindow()) }.pointerInput(Unit) {
+                    detectVideoSwipeGestures({ PlayerOverlayPolicy.canSwipe(true, 3600000, false) }, { zoomed },
+                        { seeks.incrementAndGet() }, { seeks.incrementAndGet() }, { seeks.incrementAndGet() },
+                        { _, _, _ -> pans.incrementAndGet() })
+                })
+            } }
+            await { bounds.get() != null }
+            val center = bounds.get().center; val down = SystemClock.uptimeMillis()
+            send(down, MotionEvent.ACTION_DOWN, center)
+            send(down, MotionEvent.ACTION_MOVE, center + Offset(60f, 0f))
+            send(down, MotionEvent.ACTION_MOVE, center + Offset(100f, 0f))
+            send(down, MotionEvent.ACTION_UP, center + Offset(100f, 0f))
+            instrumentation.waitForIdleSync()
+            assertEquals(0, seeks.get())
+            if (zoomed) assertTrue(pans.get() > 0) else assertEquals(0, pans.get())
+        }
+    }
+    private fun verifyInlinePieceLayout() {
         val heightDp = AtomicInteger()
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity -> activity.setContent {

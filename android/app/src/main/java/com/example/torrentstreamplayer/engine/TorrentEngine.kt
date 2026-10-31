@@ -28,7 +28,9 @@ class TorrentEngine(private val context: Context) {
     private val retiredWorkers = java.util.concurrent.CopyOnWriteArrayList<Thread>()
     private val closingCheckpoints = java.util.concurrent.CopyOnWriteArrayList<TorrentCheckpoint>()
     internal val isDownloading: Boolean get() = currentHandle != null && sessionManager?.isRunning == true && worker?.isAlive == true
+    internal val nativeSessionIdentity: Any? get() = sessionManager
     private var checkpoint: TorrentCheckpoint? = null
+    private var activeCache: TorrentCache? = null
     internal val seekRequests = SeekRequestTracker()
     private var priorityWindow = IntRange.EMPTY
     private var backgroundPiecePriority = -1
@@ -66,6 +68,7 @@ class TorrentEngine(private val context: Context) {
 
     companion object {
         private const val TAG = "TorrentEngine"
+        private val sharedSessions = NativeSessionLease<SessionManager> { it.stop() }
     }
 
     @Synchronized
@@ -75,23 +78,26 @@ class TorrentEngine(private val context: Context) {
         if (existing != null && existing.isRunning) {
             return existing
         }
-        val newSession = SessionManager()
+        val newSession = sharedSessions.acquire(this) {
+        val nativeSession = SessionManager()
         val settings = SettingsPack()
         settings.setInteger(settings_pack.int_types.initial_picker_threshold.swigValue(), 0)
         DownloadOnlyPolicy.settings(settings_pack.int_types.choking_algorithm,
             settings_pack.int_types.unchoke_slots_limit, settings_pack.int_types.allowed_fast_set_size,
             settings_pack.choking_algorithm_t.fixed_slots_choker.swigValue()
         ).forEach { (key, value) -> settings.setInteger(key.swigValue(), value) }
-        newSession.start(SessionParams(settings))
+        nativeSession.start(SessionParams(settings))
         try {
             val peerClasses = ip_filter()
             DownloadOnlyPolicy.assignPeerClasses { first, last, mask ->
                 peerClasses.add_rule(Address.parseIp(first).swig(), Address.parseIp(last).swig(), mask)
             }
-            newSession.swig().set_peer_class_filter(peerClasses)
+            nativeSession.swig().set_peer_class_filter(peerClasses)
         } catch (t: Throwable) {
-            newSession.stop()
+            nativeSession.stop()
             throw t
+        }
+        nativeSession
         }
         sessionManager = newSession
         return newSession
@@ -109,6 +115,7 @@ class TorrentEngine(private val context: Context) {
         stop()
         val run = activeRun
         val cache = TorrentCache(stateRoot, key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
+        activeCache = cache
         var downloadDir = File(downloadRoot, key)
         if (!downloadDir.exists()) {
             downloadDir.mkdirs()
@@ -191,6 +198,7 @@ class TorrentEngine(private val context: Context) {
                 }
                 synchronized(this) {
                 if (run != activeRun) return@Thread
+                ActiveTorrentFiles.acquire(this, candidate)
                 selectedFileStartOffset = startOffset
                 selectedFileLength = maxFileSize
                 selectedVideoFile = candidate
@@ -316,6 +324,7 @@ class TorrentEngine(private val context: Context) {
                         if (status.isFinished && (firstPieceIndex..lastPieceIndex).all(handle::havePiece)) {
                             checkpoint?.save(1500)
                             runCatching { cache.recordComplete(candidate, maxFileSize) }
+                            if (cache.isComplete(candidate, maxFileSize)) localVideo = candidate
                             downloadProgress = 100f
                             val completeMap = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { true }
                             _activeDownload.value = DownloadSnapshot(maxFileSize, maxFileSize, candidate.path, completeMap)
@@ -451,6 +460,7 @@ class TorrentEngine(private val context: Context) {
             info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
         startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile!!.extension)
+        updateStartupIndex()
         beginSeek(0, 1)
         return true
     }
@@ -549,6 +559,9 @@ class TorrentEngine(private val context: Context) {
 
     @Synchronized
     fun stop() {
+        val completed = _activeDownload.value?.takeIf { it.downloaded == it.size && it.path == selectedVideoFile?.path }
+        val finalCache = activeCache
+        activeCache = null
         activeRun++
         _pieceMap.value = PieceMapSnapshot.EMPTY
         _metadataDetails.value = MetadataDetails()
@@ -579,7 +592,7 @@ class TorrentEngine(private val context: Context) {
                 }
             }
             currentHandle = null
-            session?.stop()
+            sharedSessions.release(this)
             sessionManager = null
             selectedVideoFile = null
             selectedFileLength = 0L
@@ -588,6 +601,10 @@ class TorrentEngine(private val context: Context) {
             numPeers = 0
         } catch (t: Throwable) {
             Log.e(TAG, "Error stopping torrent engine", t)
+        }
+        if (sessionManager == null) {
+            if (completed != null) runCatching { finalCache?.recordComplete(File(completed.path), completed.size) }
+            ActiveTorrentFiles.release(this)
         }
     }
 }

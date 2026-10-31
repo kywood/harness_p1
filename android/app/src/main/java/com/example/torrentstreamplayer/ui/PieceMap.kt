@@ -21,7 +21,8 @@ import com.example.torrentstreamplayer.ui.theme.PlaybackColors
 
 @Composable
 fun PieceMap(snapshot: PieceMapSnapshot, modifier: Modifier = Modifier,
-    labelColor: Color = MaterialTheme.colorScheme.onSurface, compact: Boolean = false, inlineInfo: Boolean = false) {
+    labelColor: Color = MaterialTheme.colorScheme.onSurface, compact: Boolean = false, inlineInfo: Boolean = false,
+    showInfo: Boolean = true) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (!compact && !inlineInfo) Text("다운로드 조각 · 파일 용량 기준", color = labelColor, style = MaterialTheme.typography.labelSmall)
         Canvas(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(3.dp))) {
@@ -52,7 +53,7 @@ fun PieceMap(snapshot: PieceMapSnapshot, modifier: Modifier = Modifier,
             PieceLegend("67–99%", PlaybackColors.PiecePartial, labelColor)
             PieceLegend("미완료", PlaybackColors.Track, labelColor)
         }
-        if (!inlineInfo) Text(if (snapshot.total == 0) "피스 정보 확인 전" else
+        if (!inlineInfo && showInfo) Text(if (snapshot.total == 0) "피스 정보 확인 전" else
             "파일 앞 → 뒤 · 피스 " + snapshot.verified + " / " + snapshot.total +
                 if (snapshot.total > snapshot.cells.size) " · 한 칸에 여러 피스" else "",
             color = labelColor, style = MaterialTheme.typography.labelSmall)

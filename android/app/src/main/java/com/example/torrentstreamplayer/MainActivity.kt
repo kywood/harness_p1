@@ -40,16 +40,22 @@ class MainActivity : ComponentActivity() {
                 else remember { mutableStateOf(PieceMapSnapshot.EMPTY) }
                 var showFiles by remember { mutableStateOf(false) }
                 var showHistory by remember { mutableStateOf(false) }
-                val downloadTask by viewModel.downloads.state.collectAsState()
-                val activeKey = downloadTask.key
-                val activeDownload by if (showHistory && activeKey != null)
-                    viewModel.downloads.engine.activeDownload.collectAsState()
-                else remember { mutableStateOf<com.example.torrentstreamplayer.engine.DownloadSnapshot?>(null) }
+                var simplePlaylist by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+                var playlistSort by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(com.example.torrentstreamplayer.ui.PlaylistSort.RECENT_PLAY) }
+                var playlistFilter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(com.example.torrentstreamplayer.ui.PlaylistFilter.ALL) }
+                var returnToHistory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+                fun closePlayback() {
+                    if (returnToHistory) viewModel.stopStream() else viewModel.stopForMain()
+                    showHistory = returnToHistory
+                    returnToHistory = false
+                }
+                val downloadJobs by viewModel.downloads.tasks.collectAsState()
+                val downloadError by viewModel.downloads.error.collectAsState()
                 val metadata by if (uiState is StreamUiState.FetchingMetadata || uiState is StreamUiState.Buffering)
                     viewModel.torrentEngine.metadataDetails.collectAsState()
                 else remember { mutableStateOf(com.example.torrentstreamplayer.engine.MetadataDetails()) }
                 androidx.activity.compose.BackHandler(enabled = com.example.torrentstreamplayer.ui.AppBackPolicy.returnsToInput(uiState, showFiles, showHistory)) {
-                    viewModel.stopStream()
+                    closePlayback()
                 }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
@@ -63,20 +69,22 @@ class MainActivity : ComponentActivity() {
                                 viewModel::deleteStoredFile, onBack = { showFiles = false })
                         } else if (showHistory) {
                             MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
-                                onPlay = { showHistory = false; viewModel.startStreaming(it) },
+                                onPlay = { returnToHistory = true; showHistory = false; viewModel.startStreaming(it) },
                                 onBack = { showHistory = false }, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
-                                onStopDownload = viewModel.downloads::stop, activeKey = activeKey,
-                                activeProgress = activeDownload?.let { it.size to it.downloaded },
-                                activePieces = activeDownload?.pieces ?: PieceMapSnapshot.EMPTY,
-                                downloadError = downloadTask.error,
-                                downloadSpeedBytes = downloadTask.speed)
+                                onStopDownload = viewModel::stopDownloads, downloadJobs = downloadJobs,
+                                onStopItem = viewModel::stopDownload, onStopItems = viewModel::stopDownloads,
+                                downloadError = downloadError,
+                                simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
+                                downloadCount = downloadJobs.values.count { it.phase == com.example.torrentstreamplayer.ui.DownloadPhase.RUNNING },
+                                sort = playlistSort, onSortChange = { playlistSort = it },
+                                filter = playlistFilter, onFilterChange = { playlistFilter = it })
                         } else when (val state = uiState) {
                             is StreamUiState.Idle -> {
                                 MagnetLinkInputScreen(
-                                    onStartStream = { viewModel.startStreaming(it) },
+                                    onStartStream = { returnToHistory = false; viewModel.startStreaming(it) },
                                     errorMessage = null,
                                     onOpenFiles = { viewModel.stopStream(); showFiles = true },
-                                    onOpenHistory = { viewModel.stopStream(); showHistory = true }
+                                    onOpenHistory = { showHistory = true }
                                 )
                             }
 
@@ -85,7 +93,8 @@ class MainActivity : ComponentActivity() {
                                     title = if (metadata.hasMetadata) "토렌트 정보 수신 완료" else "토렌트 정보 가져오는 중…",
                                     subtitle = "파일 정보와 연결 상태를 확인합니다.",
                                     details = { com.example.torrentstreamplayer.ui.MetadataDetailsPanel(metadata, pieces) },
-                                    onCancel = { viewModel.stopStream() }
+                                    onCancel = { returnToHistory = false; closePlayback() },
+                                    onOpenPlaylist = { viewModel.continueInPlaylist(); returnToHistory = false; showHistory = true }
                                 )
                             }
 
@@ -94,7 +103,8 @@ class MainActivity : ComponentActivity() {
                                     state = state,
                                     pieces = pieces,
                                     details = { com.example.torrentstreamplayer.ui.MetadataDetailsPanel(metadata, pieces) },
-                                    onCancel = { viewModel.stopStream() }
+                                    onCancel = { returnToHistory = false; closePlayback() },
+                                    onOpenPlaylist = { viewModel.continueInPlaylist(); returnToHistory = false; showHistory = true }
                                 )
                             }
 
@@ -102,13 +112,13 @@ class MainActivity : ComponentActivity() {
                                 VlcPlayerScreen(
                                     fileName = state.fileName,
                                     torrentEngine = viewModel.torrentEngine,
-                                    onBackClicked = { viewModel.stopStream() }
+                                    onBackClicked = { closePlayback() }
                                 )
                             }
 
                             is StreamUiState.Error -> {
                                 MagnetLinkInputScreen(
-                                    onStartStream = { viewModel.startStreaming(it) },
+                                    onStartStream = { returnToHistory = false; viewModel.startStreaming(it) },
                                     errorMessage = state.message,
                                     onOpenFiles = { viewModel.stopStream(); showFiles = true },
                                     onOpenHistory = { viewModel.stopStream(); showHistory = true }
@@ -130,6 +140,10 @@ fun MagnetLinkInputScreen(
     onOpenHistory: () -> Unit = {}
 ) {
     var magnetLink by remember { mutableStateOf("") }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val versionName = remember(context) {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    }
 
     Column(
         modifier = Modifier
@@ -144,6 +158,9 @@ fun MagnetLinkInputScreen(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(24.dp))
+
+        Text(versionName, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall)
 
         OutlinedTextField(
             value = magnetLink,
@@ -185,7 +202,8 @@ fun LoadingScreen(
     title: String,
     subtitle: String,
     details: @Composable () -> Unit = {},
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onOpenPlaylist: () -> Unit = onCancel
 ) {
     Column(
         modifier = Modifier
@@ -207,9 +225,7 @@ fun LoadingScreen(
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(32.dp))
-        OutlinedButton(onClick = onCancel) {
-            Text("Cancel")
-        }
+        com.example.torrentstreamplayer.ui.PreparationActions(onCancel, onOpenPlaylist)
     }
 }
 
@@ -218,7 +234,8 @@ fun BufferingScreen(
     state: StreamUiState.Buffering,
     onCancel: () -> Unit,
     pieces: PieceMapSnapshot = PieceMapSnapshot.EMPTY,
-    details: (@Composable () -> Unit)? = null
+    details: (@Composable () -> Unit)? = null,
+    onOpenPlaylist: () -> Unit = onCancel
 ) {
     val speedKb = state.downloadSpeedBytes / 1024
     val speedMb = speedKb / 1024.0
@@ -263,8 +280,6 @@ fun BufferingScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        OutlinedButton(onClick = onCancel) {
-            Text("Cancel")
-        }
+        com.example.torrentstreamplayer.ui.PreparationActions(onCancel, onOpenPlaylist)
     }
 }

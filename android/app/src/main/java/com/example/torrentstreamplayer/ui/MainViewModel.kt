@@ -32,28 +32,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val key = com.example.torrentstreamplayer.engine.MagnetIdentity.key(magnet)
         val protectedFiles = kotlinx.coroutines.runBlocking(Dispatchers.Main.immediate) {
             if (_activeKey.value == key) stopStream()
-            if (downloads.state.value.key == key) downloads.stop()
-            listOfNotNull(if (engine.isInitialized()) engine.value.selectedVideoFile else null,
-                if (downloads.state.value.key != null) downloads.engine.selectedVideoFile else null)
+            downloads.stop(key)
+            listOfNotNull(if (engine.isInitialized()) engine.value.selectedVideoFile else null) + downloads.protectedFiles()
         }
         if (engine.isInitialized()) engine.value.awaitStoppedWrites()
         downloads.awaitStoppedWrites()
         torrentEngine.deleteTorrentFiles(magnet, protectedFiles)
         history.delete(magnet)
     }
-    internal val downloads = DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
+    internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { history.add(it) }; Unit },
-        { magnet, name -> withContext(Dispatchers.IO) { history.updateTitle(magnet, name) }; Unit })
+        { magnet, name -> withContext(Dispatchers.IO) { history.updateTitle(magnet, name) }; Unit }) })
     fun deleteStoredFile(path: String): Boolean {
-        check(downloads.state.value.key == null) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
+        check(downloads.tasks.value.values.none { it.phase == DownloadPhase.RUNNING || it.phase == DownloadPhase.QUEUED }) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
         return torrentEngine.deleteStoredFile(path)
     }
 
     private val _uiState = MutableStateFlow<StreamUiState>(StreamUiState.Idle)
     val uiState: StateFlow<StreamUiState> = _uiState.asStateFlow()
 
-    private var autoPlayTriggered = false
-    private var autoPlayEnabled = true
+    private var continueDownloading = false
     private val _activeKey = MutableStateFlow<String?>(null)
     val activeKey = _activeKey.asStateFlow()
     private var requestVersion = 0L
@@ -64,7 +62,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         stopStream()
-        autoPlayEnabled = !downloadOnly
+        continueDownloading = false
         _activeKey.value = null
         inputJob?.cancel()
         val request = ++requestVersion
@@ -74,13 +72,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        autoPlayTriggered = false
         _uiState.value = StreamUiState.FetchingMetadata(trimmed)
         inputJob = viewModelScope.launch {
             try {
                 val resolved = withContext(Dispatchers.IO) { torrentEngine.resolveInput(trimmed) }
                 if (request != requestVersion) return@launch
-                _activeKey.value = com.example.torrentstreamplayer.engine.MagnetIdentity.key(resolved)
+                if (!continueDownloading) _activeKey.value = com.example.torrentstreamplayer.engine.MagnetIdentity.key(resolved)
                 withContext(Dispatchers.IO) { history.add(resolved) }
 
                 if (request == requestVersion) startResolved(resolved, request)
@@ -91,83 +88,62 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-    private fun startResolved(trimmed: String, request: Long) {
-        if (_activeKey.value == downloads.state.value.key) {
-            startSharedPlayback(request)
-            return
-        }
-        torrentEngine.startStreaming(
-            magnetUrl = trimmed,
-            onMetadataReceived = { fileName, fileSize ->
-                viewModelScope.launch {
-                    if (request != requestVersion) return@launch
-                    _uiState.value = StreamUiState.Buffering(
-                        fileName = fileName,
-                        totalSize = fileSize,
-                        progress = 0f,
-                        downloadSpeedBytes = 0L,
-                        autoPlay = autoPlayEnabled
-                    )
-                    withContext(Dispatchers.IO) { runCatching { history.updateTitle(trimmed, fileName) } }
-                }
-            },
-            onProgress = { progress, speed ->
-                viewModelScope.launch {
-                    if (request != requestVersion) return@launch
-                    val currentState = _uiState.value
-                    if (currentState is StreamUiState.Buffering) {
-                        _uiState.value = currentState.copy(
-                            progress = progress,
-                            downloadSpeedBytes = speed
-                        )
-                        // Start only after the initial continuous video buffer is hash-verified.
-                        val isReady = currentState.autoPlay && torrentEngine.isPlaybackReady()
-                        if (isReady && !autoPlayTriggered) {
-                            autoPlayTriggered = true
-                            _uiState.value = StreamUiState.Playing(
-                                fileName = currentState.fileName
-                            )
-                        }
-                    }
-                }
-            },
-            prioritizePlayback = autoPlayEnabled,
-            onError = { errorMsg ->
-                viewModelScope.launch {
-                    if (request != requestVersion) return@launch
-                    _uiState.value = StreamUiState.Error(errorMsg)
-                    _activeKey.value = null
-                }
-            }
-        )
-    }
 
-    private fun startSharedPlayback(request: Long) {
-        sharedPlayback = downloads.engine
+    private fun startResolved(magnet: String, request: Long) {
+        val key = com.example.torrentstreamplayer.engine.MagnetIdentity.key(magnet)
+        downloads.start(magnet) { true }
+        if (continueDownloading) { _activeKey.value = null; _uiState.value = StreamUiState.Idle; return }
+        val source = downloads.borrow(key) ?: error("다운로드 작업을 연결하지 못했습니다.")
+        startSharedPlayback(magnet, request, source)
+    }
+    private fun startSharedPlayback(magnet: String, request: Long, source: TorrentEngine) {
+        sharedPlayback = source
+        _uiState.value = StreamUiState.FetchingMetadata(magnet, engineReady = true)
         inputJob = viewModelScope.launch {
             var focused = false
             while (request == requestVersion) {
-                val task = downloads.state.value
-                val source = downloads.engine
+                val task = _activeKey.value?.let { downloads.entry(it) }
+                if (task == null || task.phase == DownloadPhase.FAILED) {
+                    _uiState.value = StreamUiState.Error(task?.error ?: "다운로드가 중지되었습니다.")
+                    break
+                }
                 if (source.selectedVideoFile != null) {
                     if (!focused) focused = source.requestPlayback()
                     _uiState.value = if (source.isPlaybackReady()) StreamUiState.Playing(source.selectedVideoFile!!.name)
                     else StreamUiState.Buffering(source.selectedVideoFile!!.name, source.selectedFileLength,
                         source.downloadProgress, source.downloadSpeedBytes)
-                    if (_uiState.value is StreamUiState.Playing) break
-                }
-                if (task.key != _activeKey.value || task.error != null) {
-                    _uiState.value = StreamUiState.Error(task.error ?: "다운로드가 중지되었습니다.")
-                    break
+                    if (_uiState.value is StreamUiState.Playing) {
+                        withContext(Dispatchers.IO) { runCatching { history.markPlayed(magnet) } }
+                        break
+                    }
                 }
                 kotlinx.coroutines.delay(250)
             }
         }
     }
+    fun stopDownload(key: String) {
+        stopDownloads(setOf(key))
+    }
+    fun continueInPlaylist() {
+        continueDownloading = true
+        if (sharedPlayback != null) stopStream()
+        else { _activeKey.value = null; _uiState.value = StreamUiState.Idle }
+    }
+    fun stopForMain() {
+        continueDownloading = false
+        val key = _activeKey.value
+        stopStream()
+        if (key != null) downloads.stop(key)
+    }
+    fun stopDownloads(keys: Set<String>) {
+        if (_activeKey.value in keys && sharedPlayback != null) stopStream()
+        downloads.stop(keys)
+    }
     fun stopStream() {
         val shared = sharedPlayback
         sharedPlayback = null
         if (shared != null) shared.releasePlaybackPriority()
+        _activeKey.value?.let { downloads.release(it) }
         _activeKey.value = null
         inputJob?.cancel()
         requestVersion++
@@ -175,6 +151,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = StreamUiState.Idle
     }
 
+    fun stopDownloads() {
+        if (sharedPlayback != null) stopStream()
+        downloads.stop()
+    }
     override fun onCleared() {
         super.onCleared()
         downloads.stop()

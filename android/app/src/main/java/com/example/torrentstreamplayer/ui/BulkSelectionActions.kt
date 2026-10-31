@@ -11,7 +11,8 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun BulkSelectionActions(keys: List<String>, selected: Set<String>,
     onSelection: (Set<String>) -> Unit, delete: (String) -> Boolean, description: String,
-    enabled: Boolean, onBusy: (Boolean) -> Unit, onChanged: () -> Unit) {
+    enabled: Boolean, onBusy: (Boolean) -> Unit, onChanged: () -> Unit,
+    deleteLabel: String? = null, trailingActions: @Composable (Boolean) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<Set<String>?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -27,7 +28,8 @@ internal fun BulkSelectionActions(keys: List<String>, selected: Set<String>,
         TextButton(enabled = enabled && !busy && keys.isNotEmpty(),
             onClick = { onSelection(BulkSelection.all(keys, selected)) }) { Text("전체 선택") }
         TextButton(enabled = enabled && !busy && selected.isNotEmpty(),
-            onClick = { pending = selected.toSet(); error = null }) { Text("선택 삭제 (${selected.size})") }
+            onClick = { pending = selected.toSet(); error = null }) { Text(deleteLabel ?: "선택 삭제 (${selected.size})") }
+        trailingActions(enabled && !busy)
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     pending?.let { targets ->

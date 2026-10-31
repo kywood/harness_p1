@@ -4,6 +4,9 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 internal class TorrentRemoval(private val downloads: File, private val state: File) {
     fun delete(key: String, legacyPaths: List<String>, protectedFiles: List<File> = emptyList()) {
+        ActiveTorrentFiles.deleting { removeFiles(key, legacyPaths, protectedFiles) }
+    }
+    private fun removeFiles(key: String, legacyPaths: List<String>, protectedFiles: List<File>) {
         require(key.matches(Regex("[0-9a-f]{64}")))
         fun keyed(root: File): File {
             val target = File(root, key)
@@ -30,6 +33,7 @@ internal class TorrentRemoval(private val downloads: File, private val state: Fi
         val cacheFiles = tree(cache)
         val all = (dataFiles + legacy + cacheFiles).distinctBy { it.absolutePath }
         all.forEach { file ->
+            ActiveTorrentFiles.requireUnused(file)
             require(!Files.isSymbolicLink(file.toPath())) { "심볼릭 링크는 삭제하지 않습니다." }
             val target = file.canonicalFile.toPath()
             require(listOf(downloads, state).any { target != it.canonicalFile.toPath() && target.startsWith(it.canonicalFile.toPath()) })

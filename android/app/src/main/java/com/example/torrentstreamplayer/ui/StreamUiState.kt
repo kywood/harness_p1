@@ -2,7 +2,7 @@ package com.example.torrentstreamplayer.ui
 
 sealed interface StreamUiState {
     data object Idle : StreamUiState
-    data class FetchingMetadata(val magnetUrl: String) : StreamUiState
+    data class FetchingMetadata(val magnetUrl: String, val engineReady: Boolean = false) : StreamUiState
     data class Buffering(
         val fileName: String,
         val totalSize: Long,

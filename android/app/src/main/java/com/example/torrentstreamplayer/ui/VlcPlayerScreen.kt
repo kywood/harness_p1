@@ -174,7 +174,7 @@ fun VlcPlayerScreen(
     val transform by rememberUpdatedState<(androidx.compose.ui.geometry.Offset, androidx.compose.ui.geometry.Offset, Float) -> Unit>({ focus, pan, factor ->
         zoom = zoom.transformed(factor, pan.x, pan.y, viewport.width.toFloat(), viewport.height.toFloat(), focus.x, focus.y)
     })
-    val swipeEnabled by rememberUpdatedState { PlayerOverlayPolicy.canSwipe(holder != null, totalLengthMs) }
+    val swipeEnabled by rememberUpdatedState { PlayerOverlayPolicy.canSwipe(holder != null, totalLengthMs, showControls) }
     val panEnabled by rememberUpdatedState { !showControls && zoom.scale > 1f }
     val swipeMove by rememberUpdatedState<(Float) -> Unit>({ distance ->
         swipePreviewMs = SwipeSeek.target(distance, viewport.width.toFloat(), swipeStartMs, totalLengthMs)
