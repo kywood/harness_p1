@@ -26,7 +26,16 @@ internal class MetadataMonitor(private val session: SessionManager,
     fun fetch(magnet: String, directory: File): ByteArray? {
         target = AddTorrentParams.parseMagnetUri(magnet).infoHashes.best
         session.addListener(this)
-        return try { update(details); session.fetchMagnet(magnet, 45, directory) }
+        return try { MetadataFetch.fetch(session, magnet, directory) { handle, elapsed ->
+            details = details.connected(handle.status().numPeers())
+            handle.torrentFile()?.takeIf { it.isValid }?.let { info ->
+                details = details.received(info.name(), info.files().numFiles(),
+                    info.totalSize(), info.numPieces(), info.pieceLength().toLong())
+            }
+            if (!details.hasMetadata) details = details.copy(phase =
+                "피어 탐색 및 토렌트 정보 수신 중… ${elapsed / 1000}초 / 120초")
+            update(details)
+        } }
         finally { session.removeListener(this) }
     }
 }
