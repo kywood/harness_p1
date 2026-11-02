@@ -83,6 +83,8 @@ android {
 }
 
 dependencies {
+    implementation("androidx.fragment:fragment:1.9.1")
+    implementation("com.google.android.gms:play-services-ads:25.5.0")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

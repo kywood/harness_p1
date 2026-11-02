@@ -1,6 +1,8 @@
 package com.example.torrentstreamplayer
 
 import android.app.Application
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.semantics.getAllSemanticsNodes
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -19,6 +21,14 @@ class StartupInitializationTest {
                 assertTrue(activity.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON != 0)
                 val model = ViewModelProvider(activity)[MainViewModel::class.java]
                 assertFalse(model.isTorrentEngineInitialized)
+                fun roots(view: android.view.View): List<androidx.compose.ui.node.RootForTest> = when (view) {
+                    is androidx.compose.ui.node.RootForTest -> listOf(view)
+                    is android.view.ViewGroup -> (0 until view.childCount).flatMap { roots(view.getChildAt(it)) }
+                    else -> emptyList()
+                }
+                assertTrue(roots(activity.window.decorView).flatMap { it.semanticsOwner.getAllSemanticsNodes(true) }
+                    .any { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)
+                        ?.contains("PiecePlay 로고") == true })
                 model.stopStream()
                 assertFalse(model.isTorrentEngineInitialized)
             }
