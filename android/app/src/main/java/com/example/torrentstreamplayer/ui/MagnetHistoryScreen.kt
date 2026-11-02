@@ -69,13 +69,13 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
             } })
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("최근 50개를 암호화해 보관합니다.", style = MaterialTheme.typography.bodySmall)
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text("다운로드 중 ${downloadCount.coerceAtLeast(0)}개" + if (pendingCount > 0) " · 대기 ${pendingCount}개" else "", Modifier.weight(1f), color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.labelLarge)
                 if (refreshing) TextButton(onClick = onStopDownload, enabled = !bulkBusy) { Text(if (downloadJobs.isEmpty()) "다운로드 중지" else "전체 중지") }
             }
+            Text("최근 50개를 암호화해 보관합니다.", style = MaterialTheme.typography.bodySmall)
             PlaylistOptions(sort, onSortChange, filter, onFilterChange, !bulkBusy)
             loadError?.let { message -> Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Text(message, Modifier.weight(1f), color = MaterialTheme.colorScheme.error)
@@ -96,7 +96,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
                     }
                 }) { Text(DownloadSelection.label(stoppable)) }
             }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(visibleEntries, key = { MagnetIdentity.key(it.magnet) }) { entry ->
                     val key = MagnetIdentity.key(entry.magnet)
                     val task = downloadJobs[key]
@@ -105,7 +105,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
                     val shown = entry
                     val complete = PlaylistOrdering.complete(shown)
                     Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
+                        Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
                             Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                             Text(entry.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                             Checkbox(checked = entry.magnet in selected, enabled = !bulkBusy && deleting == null,

@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.torrentstreamplayer.ui.MainViewModel
@@ -58,7 +59,12 @@ class MainActivity : ComponentActivity() {
                     closePlayback()
                 }
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                Scaffold(modifier = Modifier.fillMaxSize(), bottomBar = {
+                    if (com.example.torrentstreamplayer.ui.TestAdPolicy.visible(uiState, showFiles, showHistory))
+                        Box(Modifier.navigationBarsPadding()) {
+                            com.example.torrentstreamplayer.ui.TestBannerAd()
+                        }
+                }) { innerPadding ->
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -148,12 +154,20 @@ fun MagnetLinkInputScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        androidx.compose.foundation.Image(
+            painter = androidx.compose.ui.res.painterResource(R.drawable.pieceplay_icon_foreground),
+            contentDescription = "PiecePlay 로고",
+            modifier = Modifier.padding(bottom = 12.dp).size(96.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+        )
         Text(
-            text = "Torrent Stream Player",
+            text = "PiecePlay",
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )

@@ -191,6 +191,11 @@ class PlaylistPresentationTest {
                 MagnetHistoryScreen({ listOf(entry) }, {}, {}, {}, simple = simple, onSimpleChange = { simple = it })
             } }
             await { nodes("파일 앞 → 뒤").isNotEmpty() && nodes("magnet:?").isNotEmpty() }
+            val density = instrumentation.targetContext.resources.displayMetrics.density
+            val intro = nodes("최근 50개").first().boundsInRoot
+            val count = nodes("다운로드 중 0개").first().boundsInRoot
+            assertTrue("Download count must precede storage notice", count.bottom <= intro.top)
+            assertTrue("Playlist header spacing is too large", intro.top - count.bottom <= 6 * density)
             click("간단히")
             await { nodes("파일 앞 → 뒤").isEmpty() && nodes("magnet:?").isEmpty() }
             assertTrue(nodes("Presentation sample").isNotEmpty())
