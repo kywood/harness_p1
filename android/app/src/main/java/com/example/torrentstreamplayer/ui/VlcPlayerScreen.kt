@@ -320,7 +320,7 @@ fun VlcPlayerScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.45f))
+                        .background(PlaybackColors.ControlsScrim)
                 ) {
                     // Top Bar (Title + Torrent Speed Pill)
                     Column(
@@ -490,11 +490,11 @@ fun VlcPlayerScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.BottomCenter)
-                            .background(PlaybackColors.Panel)
+                            .background(PlaybackColors.SeekPanel)
                             .padding(horizontal = 24.dp, vertical = if (landscape) 6.dp else 16.dp)
                     ) {
-                        if (!landscape) Text("재생 위치 · 시간 기준", color = PlaybackColors.Download,
-                            style = MaterialTheme.typography.labelSmall)
+                        Text(playbackTimeLabel(displayedTimeMs, totalLengthMs), color = Color.White,
+                            style = MaterialTheme.typography.bodySmall)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -531,11 +531,6 @@ fun VlcPlayerScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                text = playbackTimeLabel(displayedTimeMs, totalLengthMs),
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodySmall
-                            )
                             Text(
                                 text = "다운로드 ${downloadProgress.toInt()}%",
                                 color = PlaybackColors.Download,
