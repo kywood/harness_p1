@@ -79,6 +79,8 @@ fun VlcPlayerScreen(
     var downloadSpeedBytes by remember { mutableLongStateOf(0L) }
     var downloadProgress by remember { mutableFloatStateOf(0f) }
     var numPeers by remember { mutableIntStateOf(0) }
+    val displayedTimeMs = swipePreviewMs ?: if (isSeeking && totalLengthMs > 0)
+        (sliderPosition * totalLengthMs).toLong() else currentTimeMs
 
     // Poll live torrent statistics
     LaunchedEffect(torrentEngine) {
@@ -271,6 +273,12 @@ fun VlcPlayerScreen(
                 }
             }
             // Animated Controls Overlay
+            if (!showControls && !showSeekBarOnly) {
+                Text(playbackTimeLabel(displayedTimeMs, totalLengthMs), color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
+                        .background(PlaybackColors.Panel).padding(horizontal = 8.dp, vertical = 4.dp))
+            }
             if (PlayerOverlayPolicy.seekBarOnly(showControls, showSeekBarOnly)) {
                 SwipeSeekBar(sliderPosition, totalLengthMs > 0, Modifier.align(Alignment.BottomCenter),
                     onChange = { sliderPosition = it; isSeeking = true },
@@ -486,12 +494,12 @@ fun VlcPlayerScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "재생 ${formatTime(swipePreviewMs ?: currentTimeMs)}",
+                                text = playbackTimeLabel(displayedTimeMs, totalLengthMs),
                                 color = Color.White,
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(
-                                text = "${formatTime(totalLengthMs)} · 다운로드 ${downloadProgress.toInt()}%",
+                                text = "다운로드 ${downloadProgress.toInt()}%",
                                 color = PlaybackColors.Download,
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -512,6 +520,9 @@ private fun formatSpeed(bytesPerSec: Long): String {
         "$kb KB/s"
     }
 }
+
+internal fun playbackTimeLabel(currentMs: Long, durationMs: Long): String =
+    "현재 ${formatTime(currentMs)} / 전체 ${formatTime(durationMs)}"
 
 private fun formatTime(timeMs: Long): String {
     if (timeMs <= 0) return "00:00"
