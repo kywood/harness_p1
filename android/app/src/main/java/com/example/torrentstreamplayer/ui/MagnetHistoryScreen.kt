@@ -120,8 +120,18 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (!simple) Text(entry.magnet, maxLines = 2, style = MaterialTheme.typography.bodySmall)
                             SavedMagnetProgress(shown, if (active && !complete) task?.speed ?: downloadSpeedBytes else null)
-                            if (entry.lastPositionMs > 0) Text("이어보기 " + formatTime(entry.lastPositionMs),
-                                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            if (entry.lastPositionMs > 0) Row(Modifier.fillMaxWidth(),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Text("이어보기 " + formatTime(entry.lastPositionMs), Modifier.weight(1f),
+                                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                if (onResetPosition != null) TextButton(enabled = !bulkBusy, onClick = {
+                                    scope.launch {
+                                        try { onResetPosition(entry.magnet); refresh++ }
+                                        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                                        catch (failure: Exception) { error = failure.localizedMessage ?: "위치를 초기화하지 못했습니다." }
+                                    }
+                                }) { Text("위치 초기화") }
+                            }
                             if (queued) Text("다운로드 대기 중", style = MaterialTheme.typography.labelSmall)
                             task?.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                             PieceMap(shown.pieces ?: com.example.torrentstreamplayer.engine.PieceMapSnapshot.EMPTY,
@@ -135,13 +145,6 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
                                     Text(if (queued) "대기 취소" else if (complete) "완료" else if (active) "중지" else "다운로드")
                                 }
                                 TextButton(onClick = { deleting = entry }, enabled = !bulkBusy) { Text("파일과 함께 삭제") }
-                                if (entry.lastPositionMs > 0 && onResetPosition != null) TextButton(enabled = !bulkBusy, onClick = {
-                                    scope.launch {
-                                        try { onResetPosition(entry.magnet); refresh++ }
-                                        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                                        catch (failure: Exception) { error = failure.localizedMessage ?: "위치를 초기화하지 못했습니다." }
-                                    }
-                                }) { Text("위치 초기화") }
                             }
                         }
                     }

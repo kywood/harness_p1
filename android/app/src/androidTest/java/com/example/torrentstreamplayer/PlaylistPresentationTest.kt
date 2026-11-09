@@ -24,6 +24,10 @@ class PlaylistPresentationTest {
                     onAddDownload = { added.set(true) }, onResetPosition = { position.set(0) })
             } }
             await { nodes("이어보기").isNotEmpty() }
+            val resumeBounds = nodes("이어보기").first().boundsInRoot
+            val resetBounds = nodes("위치 초기화").first().boundsInRoot
+            assertEquals(resumeBounds.center.y, resetBounds.center.y, 2f)
+            assertTrue(resetBounds.left >= resumeBounds.right)
             click("링크 추가"); assertTrue(added.get())
             click("위치 초기화"); await { nodes("이어보기").isEmpty() }
         }
