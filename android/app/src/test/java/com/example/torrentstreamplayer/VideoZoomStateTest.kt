@@ -5,6 +5,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class VideoZoomStateTest {
+    @Test fun zoomBeyondFourRetainsPanBoundsAtNewMaximum() {
+        val zoomed = VideoZoomState(4f).transformed(2f, 99999f, -99999f, 1000f, 600f)
+        assertEquals(8f, zoomed.scale, 0f)
+        assertEquals(3500f, zoomed.x, 0f)
+        assertEquals(-2100f, zoomed.y, 0f)
+    }
     @Test fun pinchScalesProportionallyAndCanBeReversed() {
         val zoomed = VideoZoomState().transformed(1.5f, 0f, 0f, 1000f, 600f)
         assertEquals(1.5f, zoomed.scale, 0.001f)
@@ -12,7 +18,7 @@ class VideoZoomStateTest {
     }
     @Test fun scaleIsBoundedAndFitResetsPan() {
         val zoomed = VideoZoomState().transformed(100f, 100f, 100f, 1000f, 600f)
-        assertEquals(4f, zoomed.scale, 0f)
+        assertEquals(8f, zoomed.scale, 0f)
         val fit = zoomed.transformed(0.01f, 0f, 0f, 1000f, 600f)
         assertEquals(1f, fit.scale, 0f)
         assertEquals(0f, fit.x, 0f)
