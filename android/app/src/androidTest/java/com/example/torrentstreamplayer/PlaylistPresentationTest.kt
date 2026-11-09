@@ -17,6 +17,23 @@ import org.libtorrent4j.*
 import org.libtorrent4j.swig.libtorrent
 import java.io.File
 class PlaylistPresentationTest {
+    private fun verifyQuickActions(link: String, position: java.util.concurrent.atomic.AtomicLong, added: java.util.concurrent.atomic.AtomicBoolean) {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            scenario.onActivity { activity -> host = activity; activity.setContent {
+                MagnetHistoryScreen({ listOf(SavedMagnet(link, "Resume video", 1, lastPositionMs = position.get())) }, {}, {}, {},
+                    onAddDownload = { added.set(true) }, onResetPosition = { position.set(0) })
+            } }
+            await { nodes("이어보기").isNotEmpty() }
+            click("링크 추가"); assertTrue(added.get())
+            click("위치 초기화"); await { nodes("이어보기").isEmpty() }
+        }
+    }
+    @Test fun playlistQuickActionsKeepScreenAndResetOnlyResumePosition() {
+        val link = "magnet:?xt=urn:btih:" + "e".repeat(40)
+        val position = java.util.concurrent.atomic.AtomicLong(42000)
+        val added = java.util.concurrent.atomic.AtomicBoolean()
+        verifyQuickActions(link, position, added)
+    }
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private lateinit var host: MainActivity
     private fun nodes(text: String): List<SemanticsNode> {

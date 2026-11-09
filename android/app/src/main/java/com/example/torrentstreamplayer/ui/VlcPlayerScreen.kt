@@ -48,9 +48,11 @@ private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer)
 fun VlcPlayerScreen(
     fileName: String,
     torrentEngine: TorrentEngine,
-    onBackClicked: () -> Unit
+    onBackClicked: () -> Unit, onAddDownload: (() -> Unit)? = null,
+    initialPositionMs: Long = 0, onPositionChanged: (Long, Long) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val activity = remember(context) { VideoOrientation.activity(context) }
     DisposableEffect(activity) {
@@ -69,9 +71,12 @@ fun VlcPlayerScreen(
     var swipeStartMs by remember { mutableLongStateOf(0) }
     var swipePreviewMs by remember { mutableStateOf<Long?>(null) }
     var seekUi by remember { mutableStateOf(SeekUiState()) }
+    var resumeApplied by remember(torrentEngine) { mutableStateOf(initialPositionMs <= 0) }
+    val positionCallback by rememberUpdatedState(onPositionChanged)
 
     var showControls by remember { mutableStateOf(true) }
     var showSeekBarOnly by remember { mutableStateOf(false) }
+    var showMore by remember { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(VideoZoomState()) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
 
@@ -96,8 +101,8 @@ fun VlcPlayerScreen(
     LaunchedEffect(showSeekBarOnly, isSeeking) {
         if (showSeekBarOnly && !isSeeking) { delay(1800); showSeekBarOnly = false }
     }
-    LaunchedEffect(showControls, isPlaying, zoom, isSeeking) {
-        if (showControls && isPlaying && !isSeeking) {
+    LaunchedEffect(showControls, isPlaying, zoom, isSeeking, showMore) {
+        if (showControls && isPlaying && !isSeeking && !showMore) {
             delay(3500)
             showControls = false
         }
@@ -122,7 +127,7 @@ fun VlcPlayerScreen(
                         totalLengthMs = event.lengthChanged
                     }
                     MediaPlayer.Event.Buffering -> { seekUi = seekUi.buffered(event.buffering) }
-                    MediaPlayer.Event.EndReached -> { seekUi = SeekUiState(); isPlaying = false }
+                    MediaPlayer.Event.EndReached -> { seekUi = SeekUiState(); isPlaying = false; currentTimeMs = totalLengthMs; positionCallback(0, 0) }
                     MediaPlayer.Event.Playing -> {
                         isPlaying = true
                     }
@@ -144,9 +149,16 @@ fun VlcPlayerScreen(
         }
     }
 
-    DisposableEffect(playerHolder, streamServer) {
+    DisposableEffect(playerHolder, streamServer, lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE && resumeApplied && totalLengthMs > 0)
+                positionCallback(currentTimeMs, totalLengthMs)
+        }
+        lifecycle.addObserver(observer)
         onDispose {
             streamServer.stop()
+            lifecycle.removeObserver(observer)
+            if (resumeApplied && totalLengthMs > 0) positionCallback(currentTimeMs, totalLengthMs)
             try {
                 playerHolder?.mediaPlayer?.stop()
                 playerHolder?.mediaPlayer?.detachViews()
@@ -159,6 +171,13 @@ fun VlcPlayerScreen(
     }
 
     val holder = playerHolder
+    LaunchedEffect(holder) {
+        while (holder != null) {
+            delay(5000)
+            if (resumeApplied && !isSeeking && !seekUi.waiting && totalLengthMs > 0)
+                positionCallback(currentTimeMs, totalLengthMs)
+        }
+    }
     val error = errorMessage
     fun seekTo(target: Long) {
         if (holder == null || totalLengthMs <= 0) return
@@ -168,6 +187,14 @@ fun VlcPlayerScreen(
         holder.mediaPlayer.time = position
         currentTimeMs = position
         sliderPosition = position.toFloat() / totalLengthMs
+    }
+    LaunchedEffect(holder, initialPositionMs) {
+        while (!resumeApplied && holder != null) {
+            if (totalLengthMs > 0 && holder.mediaPlayer.isSeekable) {
+                resumeApplied = true
+                seekTo(com.example.torrentstreamplayer.engine.PlaybackResume.position(initialPositionMs, totalLengthMs))
+            } else delay(250)
+        }
     }
     val tapSeek by rememberUpdatedState<(androidx.compose.ui.geometry.Offset, Float) -> Unit>({ offset, width ->
         DoubleTapSeek.target(offset.x, width, seekUi.targetMs ?: currentTimeMs, totalLengthMs)?.let { seekTo(it) }
@@ -322,6 +349,17 @@ fun VlcPlayerScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             VideoOrientationButton()
+                            Box {
+                                TextButton(onClick = { showMore = true }, modifier = Modifier.width(40.dp),
+                                    contentPadding = PaddingValues(0.dp)) { Text("⋮", color = Color.White, fontSize = 24.sp) }
+                                DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
+                                    onAddDownload?.let { add -> DropdownMenuItem(text = { Text("다운로드 추가") },
+                                        onClick = { showMore = false; add() }) }
+                                    DropdownMenuItem(text = { Text("재생 위치 초기화 · 처음부터") }, onClick = {
+                                        showMore = false; resumeApplied = true; seekTo(0); positionCallback(0, totalLengthMs)
+                                    })
+                                }
+                            }
                             if (landscape) Text("↓ ${formatSpeed(downloadSpeedBytes)} · ${downloadProgress.toInt()}% · ${numPeers}p",
                                 color = PlaybackColors.Accent, fontSize = 12.sp, maxLines = 1,
                                 modifier = Modifier.padding(horizontal = 8.dp))
@@ -524,7 +562,7 @@ private fun formatSpeed(bytesPerSec: Long): String {
 internal fun playbackTimeLabel(currentMs: Long, durationMs: Long): String =
     "현재 ${formatTime(currentMs)} / 전체 ${formatTime(durationMs)}"
 
-private fun formatTime(timeMs: Long): String {
+internal fun formatTime(timeMs: Long): String {
     if (timeMs <= 0) return "00:00"
     val totalSeconds = timeMs / 1000
     val seconds = totalSeconds % 60

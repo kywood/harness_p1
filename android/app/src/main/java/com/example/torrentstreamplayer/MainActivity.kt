@@ -41,6 +41,7 @@ class MainActivity : ComponentActivity() {
                 else remember { mutableStateOf(PieceMapSnapshot.EMPTY) }
                 var showFiles by remember { mutableStateOf(false) }
                 var showHistory by remember { mutableStateOf(false) }
+                var showDownloadDialog by remember { mutableStateOf(false) }
                 var simplePlaylist by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
                 var playlistSort by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(com.example.torrentstreamplayer.ui.PlaylistSort.RECENT_PLAY) }
                 var playlistFilter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(com.example.torrentstreamplayer.ui.PlaylistFilter.ALL) }
@@ -51,6 +52,8 @@ class MainActivity : ComponentActivity() {
                     returnToHistory = false
                 }
                 val downloadJobs by viewModel.downloads.tasks.collectAsState()
+                if (showDownloadDialog) com.example.torrentstreamplayer.ui.QuickDownloadDialog(
+                    onDismiss = { showDownloadDialog = false }, submit = viewModel::queueDownload)
                 val downloadError by viewModel.downloads.error.collectAsState()
                 val metadata by if (uiState is StreamUiState.FetchingMetadata || uiState is StreamUiState.Buffering)
                     viewModel.torrentEngine.metadataDetails.collectAsState()
@@ -83,7 +86,8 @@ class MainActivity : ComponentActivity() {
                                 simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
                                 downloadCount = downloadJobs.values.count { it.phase == com.example.torrentstreamplayer.ui.DownloadPhase.RUNNING },
                                 sort = playlistSort, onSortChange = { playlistSort = it },
-                                filter = playlistFilter, onFilterChange = { playlistFilter = it })
+                                filter = playlistFilter, onFilterChange = { playlistFilter = it },
+                                onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition)
                         } else when (val state = uiState) {
                             is StreamUiState.Idle -> {
                                 MagnetLinkInputScreen(
@@ -115,10 +119,13 @@ class MainActivity : ComponentActivity() {
                             }
 
                             is StreamUiState.Playing -> {
+                                val positionWriter = remember(viewModel.torrentEngine) { viewModel.playbackPositionWriter() }
                                 VlcPlayerScreen(
                                     fileName = state.fileName,
                                     torrentEngine = viewModel.torrentEngine,
-                                    onBackClicked = { closePlayback() }
+                                    onBackClicked = { closePlayback() },
+                                    onAddDownload = { showDownloadDialog = true },
+                                    initialPositionMs = viewModel.resumePositionMs, onPositionChanged = positionWriter
                                 )
                             }
 
