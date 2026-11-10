@@ -7,5 +7,7 @@ object PlaybackColors {
     val Download = Color(0xFFA9B7D0)
     val Track = Color(0xFF263247)
     val Panel = Color(0xF0111928)
+    val SeekPanel = Color(0xFF111928).copy(alpha = 0.45f)
+    val ControlsScrim = Color.Black.copy(alpha = 0.15f)
     val PiecePartial = Color(0xFFC4B5FD)
 }

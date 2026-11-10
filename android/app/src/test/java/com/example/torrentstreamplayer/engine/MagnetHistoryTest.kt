@@ -9,6 +9,36 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 class MagnetHistoryTest {
+    @Test fun delayedPositionSaveCannotRestoreDeletedVideo() {
+        history().add(magnet(1)); history().delete(magnet(1))
+        history().savePosition(magnet(1), 15000, 60000)
+        assertTrue(history().list().isEmpty())
+    }
+    @Test fun versionTwoMigratesWithPlaybackDateAndNoInventedPosition() {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { it.writeInt(-2); it.writeInt(1); it.writeUTF(magnet(1)); it.writeUTF("Old"); it.writeLong(12); it.writeLong(34) }
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).write("links", bytes.toByteArray())
+        assertEquals(34L, history().list().single().lastPlayedAt)
+        assertEquals(0L, history().list().single().lastPositionMs)
+        history().savePosition(magnet(1), 10000, 90000)
+        assertEquals(10000L, history().list().single().lastPositionMs)
+    }
+    @Test fun resettingOneVideoPreservesOtherPositionsAndPlayDates() {
+        history().add(magnet(1)); history().add(magnet(2)); history().markPlayed(magnet(1), 100)
+        history().savePosition(magnet(1), 42000, 120000); history().savePosition(magnet(2), 90000, 120000)
+        history().savePosition(magnet(1), 0, 0)
+        assertEquals(0L, history().list().first { it.magnet == magnet(1) }.lastPositionMs)
+        assertEquals(100L, history().list().first { it.magnet == magnet(1) }.lastPlayedAt)
+        assertEquals(90000L, history().list().first { it.magnet == magnet(2) }.lastPositionMs)
+    }
+    @Test fun positionSurvivesRestartTrackerChangeAndTitleUpdate() {
+        history().add(magnet(1), 10)
+        history().savePosition(magnet(1), 42000, 120000)
+        history().add(magnet(1) + "&dn=renamed", 20)
+        history().updateTitle(magnet(1), "Video")
+        assertEquals(42000L, history().list().single().lastPositionMs)
+        assertEquals(10L, history().list().single().addedAt)
+    }
     @Test fun versionOneHistoryMigratesWithoutInventingPlaybackDate() {
         val buffer = java.io.ByteArrayOutputStream()
         java.io.DataOutputStream(buffer).use { it.writeInt(-1); it.writeInt(1); it.writeUTF(magnet(1)); it.writeUTF("Old"); it.writeLong(12) }

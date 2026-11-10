@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.withLock
 import com.example.torrentstreamplayer.engine.MagnetHistory
 import com.example.torrentstreamplayer.engine.TorrentCache
 import com.example.torrentstreamplayer.engine.TorrentCacheCipher
@@ -27,6 +28,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         java.io.File(application.noBackupFilesDir, "magnet_history"), "0".repeat(64),
         TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)) }
     private var inputJob: Job? = null
+    private val positionWrites = kotlinx.coroutines.sync.Mutex()
+    private var playingMagnet: String? = null
+    var resumePositionMs: Long = 0; private set
     fun savedMagnets(): List<SavedMagnet> = history.list().map(torrentEngine::savedMagnet)
     fun deleteSavedMagnet(magnet: String) {
         val key = com.example.torrentstreamplayer.engine.MagnetIdentity.key(magnet)
@@ -78,7 +82,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val resolved = withContext(Dispatchers.IO) { torrentEngine.resolveInput(trimmed) }
                 if (request != requestVersion) return@launch
                 if (!continueDownloading) _activeKey.value = com.example.torrentstreamplayer.engine.MagnetIdentity.key(resolved)
-                withContext(Dispatchers.IO) { history.add(resolved) }
+                val lastPosition = withContext(Dispatchers.IO) {
+                    history.add(resolved)
+                    history.list().firstOrNull { com.example.torrentstreamplayer.engine.MagnetIdentity.key(it.magnet) == com.example.torrentstreamplayer.engine.MagnetIdentity.key(resolved) }?.lastPositionMs ?: 0
+                }
+                if (request == requestVersion) { playingMagnet = resolved; resumePositionMs = lastPosition }
 
                 if (request == requestVersion) startResolved(resolved, request)
             } catch (e: CancellationException) { throw e }
@@ -124,10 +132,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun stopDownload(key: String) {
         stopDownloads(setOf(key))
     }
+    suspend fun queueDownload(input: String) {
+        val resolved = withContext(Dispatchers.IO) { torrentEngine.resolveInput(input.trim()) }
+        downloads.start(resolved) { true }
+    }
+    suspend fun resetPlaybackPosition(magnet: String) = positionWrites.withLock {
+        withContext(Dispatchers.IO) { history.savePosition(magnet, 0, 0) }
+    }
     fun continueInPlaylist() {
         continueDownloading = true
         if (sharedPlayback != null) stopStream()
         else { _activeKey.value = null; _uiState.value = StreamUiState.Idle }
+    }
+    fun playbackPositionWriter(): (Long, Long) -> Unit {
+        val magnet = playingMagnet ?: return { _, _ -> }
+        return { position, duration -> viewModelScope.launch { positionWrites.withLock {
+            withContext(Dispatchers.IO) { runCatching { history.savePosition(magnet, position.coerceAtLeast(0), duration.coerceAtLeast(0)) }
+                .onFailure { android.util.Log.w("PlaybackPosition", "Unable to save playback position", it) } }
+        } }; Unit }
     }
     fun stopForMain() {
         continueDownloading = false

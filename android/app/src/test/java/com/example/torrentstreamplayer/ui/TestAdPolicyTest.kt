@@ -4,6 +4,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TestAdPolicyTest {
+    @Test fun bannerIdMatchesBuildType() {
+        assertEquals("ca-app-pub-3940256099942544/9214589741", TestAdPolicy.bannerUnitId(true))
+        assertEquals("ca-app-pub-2418522550325553/6125182266", TestAdPolicy.bannerUnitId(false))
+    }
     @Test fun bannerAlwaysUsesGoogleDemoUnit() {
         assertEquals("ca-app-pub-3940256099942544/9214589741", TestAdPolicy.BANNER_UNIT_ID)
     }

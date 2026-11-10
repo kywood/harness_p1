@@ -21,9 +21,9 @@ internal fun VideoOrientationButton() {
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     IconButton(enabled = activity != null,
         onClick = { activity?.requestedOrientation = VideoOrientation.next(landscape) }) {
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Refresh, contentDescription = VideoOrientation.description(landscape), tint = Color.White)
-            Canvas(Modifier.size(if (landscape) 6.dp else 10.dp, if (landscape) 10.dp else 6.dp)) {
+        Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.Refresh, contentDescription = VideoOrientation.description(landscape), tint = Color.White, modifier = Modifier.size(30.dp))
+            Canvas(Modifier.size(if (landscape) 8.dp else 12.dp, if (landscape) 12.dp else 8.dp)) {
                 drawRoundRect(Color.White, cornerRadius = androidx.compose.ui.geometry.CornerRadius(1.dp.toPx()),
                     style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
             }

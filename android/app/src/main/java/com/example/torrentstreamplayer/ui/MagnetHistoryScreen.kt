@@ -26,7 +26,8 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
     sort: PlaylistSort = PlaylistSort.RECENT_PLAY, onSortChange: (PlaylistSort) -> Unit = {},
     filter: PlaylistFilter = PlaylistFilter.ALL, onFilterChange: (PlaylistFilter) -> Unit = {},
     downloadJobs: Map<String, DownloadEntry> = emptyMap(), onStopItem: (String) -> Unit = {},
-    onStopItems: ((Set<String>) -> Unit)? = null) {
+    onStopItems: ((Set<String>) -> Unit)? = null, onAddDownload: (() -> Unit)? = null,
+    onResetPosition: (suspend (String) -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var bulkBusy by remember { mutableStateOf(false) }
@@ -64,7 +65,9 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
     Scaffold(topBar = {
         TopAppBar(title = { Text("재생 목록") },
             navigationIcon = { TextButton(onClick = onBack, enabled = !bulkBusy) { Text("닫기") } },
-            actions = { TextButton(enabled = !bulkBusy, onClick = { onSimpleChange(!simple) }) {
+            actions = {
+                onAddDownload?.let { TextButton(enabled = !bulkBusy, onClick = it) { Text("링크 추가") } }
+                TextButton(enabled = !bulkBusy, onClick = { onSimpleChange(!simple) }) {
                 Text(if (simple) "자세히" else "간단히")
             } })
     }) { padding ->
@@ -117,11 +120,23 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String)
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (!simple) Text(entry.magnet, maxLines = 2, style = MaterialTheme.typography.bodySmall)
                             SavedMagnetProgress(shown, if (active && !complete) task?.speed ?: downloadSpeedBytes else null)
+                            if (entry.lastPositionMs > 0) Row(Modifier.fillMaxWidth(),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                                Text("이어보기 " + formatTime(entry.lastPositionMs), Modifier.weight(1f),
+                                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                                if (onResetPosition != null) TextButton(enabled = !bulkBusy, onClick = {
+                                    scope.launch {
+                                        try { onResetPosition(entry.magnet); refresh++ }
+                                        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                                        catch (failure: Exception) { error = failure.localizedMessage ?: "위치를 초기화하지 못했습니다." }
+                                    }
+                                }) { Text("위치 초기화") }
+                            }
                             if (queued) Text("다운로드 대기 중", style = MaterialTheme.typography.labelSmall)
                             task?.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                             PieceMap(shown.pieces ?: com.example.torrentstreamplayer.engine.PieceMapSnapshot.EMPTY,
                                 compact = true, showInfo = !simple)
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 TextButton(onClick = { onPlay(entry.magnet) }, enabled = !bulkBusy) { Text("재생") }
                                 TextButton(onClick = {
                                     if ((active || queued) && task != null) onStopItem(key)

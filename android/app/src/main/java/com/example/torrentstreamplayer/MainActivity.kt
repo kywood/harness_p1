@@ -36,11 +36,23 @@ class MainActivity : ComponentActivity() {
         setContent {
             TorrentStreamPlayerTheme {
                 val uiState by viewModel.uiState.collectAsState()
+                val completionAd = remember { com.example.torrentstreamplayer.ui.CompletionInterstitial(this) }
+                DisposableEffect(completionAd) { onDispose { completionAd.dispose() } }
+                LaunchedEffect(uiState is StreamUiState.Playing) {
+                    if (uiState is StreamUiState.Playing) {
+                        try {
+                            com.example.torrentstreamplayer.ui.TestAdsRuntime.initialize(this@MainActivity)
+                            completionAd.preload()
+                        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                        catch (failure: Exception) { android.util.Log.w("CompletionAd", "Load failed", failure) }
+                    }
+                }
                 val pieces by if (uiState is StreamUiState.Buffering || uiState is StreamUiState.FetchingMetadata)
                     viewModel.torrentEngine.pieceMap.collectAsState()
                 else remember { mutableStateOf(PieceMapSnapshot.EMPTY) }
                 var showFiles by remember { mutableStateOf(false) }
                 var showHistory by remember { mutableStateOf(false) }
+                var showDownloadDialog by remember { mutableStateOf(false) }
                 var simplePlaylist by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
                 var playlistSort by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(com.example.torrentstreamplayer.ui.PlaylistSort.RECENT_PLAY) }
                 var playlistFilter by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(com.example.torrentstreamplayer.ui.PlaylistFilter.ALL) }
@@ -51,6 +63,8 @@ class MainActivity : ComponentActivity() {
                     returnToHistory = false
                 }
                 val downloadJobs by viewModel.downloads.tasks.collectAsState()
+                if (showDownloadDialog) com.example.torrentstreamplayer.ui.QuickDownloadDialog(
+                    onDismiss = { showDownloadDialog = false }, submit = viewModel::queueDownload)
                 val downloadError by viewModel.downloads.error.collectAsState()
                 val metadata by if (uiState is StreamUiState.FetchingMetadata || uiState is StreamUiState.Buffering)
                     viewModel.torrentEngine.metadataDetails.collectAsState()
@@ -83,7 +97,8 @@ class MainActivity : ComponentActivity() {
                                 simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
                                 downloadCount = downloadJobs.values.count { it.phase == com.example.torrentstreamplayer.ui.DownloadPhase.RUNNING },
                                 sort = playlistSort, onSortChange = { playlistSort = it },
-                                filter = playlistFilter, onFilterChange = { playlistFilter = it })
+                                filter = playlistFilter, onFilterChange = { playlistFilter = it },
+                                onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition)
                         } else when (val state = uiState) {
                             is StreamUiState.Idle -> {
                                 MagnetLinkInputScreen(
@@ -115,10 +130,18 @@ class MainActivity : ComponentActivity() {
                             }
 
                             is StreamUiState.Playing -> {
+                                val positionWriter = remember(viewModel.torrentEngine) { viewModel.playbackPositionWriter() }
                                 VlcPlayerScreen(
                                     fileName = state.fileName,
                                     torrentEngine = viewModel.torrentEngine,
-                                    onBackClicked = { closePlayback() }
+                                    onBackClicked = { closePlayback() },
+                                    onAddDownload = { showDownloadDialog = true },
+                                    initialPositionMs = viewModel.resumePositionMs, onPositionChanged = positionWriter,
+                                    onPlaybackCompleted = { watchedMs ->
+                                        viewModel.stopStream(); returnToHistory = false; showHistory = true
+                                        completionAd.showIfReady(watchedMs,
+                                            lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
+                                    }
                                 )
                             }
 

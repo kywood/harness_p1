@@ -9,7 +9,7 @@ import com.example.torrentstreamplayer.ui.theme.PlaybackColors
 @Composable
 internal fun SwipeSeekBar(position: Float, enabled: Boolean, modifier: Modifier = Modifier,
     onChange: (Float) -> Unit, onFinished: () -> Unit) {
-    Box(modifier.fillMaxWidth().background(PlaybackColors.Panel).padding(horizontal = 24.dp)) {
+    Box(modifier.fillMaxWidth().background(PlaybackColors.SeekPanel).padding(horizontal = 24.dp)) {
         Slider(value = position.coerceIn(0f, 1f), onValueChange = onChange,
             onValueChangeFinished = onFinished, enabled = enabled,
             colors = SliderDefaults.colors(thumbColor = PlaybackColors.Accent,

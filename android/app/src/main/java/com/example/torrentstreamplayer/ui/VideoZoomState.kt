@@ -8,7 +8,7 @@ internal data class VideoZoomState(
         if (!factor.isFinite() || factor <= 0 || !panX.isFinite() || !panY.isFinite() ||
             !width.isFinite() || !height.isFinite() || width <= 0 || height <= 0 ||
             !focusX.isFinite() || !focusY.isFinite()) return this
-        val next = (scale * factor).coerceIn(1f, 4f)
+        val next = (scale * factor).coerceIn(1f, 16f)
         val ratio = next / scale
         val centerX = focusX - width / 2f
         val centerY = focusY - height / 2f
