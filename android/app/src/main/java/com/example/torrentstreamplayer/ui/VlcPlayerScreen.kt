@@ -49,7 +49,8 @@ fun VlcPlayerScreen(
     fileName: String,
     torrentEngine: TorrentEngine,
     onBackClicked: () -> Unit, onAddDownload: (() -> Unit)? = null,
-    initialPositionMs: Long = 0, onPositionChanged: (Long, Long) -> Unit = { _, _ -> }
+    initialPositionMs: Long = 0, onPositionChanged: (Long, Long) -> Unit = { _, _ -> },
+    onPlaybackCompleted: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -73,6 +74,9 @@ fun VlcPlayerScreen(
     var seekUi by remember { mutableStateOf(SeekUiState()) }
     var resumeApplied by remember(torrentEngine) { mutableStateOf(initialPositionMs <= 0) }
     val positionCallback by rememberUpdatedState(onPositionChanged)
+    val completionCallback by rememberUpdatedState(onPlaybackCompleted)
+    val watchTime = remember(torrentEngine) { PlaybackWatchTime() }
+    var playbackCompleted by remember(torrentEngine) { mutableStateOf(false) }
 
     var showControls by remember { mutableStateOf(true) }
     var showSeekBarOnly by remember { mutableStateOf(false) }
@@ -127,7 +131,10 @@ fun VlcPlayerScreen(
                         totalLengthMs = event.lengthChanged
                     }
                     MediaPlayer.Event.Buffering -> { seekUi = seekUi.buffered(event.buffering) }
-                    MediaPlayer.Event.EndReached -> { seekUi = SeekUiState(); isPlaying = false; currentTimeMs = totalLengthMs; positionCallback(0, 0) }
+                    MediaPlayer.Event.EndReached -> {
+                        seekUi = SeekUiState(); isPlaying = false; currentTimeMs = totalLengthMs
+                        positionCallback(0, 0); playbackCompleted = true
+                    }
                     MediaPlayer.Event.Playing -> {
                         isPlaying = true
                     }
@@ -171,6 +178,18 @@ fun VlcPlayerScreen(
     }
 
     val holder = playerHolder
+    LaunchedEffect(playbackCompleted) {
+        if (playbackCompleted) completionCallback(watchTime.watchedMs)
+    }
+    LaunchedEffect(holder, lifecycle) {
+        while (holder != null) {
+            watchTime.sample(android.os.SystemClock.elapsedRealtime(), holder.mediaPlayer.time,
+                holder.mediaPlayer.isPlaying && !isSeeking && !seekUi.waiting && resumeApplied &&
+                    lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
+            delay(1000)
+        }
+    }
+    // Save playback position separately from foreground watch time.
     LaunchedEffect(holder) {
         while (holder != null) {
             delay(5000)

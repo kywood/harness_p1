@@ -36,6 +36,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             TorrentStreamPlayerTheme {
                 val uiState by viewModel.uiState.collectAsState()
+                val completionAd = remember { com.example.torrentstreamplayer.ui.CompletionInterstitial(this) }
+                DisposableEffect(completionAd) { onDispose { completionAd.dispose() } }
+                LaunchedEffect(uiState is StreamUiState.Playing) {
+                    if (uiState is StreamUiState.Playing) {
+                        try {
+                            com.example.torrentstreamplayer.ui.TestAdsRuntime.initialize(this@MainActivity)
+                            completionAd.preload()
+                        } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                        catch (failure: Exception) { android.util.Log.w("CompletionAd", "Load failed", failure) }
+                    }
+                }
                 val pieces by if (uiState is StreamUiState.Buffering || uiState is StreamUiState.FetchingMetadata)
                     viewModel.torrentEngine.pieceMap.collectAsState()
                 else remember { mutableStateOf(PieceMapSnapshot.EMPTY) }
@@ -125,7 +136,12 @@ class MainActivity : ComponentActivity() {
                                     torrentEngine = viewModel.torrentEngine,
                                     onBackClicked = { closePlayback() },
                                     onAddDownload = { showDownloadDialog = true },
-                                    initialPositionMs = viewModel.resumePositionMs, onPositionChanged = positionWriter
+                                    initialPositionMs = viewModel.resumePositionMs, onPositionChanged = positionWriter,
+                                    onPlaybackCompleted = { watchedMs ->
+                                        viewModel.stopStream(); returnToHistory = false; showHistory = true
+                                        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
+                                            completionAd.showIfReady(watchedMs)
+                                    }
                                 )
                             }
 

@@ -14,7 +14,7 @@ import com.google.android.gms.ads.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private object TestAdsRuntime {
+internal object TestAdsRuntime {
     private val lock = kotlinx.coroutines.sync.Mutex()
     private var initialized = false
     suspend fun initialize(context: android.content.Context) {
