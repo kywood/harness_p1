@@ -25,16 +25,21 @@ internal class CompletionInterstitial(private val activity: Activity) {
                 override fun onAdFailedToLoad(error: LoadAdError) { loading = false }
             })
     }
-    fun showIfReady(watchedMs: Long) {
+    fun showIfReady(watchedMs: Long, canShow: Boolean = true) {
+        if (disposed) return
+        val completions = CompletionAdPolicy.nextCompletionCount(preferences.getInt("completions", 0))
+        preferences.edit().putInt("completions", completions).apply()
+        if (!canShow) return
         val ready = ad ?: return
         val last = if (preferences.contains("last_shown")) preferences.getLong("last_shown", 0) else null
         if (disposed || activity.isFinishing || activity.isDestroyed ||
-            !CompletionAdPolicy.eligible(watchedMs, System.currentTimeMillis(), last)) return
+            !CompletionAdPolicy.eligible(watchedMs, System.currentTimeMillis(), last, completions)) return
         ad = null
         if (SystemClock.elapsedRealtime() - loadedAt >= 3_600_000) return
         ready.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdShowedFullScreenContent() {
-                preferences.edit().putLong("last_shown", System.currentTimeMillis()).apply()
+                preferences.edit().putLong("last_shown", System.currentTimeMillis())
+                    .putInt("completions", 0).apply()
             }
         }
         runCatching { ready.show(activity) }.onFailure { android.util.Log.w("CompletionAd", "Display failed", it) }

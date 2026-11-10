@@ -139,8 +139,8 @@ class MainActivity : ComponentActivity() {
                                     initialPositionMs = viewModel.resumePositionMs, onPositionChanged = positionWriter,
                                     onPlaybackCompleted = { watchedMs ->
                                         viewModel.stopStream(); returnToHistory = false; showHistory = true
-                                        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
-                                            completionAd.showIfReady(watchedMs)
+                                        completionAd.showIfReady(watchedMs,
+                                            lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
                                     }
                                 )
                             }
