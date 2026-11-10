@@ -55,7 +55,7 @@ internal fun TestBannerAd() {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp),
                 factory = {
                     AdView(it).apply {
-                        adUnitId = TestAdPolicy.BANNER_UNIT_ID
+                        adUnitId = TestAdPolicy.bannerUnitId(com.example.torrentstreamplayer.BuildConfig.DEBUG)
                         setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(it, width))
                         banner = this
                         loadAd(AdRequest.Builder().build())
