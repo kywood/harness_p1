@@ -14,3 +14,12 @@
 8. main 병합과 이슈 종료는 사용자의 요청 또는 명시적으로 합의한 절차에 따라 진행한다.
 
 이 지침 파일만 변경하는 작업은 문서 내용과 `git diff --check`로 검증한다.
+
+## Android 개발 스킬
+
+공식 원본은 https://github.com/android/skills 이며 Codex 사용자 스킬 경로에 설치한다.
+- `jetpack-compose-performance`는 Compose UI의 버벅임과 재구성 성능 분석에 사용한다.
+- `anr-audit-and-fix`는 ANR 위험 분석과 ANR 로그 진단에 사용한다.
+- `play-policy-insights`는 Google Play 출시 전 권한·데이터 보안·개인정보 신고 점검에 사용한다.
+관련 작업에 해당하는 스킬의 SKILL.md와 필요한 참조 문서를 읽고 적용한다.
+사용자 지시와 프로젝트 변경 범위를 우선하며, 스킬 설치만으로 의존성 추가나 전면 개편을 진행하지 않는다.
