@@ -36,16 +36,19 @@ class MainActivity : ComponentActivity() {
             .detectCustomSlowCalls().penaltyLog().build())
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enableEdgeToEdge()
+        val adConsent = com.example.torrentstreamplayer.ui.AdConsent.get(this)
+        adConsent.gather(this) // UMP: refresh consent on every launch, before any ad request.
         setContent {
             TorrentStreamPlayerTheme {
                 val uiState by viewModel.uiState.collectAsState()
                 val completionAd = remember { com.example.torrentstreamplayer.ui.CompletionInterstitial(this) }
                 DisposableEffect(completionAd) { onDispose { completionAd.dispose() } }
-                LaunchedEffect(uiState is StreamUiState.Playing) {
-                    if (uiState is StreamUiState.Playing) {
+                val adsAllowed by adConsent.canRequestAds.collectAsState()
+                val privacyOptionsRequired by adConsent.privacyOptionsRequired.collectAsState()
+                LaunchedEffect(uiState is StreamUiState.Playing, adsAllowed) {
+                    if (uiState is StreamUiState.Playing && adsAllowed) {
                         try {
-                            com.example.torrentstreamplayer.ui.TestAdsRuntime.initialize(this@MainActivity)
-                            completionAd.preload()
+                            if (com.example.torrentstreamplayer.ui.TestAdsRuntime.initialize(this@MainActivity)) completionAd.preload()
                         } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                         catch (failure: Exception) { android.util.Log.w("CompletionAd", "Load failed", failure) }
                     }
@@ -108,7 +111,8 @@ class MainActivity : ComponentActivity() {
                                     onStartStream = { returnToHistory = false; viewModel.startStreaming(it) },
                                     errorMessage = null,
                                     onOpenFiles = { viewModel.stopStream(); showFiles = true },
-                                    onOpenHistory = { showHistory = true }
+                                    onOpenHistory = { showHistory = true },
+                                    onPrivacyOptions = if (privacyOptionsRequired) ({ adConsent.showPrivacyOptions(this@MainActivity) }) else null
                                 )
                             }
 
@@ -158,7 +162,8 @@ class MainActivity : ComponentActivity() {
                                     onStartStream = { returnToHistory = false; viewModel.startStreaming(it) },
                                     errorMessage = state.message,
                                     onOpenFiles = { viewModel.stopStream(); showFiles = true },
-                                    onOpenHistory = { viewModel.stopStream(); showHistory = true }
+                                    onOpenHistory = { viewModel.stopStream(); showHistory = true },
+                                    onPrivacyOptions = if (privacyOptionsRequired) ({ adConsent.showPrivacyOptions(this@MainActivity) }) else null
                                 )
                             }
                         }
@@ -174,7 +179,8 @@ fun MagnetLinkInputScreen(
     onStartStream: (String) -> Unit,
     errorMessage: String?,
     onOpenFiles: () -> Unit = {},
-    onOpenHistory: () -> Unit = {}
+    onOpenHistory: () -> Unit = {},
+    onPrivacyOptions: (() -> Unit)? = null
 ) {
     var magnetLink by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -239,6 +245,9 @@ fun MagnetLinkInputScreen(
             Text("재생 목록")
         }
         TextButton(onClick = onOpenFiles) { Text("저장 파일 관리") }
+        if (onPrivacyOptions != null) TextButton(onClick = onPrivacyOptions) {
+            Text(androidx.compose.ui.res.stringResource(R.string.action_ad_privacy))
+        }
     }
 }
 
