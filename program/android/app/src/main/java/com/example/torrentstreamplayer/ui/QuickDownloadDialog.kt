@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.ui.components.ConfirmDialog
@@ -25,6 +26,7 @@ internal fun QuickDownloadDialog(onDismiss: () -> Unit, submit: suspend (String)
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val invalid = stringResource(R.string.quick_download_invalid)
+    val context = LocalContext.current
     ConfirmDialog(
         title = stringResource(R.string.action_add_link),
         message = null,
@@ -39,7 +41,7 @@ internal fun QuickDownloadDialog(onDismiss: () -> Unit, submit: suspend (String)
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (failure: Exception) {
-                    error = failure.localizedMessage ?: invalid
+                    error = InputFailureText.message(failure, context) ?: invalid
                 } finally {
                     busy = false
                 }

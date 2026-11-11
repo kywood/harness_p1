@@ -13,12 +13,9 @@ internal class TorrentInputResolver(
     fun resolve(input: String): ResolvedTorrentInput {
         val value = input.trim()
         require(value.length in 1..8192) { "입력 주소의 길이가 올바르지 않습니다." }
-        val uri = URI(value)
-        if (uri.scheme.equals("magnet", true)) {
-            MagnetIdentity.key(value)
-            return ResolvedTorrentInput(value)
-        }
-        require(uri.scheme in listOf("http", "https") && !uri.host.isNullOrEmpty()) {
+        if (value.startsWith("magnet:", true)) return ResolvedTorrentInput(value.also(MagnetIdentity::key))
+        val uri = runCatching { URI(value) }.getOrNull()
+        require(uri != null && uri.scheme in listOf("http", "https") && !uri.host.isNullOrEmpty()) {
             "마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요."
         }
         val target = NetworkSpec.secure(uri.toURL())
@@ -29,10 +26,12 @@ internal class TorrentInputResolver(
         require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES && bytes[0] == 'd'.code.toByte()) {
             ".torrent 파일이 아닙니다. 파일의 직접 다운로드 주소를 입력하세요."
         }
-        val magnet = decode(bytes)
+        val magnet = try { decode(bytes) } catch (e: Exception) { throw InvalidTorrentFileException(e) }
         MagnetIdentity.key(magnet)
         return ResolvedTorrentInput(magnet, bytes)
     }
+    /** The downloaded bytes are not a readable torrent. The UI shows its own localized text for this case. */
+    class InvalidTorrentFileException(cause: Throwable) : IllegalArgumentException("Unreadable torrent file", cause)
     companion object {
         const val MAX_BYTES = NetworkSpec.TORRENT_MAX_BYTES
         private fun download(initial: URL): ByteArray {

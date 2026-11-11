@@ -128,9 +128,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (request == requestVersion)
-                    setStream(StreamUiState.Error(if (e is com.example.torrentstreamplayer.engine.InvalidMagnetException)
-                        getApplication<Application>().getString(com.example.torrentstreamplayer.R.string.error_invalid_magnet)
-                    else e.localizedMessage ?: "주소를 처리하지 못했습니다."))
+                    setStream(StreamUiState.Error(InputFailureText.message(e, getApplication())
+                        ?: "주소를 처리하지 못했습니다."))
             }
         }
     }
