@@ -15,3 +15,6 @@ local.properties
 *.keystore
 *.jks
 .aider*
+
+# launch: 테스터 이메일 등 개인정보
+launch/private/

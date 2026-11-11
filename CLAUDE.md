@@ -84,14 +84,16 @@ AdMob. `BuildConfig.DEBUG`이면 Google 테스트 단위 ID, 릴리스면 실제
 
 | 팀 | 형태 | 지침 | 맡는 일 |
 |---|---|---|---|
-| PM | 루트에서 연 메인 세션 | `PM.md` | 우선순위, 에이전트에 일 배정, 결과 확인, 이슈·출시 |
+| PM | 루트에서 연 메인 세션 | `PM.md` | 우선순위, 에이전트에 일 배정, 결과 확인, 이슈, 출시 결정 |
+| launch | `launch/`에서 연 별도 세션 | `launch/CLAUDE.md` | 스토어 등록정보·자료, Play Console 양식, 출시 체크리스트, 심사·출시 후 대응 |
 | planning | `planning/`에서 연 별도 세션 | `planning/CLAUDE.md` | 요구사항, 화면 정의, 사용자 흐름, 스펙 |
 | design | 서브에이전트 `design` | `design/CLAUDE.md` | 테마·토큰·문구·화면의 시각 표현 |
 | program | 서브에이전트 `program` | `program/CLAUDE.md` | 엔진·상태·정책·테스트·빌드 |
 
 - 루트에서 연 세션은 PM이다. 코드를 직접 고치지 않고 `program`·`design` 에이전트에 맡긴다. 서브에이전트로 실행 중이면 이 줄은 해당하지 않고 자기 팀 지침을 따른다.
-- 팀 디렉터리(`planning/`, `design/`, `program/`)에는 지침과 그 팀의 문서 산출물을 둔다. 앱 코드(Gradle 프로젝트)는 `program/android/`에 있다.
-- 순서는 planning → PM → design → program → PM이다.
+- 팀 디렉터리(`planning/`, `design/`, `program/`, `launch/`)에는 지침과 그 팀의 문서 산출물을 둔다. 앱 코드(Gradle 프로젝트)는 `program/android/`에 있다.
+- 순서는 planning → PM → design → program → PM → launch다.
+- 테스터 이메일 등 개인정보는 `launch/private/`(Git 무시)에만 둔다.
 - `.claude/rules/`가 `engine/`과 `ui/` 경로별로 해당 팀 지침을 가리킨다.
 
 ## 작업 규칙 (AGENTS.md)
