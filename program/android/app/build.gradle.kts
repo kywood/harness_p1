@@ -97,8 +97,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.libvlc)
     implementation(libs.nanohttpd)
-    implementation(libs.media3.exoplayer)
-    implementation(libs.media3.ui)
     implementation(libs.libtorrent4j)
     implementation(libs.libtorrent4j.arm64)
     implementation(libs.libtorrent4j.arm)

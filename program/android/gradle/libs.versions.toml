@@ -35,8 +35,6 @@ libtorrent4j-arm64 = { group = "org.libtorrent4j", name = "libtorrent4j-android-
 libtorrent4j-arm = { group = "org.libtorrent4j", name = "libtorrent4j-android-arm", version = "2.1.0-39" }
 libtorrent4j-x86 = { group = "org.libtorrent4j", name = "libtorrent4j-android-x86", version = "2.1.0-39" }
 libtorrent4j-x64 = { group = "org.libtorrent4j", name = "libtorrent4j-android-x86_64", version = "2.1.0-39" }
-media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version = "1.5.1" }
-media3-ui = { group = "androidx.media3", name = "media3-ui", version = "1.5.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

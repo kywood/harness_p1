@@ -8,8 +8,7 @@
 
 - `engine/`: 한 번에 한 파일, 최대 10줄(루트 `AGENTS.md`). 더 큰 변경이 필요하면 작은 단계로 나누고 단계마다 테스트를 통과시킨다.
 - `ui/`·`MainActivity.kt`: 화면 또는 컴포넌트 하나 단위로 변경한다.
-- 사용되지 않는 Media3 경로(`ui/PlayerScreen.kt`, `engine/TorrentFileDataSource.kt`)는 유지 여부가 결정되기 전까지 삭제하거나 다시 쓰지 않는다.
-
+- 재생기는 LibVLC 하나로 유지한다. 두 번째 플레이어 라이브러리(Media3 등)는 승인 없이 추가하지 않는다.
 ## 엔진·상태 규칙
 
 - 비동기 단계 뒤에는 세대 값(`activeRun`, `requestVersion`, `generation`)을 다시 확인하고, 달라졌으면 상태를 건드리지 않고 빠져나온다.
