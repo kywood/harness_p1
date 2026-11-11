@@ -1,6 +1,5 @@
 package com.example.torrentstreamplayer.engine
 
-import android.util.Log
 import fi.iki.elonen.NanoHTTPD
 import com.example.torrentstreamplayer.meta.VideoFormat
 
@@ -9,13 +8,9 @@ class TorrentStreamServer(
     private val torrentEngine: TorrentEngine
 ) : NanoHTTPD("127.0.0.1", port) {
 
-    companion object {
-        private const val TAG = "TorrentStreamServer"
-    }
-
     override fun serve(session: IHTTPSession): Response {
+        // No per-request log: release logcat must not record playback activity.
         val uri = session.uri
-        Log.d(TAG, "Request URI: $uri, Method: ${session.method}")
 
         if (uri != "/stream") {
             return newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "404 Not Found")
