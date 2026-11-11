@@ -12,7 +12,7 @@ internal class TorrentCheckpoint(
     private val cache: TorrentCache
 ) : AlertListener {
     private val pending = AtomicReference<CountDownLatch?>(null)
-    private val disk = Executors.newSingleThreadExecutor()
+    private val disk = SerialWriteTracker()
     @Volatile var latestProgress: DownloadSnapshot? = null
     fun saveProgress(snapshot: DownloadSnapshot?) {
         if (snapshot == null) return
@@ -49,13 +49,13 @@ internal class TorrentCheckpoint(
         }
         if (waitMillis > 0) pending.get()?.await(waitMillis, TimeUnit.MILLISECONDS)
     }
-    internal val isClosed: Boolean get() = disk.isTerminated
-    internal fun awaitClosed() { check(disk.awaitTermination(5, TimeUnit.SECONDS)) { "다운로드 기록 저장이 끝나지 않았습니다. 잠시 후 다시 삭제해 주세요." } }
+    internal val isClosed: Boolean get() = disk.isClosed
+    internal fun awaitClosed() { check(disk.awaitClosed(5_000)) { "다운로드 기록 저장이 끝나지 않았습니다. 잠시 후 다시 삭제해 주세요." } }
     fun close() {
         saveProgress(latestProgress)
         session.removeListener(this)
-        disk.shutdown()
-        try { disk.awaitTermination(1500, TimeUnit.MILLISECONDS) }
+        disk.close()
+        try { disk.awaitClosed(1_500) }
         catch (_: InterruptedException) { Thread.currentThread().interrupt() }
     }
     companion object {
