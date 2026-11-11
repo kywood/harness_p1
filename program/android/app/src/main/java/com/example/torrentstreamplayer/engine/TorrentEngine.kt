@@ -14,6 +14,7 @@ import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
 import java.io.File
+import com.example.torrentstreamplayer.meta.EngineSpec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -48,6 +49,7 @@ class TorrentEngine(private val context: Context) {
     private val downloadRoot = File(context.cacheDir, "torrent_downloads")
     private val stateRoot = File(context.cacheDir, "torrent_state")
     private val diskStore = TorrentDiskStore(listOf(downloadRoot, stateRoot))
+    private val teardown = EngineTeardown(onError = { Log.e(TAG, "Error stopping torrent engine", it) })
     var selectedVideoFile: File? = null
         private set
     var selectedFileLength: Long = 0L
@@ -123,6 +125,7 @@ class TorrentEngine(private val context: Context) {
 
         worker = Thread {
             try {
+                check(teardown.await()) { "Previous download is still stopping" }
                 Log.d(TAG, "Fetching magnet metadata...")
                 val cachedMetadata = cache.read("metadata")
                 _metadataDetails.value = MetadataDetails(phase = if (cachedMetadata == null)
@@ -547,6 +550,7 @@ class TorrentEngine(private val context: Context) {
         TorrentRemoval(downloadRoot, stateRoot).delete(key, legacy + listOfNotNull(remembered), protectedFiles)
     }
     internal fun awaitStoppedWrites() {
+        check(teardown.await()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
         retiredWorkers.toList().forEach { it.join(5000); check(!it.isAlive) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }; retiredWorkers.remove(it) }
         closingCheckpoints.toList().forEach { it.awaitClosed(); closingCheckpoints.remove(it) }
     }
@@ -554,6 +558,7 @@ class TorrentEngine(private val context: Context) {
         check(currentHandle == null && localVideo == null && worker?.isAlive != true) {
             "Stop streaming before deleting stored files"
         }
+        check(teardown.await()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
         return diskStore.delete(path)
     }
 
@@ -577,32 +582,26 @@ class TorrentEngine(private val context: Context) {
         retiredWorkers.removeAll { !it.isAlive }
         worker?.takeIf { it.isAlive }?.let { retiredWorkers.add(it) }
         worker = null
-        runCatching { checkpoint?.save(1500) }
-        checkpoint?.close()
-        closingCheckpoints.removeAll { it.isClosed }
-        checkpoint?.takeUnless { it.isClosed }?.let { closingCheckpoints.add(it) }
+        val closing = checkpoint
         checkpoint = null
+        closingCheckpoints.removeAll { it.isClosed }
+        closing?.let { closingCheckpoints.add(it) }
         localVideo = null
-        try {
-            val session = sessionManager
-            currentHandle?.let {
-                try {
-                    session?.remove(it)
-                } catch (ignored: Throwable) {
-                }
-            }
-            currentHandle = null
+        val session = sessionManager
+        val handle = currentHandle
+        currentHandle = null
+        sessionManager = null
+        selectedVideoFile = null
+        selectedFileLength = 0L
+        downloadProgress = 0f
+        downloadSpeedBytes = 0L
+        numPeers = 0
+        // Saving resume data and stopping the native session can block for seconds; never do it on the caller thread.
+        teardown.submit {
+            runCatching { closing?.save(EngineSpec.RESUME_SAVE_WAIT_MS) }
+            closing?.close()
+            handle?.let { runCatching { session?.remove(it) } }
             sharedSessions.release(this)
-            sessionManager = null
-            selectedVideoFile = null
-            selectedFileLength = 0L
-            downloadProgress = 0f
-            downloadSpeedBytes = 0L
-            numPeers = 0
-        } catch (t: Throwable) {
-            Log.e(TAG, "Error stopping torrent engine", t)
-        }
-        if (sessionManager == null) {
             if (completed != null) runCatching { finalCache?.recordComplete(File(completed.path), completed.size) }
             ActiveTorrentFiles.release(this)
         }
