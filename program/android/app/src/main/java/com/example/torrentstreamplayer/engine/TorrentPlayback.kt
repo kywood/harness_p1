@@ -1,10 +1,11 @@
 package com.example.torrentstreamplayer.engine
 
+import com.example.torrentstreamplayer.meta.VideoFormat
+
 internal object TorrentPlayback {
     private val BYTE_RANGE = Regex("bytes=(\\d*)-(\\d*)")
-    private val videoExtensions = setOf("mp4", "mkv", "avi", "webm", "mov", "m4v", "ts", "flv")
     fun isVideo(path: String, size: Long): Boolean =
-        size > 0 && path.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) in videoExtensions
+        size > 0 && VideoFormat.of(path) != null
     fun readSize(position: Long, requested: Int, size: Long, offset: Long, pieceSize: Long): Int {
         require(position >= 0 && requested >= 0 && size >= 0 && offset >= 0 && pieceSize > 0)
         if (position >= size) return 0
