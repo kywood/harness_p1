@@ -8,8 +8,8 @@ import java.util.Locale
 internal object MagnetIdentity {
     fun key(magnet: String): String {
         val uri = URI(magnet.trim())
-        require(uri.scheme.equals("magnet", true)) { "Invalid magnet scheme" }
-        require(uri.rawSchemeSpecificPart.startsWith("?")) { "Invalid magnet query" }
+        if (!uri.scheme.equals("magnet", true)) throw InvalidMagnetException()
+        if (!uri.rawSchemeSpecificPart.startsWith("?")) throw InvalidMagnetException()
         val query = uri.rawQuery ?: uri.rawSchemeSpecificPart.removePrefix("?")
         val topics = query.split('&').mapNotNull {
             val parts = it.split('=', limit = 2)
@@ -17,7 +17,7 @@ internal object MagnetIdentity {
                 URLDecoder.decode(parts[1], "UTF-8").lowercase(Locale.ROOT) else null
         }
         val identity = topics.firstNotNullOfOrNull(::normalize)
-            ?: throw IllegalArgumentException("Magnet link needs a valid info hash")
+            ?: throw InvalidMagnetException()
         return MessageDigest.getInstance("SHA-256").digest(identity.toByteArray())
             .joinToString("") { "%02x".format(it.toInt() and 255) }
     }
@@ -36,3 +36,6 @@ internal object MagnetIdentity {
         return "urn:btih:" + result.joinToString("") { "%02x".format(it.toInt() and 255) }
     }
 }
+
+/** A magnet link without a valid info hash. The UI shows its own localized text for this case. */
+internal class InvalidMagnetException : IllegalArgumentException("Magnet link needs a valid info hash")
