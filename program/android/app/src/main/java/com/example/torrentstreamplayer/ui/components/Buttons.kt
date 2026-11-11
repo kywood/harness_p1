@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -36,10 +35,7 @@ import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
 /** 비활성 버튼의 투명도. */
 private const val DISABLED_ALPHA = 0.4f
 
-/** 그라데이션 가운데(밝은 청록) 위 흰 글자가 묻히지 않게 배경색 그림자를 깐다. */
-private val LABEL_SHADOW = Shadow(color = BrandColors.Background.copy(alpha = 0.6f), blurRadius = 8f)
-
-/** 주요 동작 버튼: 브랜드 그라데이션, 완전한 둥근 모서리, 높이 52dp. 화면마다 하나만 둔다. */
+/** 주요 동작 버튼: 버튼 전용 그라데이션(`brandButtonGradient`, 흰 글자 대비 4.5:1 이상), 완전한 둥근 모서리, 높이 52dp. 화면마다 하나만 둔다. */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -65,11 +61,11 @@ fun PrimaryButton(
             Modifier
                 .fillMaxSize()
                 .alpha(if (enabled) 1f else DISABLED_ALPHA)
-                .background(BrandColors.brandGradient, Shapes.pill)
+                .background(BrandColors.brandButtonGradient, Shapes.pill)
                 .padding(horizontal = Spacing.xl),
             contentAlignment = Alignment.Center
         ) {
-            val style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, shadow = LABEL_SHADOW)
+            val style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
             ButtonLabel(text, icon, style)
         }
     }

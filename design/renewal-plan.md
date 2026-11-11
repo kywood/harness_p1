@@ -6,7 +6,7 @@
 
 - **브랜드**: 앱 아이콘의 짙은 남색 배경과 전기 파랑에서 민트로 이어지는 네온 그라데이션. "조각을 받으면서 바로 재생"을 빛이 흘러 들어오는 모습으로 표현한다.
 - **다크 테마 하나**: 영상 앱이고 아이콘이 어두운 배경 기준이라 다크 테마만 제공한다. 기기 배경화면 색을 따르는 `dynamicColor`는 끈다(브랜드 색이 바뀌지 않게).
-- **그라데이션은 아껴 쓴다**: 주요 버튼, 진행 막대의 받은 부분, 완료된 조각에만 쓴다. 나머지는 단색 표면.
+- **그라데이션은 아껴 쓴다**: 주요 버튼, 진행 막대의 받은 부분, 완료된 조각에만 쓴다. 나머지는 단색 표면. 흰 글자가 올라가는 주요 버튼은 대비를 위해 더 어두운 `brandButtonGradient`를 쓴다.
 - **문구는 짧게, 한국어로**: 버튼은 동사 2~4글자(바로 재생, 다운로드, 중지, 삭제).
 
 ## 2. 색 토큰
@@ -27,7 +27,8 @@
 | `accent`(secondary) | `#2EE6B0` | 완료·다운로드 완료·강조 | 배경 11.9 |
 | `onAccent` | `#00281C` | 민트 위 글자 | 9.9 |
 | `error` | `#FF6B7A` | 오류 | 표면 6.3 |
-| `brandGradient` | `#2F66F0 → #2EE6B0` | 주요 버튼, 진행 막대, 완료 조각 | |
+| `brandGradient` | `#2F66F0 → #2EE6B0` | 진행 막대의 받은 부분, 완료 조각 | 가운데가 밝아 흰 글자 1.6~2.8로 글자 배경에 쓰지 않음 |
+| `brandButtonGradient` | `#2456D2 → #0E7A62` | 주요 버튼(`PrimaryButton`) 배경(#47) | 흰 글자 최저 5.28(11개 지점 sRGB 직선 혼합, `ThemeTokensTest`) |
 
 재생 화면 전용 색(`PlaybackColors`)도 위 토큰에서 만든다: 재생한 구간 `brandGradient`, 받은 구간 `primaryLight` 40%, 트랙 `outline`, 패널 `surface` 94%.
 
@@ -61,7 +62,7 @@
 
 | 객체 | 항목 |
 |---|---|
-| `BrandColors` (`Color.kt`) | 위 2절 표의 색 + `brandGradient` |
+| `BrandColors` (`Color.kt`) | 위 2절 표의 색 + `brandGradient`, `brandButtonGradient`(`ButtonGradientStart`·`ButtonGradientEnd`) |
 | `Spacing` (`Dimens.kt`) | `xs`·`sm`·`md`·`lg`·`xl`·`xxl`, `screenGutter` |
 | `Shapes` (`Dimens.kt`) | `small`·`medium`·`large`·`pill` |
 | `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96, `contentMaxWidth` 600(가로·큰 화면 본문 최대 폭, #46) |
@@ -72,7 +73,7 @@
 
 | 컴포넌트 | 설명 |
 |---|---|
-| `PrimaryButton` | 그라데이션 배경, 완전한 둥근 모서리, 높이 52dp |
+| `PrimaryButton` | `brandButtonGradient` 배경, 완전한 둥근 모서리, 높이 52dp |
 | `SecondaryButton` | `surfaceContainer` 배경 |
 | `AppTopBar` | 뒤로 버튼 + 제목 + 오른쪽 동작, `surface` 배경 |
 | `SectionCard` | `surface`, 모서리 `medium`, 안쪽 여백 16dp |
