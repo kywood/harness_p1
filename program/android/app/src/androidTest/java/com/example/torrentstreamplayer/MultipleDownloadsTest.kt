@@ -1,4 +1,7 @@
 package com.example.torrentstreamplayer
+
+import com.example.torrentstreamplayer.engine.TorrentStorage
+import com.example.torrentstreamplayer.meta.TorrentStorageDir
 import android.app.Application
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.engine.*
@@ -27,10 +30,10 @@ class MultipleDownloadsTest {
                 "12:piece lengthi16384e6:pieces40:" + "\u0000".repeat(40) + "7:privatei1eee").toByteArray()
             val params = AddTorrentParams().apply { setTorrentInfo(TorrentInfo.bdecode(bytes)) }
             val link = libtorrent.make_magnet_uri(params.swig()); val key = MagnetIdentity.key(link)
-            val cache = TorrentCache(File(app.cacheDir, "torrent_state"), key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
+            val cache = TorrentCache(TorrentStorage.of(app).dir(TorrentStorageDir.STATE), key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
             cache.write("metadata", bytes)
             if (complete) {
-                val file = File(File(File(app.cacheDir, "torrent_downloads"), key), name)
+                val file = File(File(TorrentStorage.of(app).dir(TorrentStorageDir.DOWNLOADS), key), name)
                 check(file.parentFile!!.mkdirs()); file.writeBytes(ByteArray(32768)); cache.recordComplete(file, 32768)
             }
             return link
@@ -63,7 +66,7 @@ class MultipleDownloadsTest {
             assertNull(model.downloads.entry(keys[0]))
             assertTrue(model.downloads.engineFor(keys[2])!!.isDownloading)
             assertTrue(model.downloads.engineFor(keys[3])!!.isDownloading)
-            assertFalse(File(app.cacheDir, "torrent_downloads/" + keys[0]).exists())
+            assertFalse(File(TorrentStorage.of(app).dir(TorrentStorageDir.DOWNLOADS), keys[0]).exists())
             instrumentation.runOnMainSync { model.stopDownloads() }
             assertTrue(model.downloads.tasks.value.isEmpty())
             val done = seed("complete.mkv", true)

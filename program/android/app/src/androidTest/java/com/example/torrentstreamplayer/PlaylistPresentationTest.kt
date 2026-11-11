@@ -1,4 +1,7 @@
 package com.example.torrentstreamplayer
+
+import com.example.torrentstreamplayer.engine.TorrentStorage
+import com.example.torrentstreamplayer.meta.TorrentStorageDir
 import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
@@ -235,7 +238,7 @@ class PlaylistPresentationTest {
         val key = MagnetIdentity.key(link)
         val history = MagnetHistory(TorrentCache(File(context.noBackupFilesDir, "magnet_history"),
             "0".repeat(64), TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt))
-        TorrentCache(File(context.cacheDir, "torrent_state"), key, TorrentCacheCipher::encrypt,
+        TorrentCache(TorrentStorage.of(context).dir(TorrentStorageDir.STATE), key, TorrentCacheCipher::encrypt,
             TorrentCacheCipher::decrypt).write("metadata", metadata)
         history.add(link); history.updateTitle(link, name)
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
