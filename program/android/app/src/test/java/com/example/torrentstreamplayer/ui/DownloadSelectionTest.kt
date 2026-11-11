@@ -1,4 +1,5 @@
 package com.example.torrentstreamplayer.ui
+import com.example.torrentstreamplayer.R
 import org.junit.Assert.*
 import org.junit.Test
 class DownloadSelectionTest {
@@ -6,12 +7,12 @@ class DownloadSelectionTest {
         val jobs = mapOf("a" to DownloadEntry("a", DownloadPhase.RUNNING), "b" to DownloadEntry("b"),
             "done" to DownloadEntry("done", DownloadPhase.COMPLETE), "failed" to DownloadEntry("failed", DownloadPhase.FAILED))
         val stop = DownloadSelection.stoppable(setOf("a", "b", "done", "failed"), jobs)
-        assertEquals(setOf("a", "b"), stop); assertEquals("중지", DownloadSelection.label(stop))
+        assertEquals(setOf("a", "b"), stop); assertEquals(R.string.action_stop, DownloadSelection.label(stop))
     }
     @Test fun otherDownloadsDoNotChangeSelectedIdleAction() {
         val jobs = mapOf("other" to DownloadEntry("other", DownloadPhase.RUNNING))
         val stop = DownloadSelection.stoppable(setOf("idle"), jobs)
-        assertTrue(stop.isEmpty()); assertEquals("다운로드", DownloadSelection.label(stop))
+        assertTrue(stop.isEmpty()); assertEquals(R.string.action_download, DownloadSelection.label(stop))
     }
     @Test fun emptyOrCompletedSelectionCannotStopUnrelatedJobs() {
         val jobs = mapOf("a" to DownloadEntry("a", DownloadPhase.COMPLETE))

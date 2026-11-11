@@ -64,6 +64,9 @@
     <string name="player_restart">재생 위치 초기화 · 처음부터</string>
     <string name="player_stats">↓ %1$s · %2$d%% · 피어 %3$d명</string>
     <string name="player_downloaded">다운로드 %1$d%%</string>
+    <string name="player_time_label">현재 %1$s / 전체 %2$s</string>
+    <string name="player_waiting_seek">이동한 구간을 준비하고 있습니다…</string>
+    <string name="player_waiting_buffering">재생 데이터를 버퍼링하고 있습니다…</string>
     <!-- Common actions and states -->
     <string name="action_close">닫기</string>
     <string name="action_cancel">취소</string>

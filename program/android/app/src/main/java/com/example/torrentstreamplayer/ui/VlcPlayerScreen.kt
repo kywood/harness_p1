@@ -331,7 +331,7 @@ fun VlcPlayerScreen(
                 }
             )
 
-            val timeLabel = playbackTimeLabel(displayedTimeMs, totalLengthMs)
+            val timeLabel = stringResource(R.string.player_time_label, formatTime(displayedTimeMs), formatTime(totalLengthMs))
             if (!showControls && !showSeekBarOnly) {
                 PlayerTimePill(timeLabel, Modifier.align(Alignment.BottomEnd))
             }
@@ -373,7 +373,7 @@ fun VlcPlayerScreen(
                     )
                     PlayerCenterControls(
                         isPlaying = isPlaying,
-                        waitingMessage = if (seekUi.waiting) seekUi.waitingMessage else null,
+                        waitingMessage = if (seekUi.waiting) stringResource(seekUi.waitingMessage) else null,
                         onRewind = {
                             if (totalLengthMs > 0) {
                                 val target = (holder.mediaPlayer.time - 10000).coerceAtLeast(0)
@@ -445,9 +445,6 @@ private fun formatSpeed(bytesPerSec: Long): String {
         "$kb KB/s"
     }
 }
-
-internal fun playbackTimeLabel(currentMs: Long, durationMs: Long): String =
-    "현재 ${formatTime(currentMs)} / 전체 ${formatTime(durationMs)}"
 
 internal fun formatTime(timeMs: Long): String {
     if (timeMs <= 0) return "00:00"
