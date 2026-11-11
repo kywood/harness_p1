@@ -31,6 +31,10 @@ class TorrentEngine(private val context: Context) {
     private val closingCheckpoints = java.util.concurrent.CopyOnWriteArrayList<TorrentCheckpoint>()
     internal val isDownloading: Boolean get() = currentHandle != null && sessionManager?.isRunning == true && worker?.isAlive == true
     internal val nativeSessionIdentity: Any? get() = sessionManager
+    /** True while the selected torrent is active in the session and could be advertised to peers. */
+    internal val isSharingTorrent: Boolean get() = runCatching {
+        currentHandle?.let { !it.flags.and_(TorrentFlags.PAUSED).non_zero() } ?: false }.getOrDefault(false)
+    internal val uploadedBytes: Long get() = runCatching { currentHandle?.status()?.allTimeUpload() ?: 0L }.getOrDefault(0L)
     private var checkpoint: TorrentCheckpoint? = null
     private var activeCache: TorrentCache? = null
     internal val seekRequests = SeekRequestTracker()
@@ -328,6 +332,8 @@ class TorrentEngine(private val context: Context) {
 
                         if (status.isFinished && (firstPieceIndex..lastPieceIndex).all(handle::havePiece)) {
                             checkpoint?.save(1500)
+                            // A finished download must not stay announced as a seed; the paused handle still answers havePiece.
+                            runCatching { handle.pause() }.onFailure { Log.w(TAG, "Unable to pause finished torrent", it) }
                             runCatching { cache.recordComplete(candidate, maxFileSize) }
                             if (cache.isComplete(candidate, maxFileSize)) localVideo = candidate
                             downloadProgress = 100f
