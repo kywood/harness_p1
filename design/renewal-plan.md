@@ -66,6 +66,7 @@
 | `Spacing` (`Dimens.kt`) | `xs`·`sm`·`md`·`lg`·`xl`·`xxl`, `screenGutter` |
 | `Shapes` (`Dimens.kt`) | `small`·`medium`·`large`·`pill` |
 | `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconSmall` 18(글자 버튼 안 아이콘, #47), `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96, `contentMaxWidth` 600(가로·큰 화면 본문 최대 폭, #46), 재생 화면(#48): `iconMedium` 32(회전·10초 이동 아이콘), `playerControl` 56·`playerControlLarge` 72(가운데 버튼 지름), `seekTrackHeight` 6, `seekThumb` 16 |
+| `Sizes` 예정(#72 시안, 구현 전) | `actionButtonMinWidth` 120(나란한 두 버튼 최소 폭, `design/specs/error-recovery.md`) |
 | `PieceMapColors` | 조각 맵 색 규칙(`of(PieceCell)`) |
 | `PlaybackColors` | 재생 화면 색. `Played`(그라데이션), `Downloaded`(primaryLight 40%), `Track`, `Panel`, `SeekPanel`, #48에서 `Video`(검정 바탕), `OnVideo`(흰색), `OnVideoMuted`, `ControlButton`(흰색 16%), `Chip`(surface 70%), `Error`, `ScrimTop`·`ScrimBottom`(background 85% ↔ 투명 그라데이션) |
 
@@ -84,6 +85,8 @@
 | `ConfirmDialog` | 삭제 등 되돌릴 수 없는 동작 확인. 링크 추가처럼 입력이 있는 대화상자도 이 모양을 쓴다(`content` 칸, #47) |
 | `TextAction` | 어두운 표면 위 글자 버튼. 기본 `primaryLight`, 삭제는 `error`, 덜 중요한 동작은 `onSurfaceVariant` (#47) |
 | `LinkTextField` | 마그넷·.torrent 링크 입력창. 메인 입력 카드와 링크 추가 대화상자가 같이 쓴다 (#47) |
+| `InlineNotice` (예정, #72) | 카드 안 안내 줄: `surfaceContainer` + 정보 아이콘 + 문장 + 선택 글자 버튼. 준비 화면 피어 0명 안내부터 (`design/specs/error-recovery.md`) |
+| `AppBottomSheet` (예정, #72) | 공용 하단 시트(`surface`, 최대 폭 600dp). 이용 안내 시트와 재생 화면 더보기 시트가 같이 쓴다 (`design/specs/usage-guide.md`) |
 
 ## 6. 화면별 변경
 
