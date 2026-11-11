@@ -2,6 +2,7 @@ package com.example.torrentstreamplayer.engine
 
 import android.util.Log
 import fi.iki.elonen.NanoHTTPD
+import com.example.torrentstreamplayer.meta.VideoFormat
 
 class TorrentStreamServer(
     port: Int = 8080,
@@ -72,7 +73,7 @@ class TorrentStreamServer(
             onClosed = { torrentEngine.closeRead(readId) }
         )
 
-        val mimeType = getMimeType(videoFile.name)
+        val mimeType = VideoFormat.mimeTypeOf(videoFile.name)
         val status = if (isRangeRequest) Response.Status.PARTIAL_CONTENT else Response.Status.OK
 
         val response = newFixedLengthResponse(
