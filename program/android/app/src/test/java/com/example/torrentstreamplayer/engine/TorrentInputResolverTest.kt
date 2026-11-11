@@ -35,6 +35,18 @@ class TorrentInputResolverTest {
             }
         }
     }
+    @Test fun malformedInputIsRejectedWithUserTextNotParserText() {
+        val resolver = TorrentInputResolver({ magnet }, { error("Network must not be used") })
+        assertThrows(InvalidMagnetException::class.java) { resolver.resolve("$magnet&dn=[Group] Title") }
+        val url = assertThrows(IllegalArgumentException::class.java) { resolver.resolve("https://exa mple.test/a b") }
+        assertEquals("마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요.", url.message)
+    }
+    @Test fun unreadableTorrentBytesAreReportedAsTorrentFileFailure() {
+        val failure = assertThrows(TorrentInputResolver.InvalidTorrentFileException::class.java) {
+            TorrentInputResolver({ error("bad bencode") }, { "d4:info".toByteArray() }).resolve("https://example.test/a")
+        }
+        assertEquals("bad bencode", failure.cause?.message)
+    }
     @Test fun followsHttpRedirectThenDownloadsTorrent() {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val bytes = "d4:infodee".toByteArray()

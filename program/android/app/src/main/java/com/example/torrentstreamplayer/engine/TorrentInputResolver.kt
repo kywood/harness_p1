@@ -26,10 +26,12 @@ internal class TorrentInputResolver(
         require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES && bytes[0] == 'd'.code.toByte()) {
             ".torrent 파일이 아닙니다. 파일의 직접 다운로드 주소를 입력하세요."
         }
-        val magnet = decode(bytes)
+        val magnet = try { decode(bytes) } catch (e: Exception) { throw InvalidTorrentFileException(e) }
         MagnetIdentity.key(magnet)
         return ResolvedTorrentInput(magnet, bytes)
     }
+    /** The downloaded bytes are not a readable torrent. The UI shows its own localized text for this case. */
+    class InvalidTorrentFileException(cause: Throwable) : IllegalArgumentException("Unreadable torrent file", cause)
     companion object {
         const val MAX_BYTES = NetworkSpec.TORRENT_MAX_BYTES
         private fun download(initial: URL): ByteArray {
