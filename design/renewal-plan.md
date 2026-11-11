@@ -64,7 +64,7 @@
 | `BrandColors` (`Color.kt`) | 위 2절 표의 색 + `brandGradient` |
 | `Spacing` (`Dimens.kt`) | `xs`·`sm`·`md`·`lg`·`xl`·`xxl`, `screenGutter` |
 | `Shapes` (`Dimens.kt`) | `small`·`medium`·`large`·`pill` |
-| `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96 |
+| `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96, `contentMaxWidth` 600(가로·큰 화면 본문 최대 폭, #46) |
 | `PieceMapColors` | 조각 맵 색 규칙(`of(PieceCell)`) |
 | `PlaybackColors` | 재생 화면 색. `Played`(그라데이션), `Downloaded`(primaryLight 40%), `Track`, `Panel`, `SeekPanel` 등 |
 

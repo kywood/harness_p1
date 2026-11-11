@@ -14,7 +14,7 @@
     <string name="action_open_stored_files">저장 파일 관리</string>
     <string name="main_tagline">받으면서 바로 재생</string>
     <string name="action_paste">붙여넣기</string>
-    <string name="main_playlist_hint">받은 영상 이어보기</string>
+    <string name="main_playlist_hint">받은 영상 모아 보기</string>
     <string name="main_files_hint">저장 용량 정리</string>
     <string name="action_go_main">메인</string>
 
