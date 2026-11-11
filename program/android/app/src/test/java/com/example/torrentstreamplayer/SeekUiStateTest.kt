@@ -11,10 +11,10 @@ class SeekUiStateTest {
     }
     @Test fun ordinaryBufferingIsNotLabeledAsSeeking() {
         val buffering = SeekUiState().buffered(20f)
-        assertTrue(buffering.waitingMessage.contains("버퍼링"))
+        assertEquals(R.string.player_waiting_buffering, buffering.waitingMessage)
         val seeking = buffering.requested(30_000, 90_000)
-        assertTrue(seeking.waitingMessage.contains("이동한 구간"))
-        assertTrue(seeking.timeChanged(30_000).buffered(20f).waitingMessage.contains("버퍼링"))
+        assertEquals(R.string.player_waiting_seek, seeking.waitingMessage)
+        assertEquals(R.string.player_waiting_buffering, seeking.timeChanged(30_000).buffered(20f).waitingMessage)
     }
     @Test fun oldPlaybackEventsDoNotClearSeekBuffering() {
         val state = SeekUiState().requested(60_000, 120_000)

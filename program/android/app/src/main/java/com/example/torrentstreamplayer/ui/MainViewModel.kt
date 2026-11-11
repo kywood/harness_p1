@@ -42,8 +42,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val playlist by lazy { PlaylistRepository.create(application) { torrentEngine.savedMagnet(it) } }
     private var inputJob: Job? = null
     private val positionWrites = kotlinx.coroutines.sync.Mutex()
-    private var playingMagnet: String? = null
-    var resumePositionMs: Long = 0; private set
+    private val resume = PlaybackResumeState()
+    /** 재생 화면을 열 때 이동할 위치. 재생 중 저장한 위치를 따라가므로 화면을 다시 만들어도 이어 본다. */
+    val resumePositionMs: Long get() = resume.positionMs
     fun savedMagnets(): List<SavedMagnet> = playlist.savedMagnets()
     fun storedFiles(): List<StoredTorrentFile> = torrentEngine.storedFiles()
     /** Stops [magnet] on the main thread, then waits for its writes and deletes its files on [Dispatchers.IO]. */
@@ -133,7 +134,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (request != requestVersion) return@launch
                 if (!continueDownloading) _activeKey.value = com.example.torrentstreamplayer.engine.MagnetIdentity.key(resolved)
                 val lastPosition = withContext(Dispatchers.IO) { playlist.addForPlayback(resolved) }
-                if (request == requestVersion) { playingMagnet = resolved; resumePositionMs = lastPosition }
+                if (request == requestVersion) resume.start(resolved, lastPosition)
 
                 if (request == requestVersion) startResolved(resolved, request)
             } catch (e: CancellationException) { throw e }
@@ -251,8 +252,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         navigator.showPlaylistAfterPlayback()
     }
     fun playbackPositionWriter(): (Long, Long) -> Unit {
-        val magnet = playingMagnet ?: return { _, _ -> }
-        return { position, duration -> viewModelScope.launch { positionWrites.withLock {
+        val magnet = resume.magnet ?: return { _, _ -> }
+        return { position, duration -> resume.saved(magnet, position, duration)
+            viewModelScope.launch { positionWrites.withLock {
             withContext(Dispatchers.IO) { runCatching { playlist.savePosition(magnet, position, duration) }
                 .onFailure { android.util.Log.w("PlaybackPosition", "Unable to save playback position", it) } }
         } }; Unit }
