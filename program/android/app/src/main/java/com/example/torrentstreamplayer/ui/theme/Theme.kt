@@ -1,58 +1,52 @@
 package com.example.torrentstreamplayer.ui.theme
 
-import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+/** 다크 테마 하나. 기기 배경화면 색(dynamic color)은 쓰지 않는다. */
+internal val PiecePlayColorScheme = darkColorScheme(
+    primary = BrandColors.Primary,
+    onPrimary = BrandColors.OnPrimary,
+    // 선택된 칩·토글처럼 Material이 컨테이너 색을 쓰는 곳도 브랜드 색을 따른다(기본값은 보라 계열).
+    primaryContainer = BrandColors.Primary,
+    onPrimaryContainer = BrandColors.OnPrimary,
+    secondaryContainer = BrandColors.Primary,
+    onSecondaryContainer = BrandColors.OnPrimary,
+    tertiaryContainer = BrandColors.SurfaceContainer,
+    onTertiaryContainer = BrandColors.OnSurface,
+    inverseSurface = BrandColors.OnSurface,
+    inverseOnSurface = BrandColors.Background,
+    inversePrimary = BrandColors.Primary,
+    surfaceTint = BrandColors.Surface,
+    scrim = BrandColors.Background,
+    secondary = BrandColors.Accent,
+    onSecondary = BrandColors.OnAccent,
+    tertiary = BrandColors.PrimaryLight,
+    onTertiary = BrandColors.Background,
+    background = BrandColors.Background,
+    onBackground = BrandColors.OnSurface,
+    surface = BrandColors.Surface,
+    onSurface = BrandColors.OnSurface,
+    surfaceVariant = BrandColors.SurfaceContainer,
+    onSurfaceVariant = BrandColors.OnSurfaceVariant,
+    surfaceContainerLowest = BrandColors.Background,
+    surfaceContainerLow = BrandColors.Surface,
+    surfaceContainer = BrandColors.SurfaceContainer,
+    surfaceContainerHigh = BrandColors.SurfaceContainer,
+    surfaceContainerHighest = BrandColors.SurfaceContainer,
+    outline = BrandColors.Outline,
+    outlineVariant = BrandColors.Outline,
+    error = BrandColors.Error,
+    onError = BrandColors.Background
 )
 
 @Composable
-fun TorrentStreamPlayerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
-) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
+fun TorrentStreamPlayerTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = PiecePlayColorScheme,
         typography = Typography,
+        shapes = Shapes.material,
         content = content
     )
 }

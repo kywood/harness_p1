@@ -1,10 +1,12 @@
 package com.example.torrentstreamplayer
 
+import android.graphics.Color
 import android.os.Bundle
 import android.os.StrictMode
 import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -34,7 +36,8 @@ class MainActivity : ComponentActivity() {
         if (BuildConfig.DEBUG) StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.Builder()
             .detectCustomSlowCalls().penaltyLog().build())
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        enableEdgeToEdge()
+        // 다크 테마 하나라 시스템 바 아이콘은 기기 설정과 관계없이 밝게 둔다.
+        enableEdgeToEdge(SystemBarStyle.dark(Color.TRANSPARENT), SystemBarStyle.dark(Color.TRANSPARENT))
         val adConsent = AdConsent.get(this)
         adConsent.gather(this) // UMP: refresh consent on every launch, before any ad request.
         setContent {

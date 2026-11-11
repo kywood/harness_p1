@@ -57,6 +57,17 @@
 
 `ui/theme/`에 `Spacing`, `Shapes`, `BrandColors` 객체로 정의하고 화면은 이 값만 쓴다.
 
+코드 이름(#45에서 추가):
+
+| 객체 | 항목 |
+|---|---|
+| `BrandColors` (`Color.kt`) | 위 2절 표의 색 + `brandGradient` |
+| `Spacing` (`Dimens.kt`) | `xs`·`sm`·`md`·`lg`·`xl`·`xxl`, `screenGutter` |
+| `Shapes` (`Dimens.kt`) | `small`·`medium`·`large`·`pill` |
+| `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96 |
+| `PieceMapColors` | 조각 맵 색 규칙(`of(PieceCell)`) |
+| `PlaybackColors` | 재생 화면 색. `Played`(그라데이션), `Downloaded`(primaryLight 40%), `Track`, `Panel`, `SeekPanel` 등 |
+
 ## 5. 공용 컴포넌트 (`ui/components/`)
 
 | 컴포넌트 | 설명 |
