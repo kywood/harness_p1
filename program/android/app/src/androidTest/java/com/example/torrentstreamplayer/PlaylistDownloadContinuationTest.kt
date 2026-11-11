@@ -51,7 +51,8 @@ class PlaylistDownloadContinuationTest {
             instrumentation.runOnMainSync { model.startStreaming(current) }
             await { model.uiState.value is StreamUiState.Buffering }
             instrumentation.runOnMainSync { model.stopForMain() }
-            assertNull(model.downloads.entry(currentKey)); assertFalse(source.isDownloading)
+            // The engine stop runs on the engine command queue, not on the main thread.
+            assertNull(model.downloads.entry(currentKey)); await { !source.isDownloading }
             assertTrue(model.downloads.engineFor(otherKey)!!.isDownloading)
             val early = seed("early.mkv"); val earlyKey = MagnetIdentity.key(early)
             instrumentation.runOnMainSync { model.startStreaming(early); model.continueInPlaylist() }

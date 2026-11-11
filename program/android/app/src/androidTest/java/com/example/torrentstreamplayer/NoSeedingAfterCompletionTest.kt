@@ -35,7 +35,8 @@ class NoSeedingAfterCompletionTest {
             engine.startStreaming(link, onMetadataReceived = { _, _ -> }, onProgress = { _, _ -> },
                 onError = { error.set(it) }, prioritizePlayback = false)
 
-            await { engine.downloadProgress >= 100f || error.get() != null }
+            // localVideo is set after the completion branch pauses the handle; progress alone reaches 100% earlier.
+            await { engine.localVideo != null || error.get() != null }
 
             assertEquals(null, error.get())
             assertNotNull("Finished torrent should stay available for verified reads", engine.selectedVideoFile)

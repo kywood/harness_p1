@@ -18,6 +18,7 @@
 - 토렌트가 준 경로는 canonical path가 다운로드 폴더 안인지 확인한 뒤 쓴다.
 - 파일 삭제 전에는 `awaitStoppedWrites()`로 이전 엔진의 쓰기가 끝났는지 기다린다.
 - 외부 입력(마그넷, URL, 토렌트 메타데이터)은 길이와 형식을 검증한 뒤 처리한다.
+- 화면·ViewModel·컨트롤러는 엔진 메서드를 메인 스레드에서 직접 부르지 않고 `EngineCommandQueue`(`post`, 결과가 필요하면 `withContext(dispatcher)`)를 거친다. 엔진에 잠금이나 libtorrent 동기 호출을 하는 진입점을 추가하면 `StrictMode.noteSlowCall`을 달고, `MainThreadResponsivenessTest`에 해당 흐름을 넣는다.
 
 ## 코드 형태
 

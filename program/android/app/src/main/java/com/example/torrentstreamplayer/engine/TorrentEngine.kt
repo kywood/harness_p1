@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.engine
 
 import android.content.Context
+import android.os.StrictMode
 import android.util.Log
 import org.libtorrent4j.Priority
 import org.libtorrent4j.SessionManager
@@ -118,6 +119,7 @@ class TorrentEngine(private val context: Context) {
         onError: (String) -> Unit,
         prioritizePlayback: Boolean = true
     ) {
+        StrictMode.noteSlowCall("TorrentEngine.startStreaming")
         val key = try { MagnetIdentity.key(magnetUrl) }
         catch (_: Exception) { onError("Invalid magnet link or info hash"); return }
         stop()
@@ -449,6 +451,7 @@ class TorrentEngine(private val context: Context) {
     internal fun closeRead(id: Long) { readDemands.close(id) }
 
     @Synchronized fun beginSeek(targetMs: Long = 0, durationMs: Long = 0) {
+        StrictMode.noteSlowCall("TorrentEngine.beginSeek")
         seekRequests.beginSeek()
         readDemands.clear()
         runCatching {
@@ -463,8 +466,9 @@ class TorrentEngine(private val context: Context) {
         }
     }
 
-    fun isPlaybackReady(): Boolean = playbackReady()
+    fun isPlaybackReady(): Boolean = playbackReady().also { StrictMode.noteSlowCall("TorrentEngine.isPlaybackReady") }
     @Synchronized internal fun requestPlayback(): Boolean {
+        StrictMode.noteSlowCall("TorrentEngine.requestPlayback")
         if (localVideo != null) return true
         val info = currentHandle?.torrentFile() ?: return false
         startupPieces = StartupBufferPlan.required(selectedFileLength, selectedFileStartOffset,
@@ -476,6 +480,7 @@ class TorrentEngine(private val context: Context) {
         return true
     }
     @Synchronized internal fun releasePlaybackPriority() {
+        StrictMode.noteSlowCall("TorrentEngine.releasePlaybackPriority")
         seekRequests.beginSeek()
         startupPieces = emptySet(); startupIndex = null
         readDemands.clear()
