@@ -10,29 +10,25 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.torrentstreamplayer.engine.TorrentEngine
 import com.example.torrentstreamplayer.engine.TorrentStreamServer
+import com.example.torrentstreamplayer.ui.player.PlayerBottomPanel
+import com.example.torrentstreamplayer.ui.player.PlayerCenterControls
+import com.example.torrentstreamplayer.ui.player.PlayerErrorState
+import com.example.torrentstreamplayer.ui.player.PlayerMoreSheet
+import com.example.torrentstreamplayer.ui.player.PlayerTimePill
+import com.example.torrentstreamplayer.ui.player.PlayerTopBar
 import com.example.torrentstreamplayer.ui.theme.PlaybackColors
 import kotlinx.coroutines.delay
 import org.videolan.libvlc.LibVLC
@@ -281,7 +277,7 @@ fun VlcPlayerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(PlaybackColors.Video)
             .clipToBounds()
             .onSizeChanged { viewport = it }
             .pointerInput(Unit) {
@@ -295,21 +291,7 @@ fun VlcPlayerScreen(
         contentAlignment = Alignment.Center
     ) {
         if (error != null) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(24.dp)
-            ) {
-                Text(
-                    text = error,
-                    color = Color.Red,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { exitPlayback() }) {
-                    Text(stringResource(R.string.action_go_back))
-                }
-            }
+            PlayerErrorState(error, onBack = { exitPlayback() })
         } else if (holder != null) {
             // Video Surface
             AndroidView(
@@ -349,25 +331,15 @@ fun VlcPlayerScreen(
                 }
             )
 
-            if (seekUi.waiting && showControls) {
-                Column(Modifier.align(Alignment.TopCenter).padding(top = 140.dp).background(PlaybackColors.Panel)
-                    .padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = PlaybackColors.Accent)
-                    Spacer(Modifier.height(12.dp))
-                    Text(seekUi.waitingMessage, color = Color.White)
-                }
-            }
-            // Animated Controls Overlay
+            val timeLabel = playbackTimeLabel(displayedTimeMs, totalLengthMs)
             if (!showControls && !showSeekBarOnly) {
-                Text(playbackTimeLabel(displayedTimeMs, totalLengthMs), color = Color.White,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp)
-                        .background(PlaybackColors.Panel).padding(horizontal = 8.dp, vertical = 4.dp))
+                PlayerTimePill(timeLabel, Modifier.align(Alignment.BottomEnd))
             }
             if (PlayerOverlayPolicy.seekBarOnly(showControls, showSeekBarOnly)) {
                 SwipeSeekBar(sliderPosition, totalLengthMs > 0, Modifier.align(Alignment.BottomCenter),
                     onChange = { sliderPosition = it; isSeeking = true },
-                    onFinished = { isSeeking = false; if (totalLengthMs > 0) seekTo((sliderPosition * totalLengthMs).toLong()) })
+                    onFinished = { isSeeking = false; if (totalLengthMs > 0) seekTo((sliderPosition * totalLengthMs).toLong()) },
+                    pieces = pieces)
             }
             AnimatedVisibility(
                 visible = showControls,
@@ -380,223 +352,85 @@ fun VlcPlayerScreen(
                         .fillMaxSize()
                         .background(PlaybackColors.ControlsScrim)
                 ) {
-                    // Top Bar (Title + Torrent Speed Pill)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.TopCenter)
-                            .background(Color.Black.copy(alpha = 0.6f))
-                            .padding(horizontal = 12.dp, vertical = if (landscape) 2.dp else 12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            IconButton(onClick = { exitPlayback() }) {
-                                Icon(
-                                    imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = stringResource(R.string.cd_back),
-                                    tint = Color.White
-                                )
+                    PlayerTopBar(
+                        fileName = fileName,
+                        stats = stringResource(R.string.player_stats, formatSpeed(downloadSpeedBytes),
+                            downloadProgress.toInt(), numPeers),
+                        zoomLabel = String.format(Locale.US, "%.1f×", zoom.scale),
+                        landscape = landscape,
+                        onBack = { exitPlayback() },
+                        onZoomOut = {
+                            zoom = zoom.transformed(0.8f, 0f, 0f,
+                                viewport.width.toFloat(), viewport.height.toFloat())
+                        },
+                        onZoomReset = { zoom = VideoZoomState() },
+                        onZoomIn = {
+                            zoom = zoom.transformed(1.25f, 0f, 0f,
+                                viewport.width.toFloat(), viewport.height.toFloat())
+                        },
+                        onMore = { showMore = true },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
+                    PlayerCenterControls(
+                        isPlaying = isPlaying,
+                        waitingMessage = if (seekUi.waiting) seekUi.waitingMessage else null,
+                        onRewind = {
+                            if (totalLengthMs > 0) {
+                                val target = (holder.mediaPlayer.time - 10000).coerceAtLeast(0)
+                                seekTo(target)
                             }
-                            Text(
-                                text = fileName,
-                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                color = Color.White,
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.weight(1f)
-                            )
-                            VideoOrientationButton()
-                            Box {
-                                TextButton(onClick = { showMore = true }, modifier = Modifier.width(40.dp),
-                                    contentPadding = PaddingValues(0.dp)) { Text("⋮", color = Color.White, fontSize = 24.sp) }
-                                DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
-                                    onAddDownload?.let { add -> DropdownMenuItem(text = { Text("다운로드 추가") },
-                                        onClick = { showMore = false; add() }) }
-                                    DropdownMenuItem(text = { Text("재생 위치 초기화 · 처음부터") }, onClick = {
-                                        showMore = false; resumeApplied = true; seekTo(0); positionCallback(0, totalLengthMs)
-                                    })
+                        },
+                        onTogglePlay = {
+                            try {
+                                if (holder.mediaPlayer.isPlaying) {
+                                    holder.mediaPlayer.pause()
+                                    isPlaying = false
+                                } else {
+                                    holder.mediaPlayer.play()
+                                    isPlaying = true
                                 }
+                            } catch (e: Exception) {
+                                Log.e("VlcPlayerScreen", "Error toggling play/pause", e)
                             }
-                            if (landscape) Text("↓ ${formatSpeed(downloadSpeedBytes)} · ${downloadProgress.toInt()}% · ${numPeers}p",
-                                color = PlaybackColors.Accent, fontSize = 12.sp, maxLines = 1,
-                                modifier = Modifier.padding(horizontal = 8.dp))
-                            TextButton(onClick = {
-                                zoom = zoom.transformed(0.8f, 0f, 0f,
-                                    viewport.width.toFloat(), viewport.height.toFloat())
-                            }, contentPadding = PaddingValues(4.dp), modifier = Modifier.width(40.dp)) {
-                                Text("−", color = Color.White)
+                        },
+                        onForward = {
+                            if (totalLengthMs > 0) {
+                                val target = (holder.mediaPlayer.time + 10000).coerceAtMost(totalLengthMs)
+                                seekTo(target)
                             }
-                            TextButton(onClick = { zoom = VideoZoomState() },
-                                contentPadding = PaddingValues(4.dp), modifier = Modifier.width(56.dp)) {
-                                Text(String.format(Locale.US, "%.1f×", zoom.scale), color = Color.White)
+                        },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                    PlayerBottomPanel(
+                        timeLabel = timeLabel,
+                        downloadLabel = stringResource(R.string.player_downloaded, downloadProgress.toInt()),
+                        position = sliderPosition,
+                        pieces = pieces,
+                        seekEnabled = true,
+                        landscape = landscape,
+                        onSeekChange = { pos ->
+                            sliderPosition = pos
+                            isSeeking = true
+                        },
+                        onSeekFinished = {
+                            isSeeking = false
+                            if (totalLengthMs > 0) {
+                                val targetTime = (sliderPosition * totalLengthMs).toLong()
+                                seekTo(targetTime)
                             }
-                            TextButton(onClick = {
-                                zoom = zoom.transformed(1.25f, 0f, 0f,
-                                    viewport.width.toFloat(), viewport.height.toFloat())
-                            }, contentPadding = PaddingValues(4.dp), modifier = Modifier.width(40.dp)) {
-                                Text("+", color = Color.White)
-                            }
-                        }
-
-                        // Download Speed & Peers Pill
-                        if (!landscape) Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Color.White.copy(alpha = 0.15f),
-                            modifier = Modifier
-                                .padding(start = 12.dp, top = 4.dp)
-                        ) {
-                            Text(
-                                text = "⬇ ${formatSpeed(downloadSpeedBytes)} (${downloadProgress.toInt()}%) • ${numPeers}p",
-                                color = PlaybackColors.Accent,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-
-                    // Center Rewind / Play-Pause / Fast-Forward
-                    Row(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalArrangement = Arrangement.spacedBy(28.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Rewind -10s
-                        IconButton(
-                            onClick = {
-                                if (totalLengthMs > 0) {
-                                    val target = (holder.mediaPlayer.time - 10000).coerceAtLeast(0)
-                                    seekTo(target)
-
-                                }
-                            },
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.25f))
-                        ) {
-                            Text(
-                                text = "-10s",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                        }
-
-                        // Play / Pause Toggle
-                        IconButton(
-                            onClick = {
-                                try {
-                                    if (holder.mediaPlayer.isPlaying) {
-                                        holder.mediaPlayer.pause()
-                                        isPlaying = false
-                                    } else {
-                                        holder.mediaPlayer.play()
-                                        isPlaying = true
-                                    }
-                                } catch (e: Exception) {
-                                    Log.e("VlcPlayerScreen", "Error toggling play/pause", e)
-                                }
-                            },
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.35f))
-                        ) {
-                            if (isPlaying) {
-                                Text(
-                                    text = "❚❚",
-                                    color = Color.White,
-                                    fontSize = 24.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = stringResource(R.string.cd_play),
-                                    tint = Color.White,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                            }
-                        }
-
-                        // Fast-Forward +10s
-                        IconButton(
-                            onClick = {
-                                if (totalLengthMs > 0) {
-                                    val target = (holder.mediaPlayer.time + 10000).coerceAtMost(totalLengthMs)
-                                    seekTo(target)
-
-                                }
-                            },
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.25f))
-                        ) {
-                            Text(
-                                text = "+10s",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-
-                    // Bottom Seekbar & Time Labels
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .background(PlaybackColors.SeekPanel)
-                            .padding(horizontal = 24.dp, vertical = if (landscape) 6.dp else 16.dp)
-                    ) {
-                        Text(playbackTimeLabel(displayedTimeMs, totalLengthMs), color = Color.White,
-                            style = MaterialTheme.typography.bodySmall)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(if (landscape) 40.dp else 48.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // Playback Position Slider
-                            Slider(
-                                value = sliderPosition,
-                                onValueChange = { pos ->
-                                    sliderPosition = pos
-                                    isSeeking = true
-                                },
-                                onValueChangeFinished = {
-                                    isSeeking = false
-                                    if (totalLengthMs > 0) {
-                                        val targetTime = (sliderPosition * totalLengthMs).toLong()
-                                        seekTo(targetTime)
-
-                                    }
-                                },
-                                colors = SliderDefaults.colors(
-                                    thumbColor = PlaybackColors.Accent,
-                                    activeTrackColor = PlaybackColors.Accent,
-                                    inactiveTrackColor = PlaybackColors.Track
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        PieceMap(pieces, Modifier.fillMaxWidth().padding(bottom = if (landscape) 4.dp else 8.dp),
-                            Color.White, inlineInfo = landscape)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "다운로드 ${downloadProgress.toInt()}%",
-                                color = PlaybackColors.Download,
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
                 }
+            }
+            if (showMore) {
+                PlayerMoreSheet(
+                    onDismiss = { showMore = false },
+                    onAddLink = onAddDownload?.let { add -> { showMore = false; add() } },
+                    onRestart = {
+                        showMore = false; resumeApplied = true; seekTo(0); positionCallback(0, totalLengthMs)
+                    }
+                )
             }
         }
     }
