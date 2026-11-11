@@ -35,6 +35,19 @@ object Sizes {
     /** 글자 버튼 안 아이콘, 형식 아이콘 옆 보조 아이콘. */
     val iconSmall = 18.dp
     val iconLarge = 48.dp
+
+    /** 재생 화면 상단 회전 아이콘, 10초 이동 아이콘. */
+    val iconMedium = 32.dp
+
+    /** 재생 화면 10초 이동 버튼 지름. */
+    val playerControl = 56.dp
+
+    /** 재생 화면 재생/일시 정지 버튼 지름. */
+    val playerControlLarge = 72.dp
+
+    /** 재생 막대 트랙 두께와 손잡이 지름. */
+    val seekTrackHeight = 6.dp
+    val seekThumb = 16.dp
     val primaryButtonHeight = 52.dp
     val progressBarHeight = 8.dp
     val logo = 96.dp
