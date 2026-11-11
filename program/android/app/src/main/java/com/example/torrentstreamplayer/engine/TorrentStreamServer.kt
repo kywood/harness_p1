@@ -90,16 +90,4 @@ class TorrentStreamServer(
 
         return response
     }
-
-    private fun getMimeType(fileName: String): String {
-        val ext = fileName.substringAfterLast('.', "").lowercase()
-        return when (ext) {
-            "mp4" -> "video/mp4"
-            "mkv" -> "video/x-matroska"
-            "avi" -> "video/x-msvideo"
-            "webm" -> "video/webm"
-            "mov" -> "video/quicktime"
-            else -> "video/mp4"
-        }
-    }
 }
