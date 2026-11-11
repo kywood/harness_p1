@@ -1,6 +1,6 @@
 # program 팀 지침 (개발)
 
-루트 `CONVENTIONS.md`와 함께 적용한다. OOP 구조 설계·코드 형식·이름·리소스 풀링 규칙은 `program/code-style.md`, 구조 설명은 루트 `CLAUDE.md`의 아키텍처 절을 본다.
+루트 `CONVENTIONS.md`와 함께 적용한다. OOP 구조 설계·디자인 패턴·코드 형식·이름·리소스 풀링 규칙은 `program/code-style.md`, 구조 설명은 루트 `CLAUDE.md`의 아키텍처 절을 본다.
 
 ## 변경 범위
 
