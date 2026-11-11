@@ -8,6 +8,15 @@
     <string name="label_buffering">버퍼링</string>
     <string name="label_downloading">다운로드</string>
     <string name="action_ad_privacy">광고 개인정보 설정</string>
+    <string name="cd_app_logo">PiecePlay 로고</string>
+    <string name="label_link_input">마그넷 또는 .torrent 다운로드 링크</string>
+    <string name="action_open_playlist">재생 목록</string>
+    <string name="action_open_stored_files">저장 파일 관리</string>
+
+    <!-- Preparing screen -->
+    <string name="title_metadata_fetching">토렌트 정보 가져오는 중…</string>
+    <string name="title_metadata_received">토렌트 정보 수신 완료</string>
+    <string name="subtitle_metadata_fetching">파일 정보와 연결 상태를 확인합니다.</string>
 
     <!-- Torrent engine failures (meta/TorrentFailure) -->
     <string name="failure_invalid_magnet">올바른 마그넷 링크가 아닙니다. 링크를 다시 확인해 주세요.</string>
