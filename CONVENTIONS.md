@@ -38,10 +38,10 @@ planning(무엇을·왜, 화면 정의) → PM(우선순위 결정, 이슈로 �
 
 | 사용자에게 보이는 이름 | 코드 |
 |---|---|
-| 메인 | `MagnetLinkInputScreen` (`MainActivity.kt`) |
+| 메인 | `MagnetLinkInputScreen` (`ui/screens/MainScreen.kt`) |
 | 재생 목록 | `MagnetHistoryScreen` |
 | 저장 파일 관리 | `StoredFilesScreen` |
-| 준비 화면 | `LoadingScreen`, `BufferingScreen` |
+| 준비 화면 | `PreparingScreen` (`LoadingScreen`, `BufferingScreen`, `ui/screens/PreparingScreen.kt`) |
 | 재생 화면 | `VlcPlayerScreen` |
 | 피스 맵 | `PieceMap` |
 

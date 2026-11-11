@@ -68,7 +68,7 @@ $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
 
 ### UI 구조
 
-- 내비게이션 라이브러리가 없다. `MainActivity`가 `showFiles`/`showHistory` 불리언과 `StreamUiState` `when` 분기로 화면을 고른다. 메인 입력·로딩·버퍼링 화면 컴포저블도 `MainActivity.kt` 안에 있다.
+- 내비게이션 라이브러리가 없다. 화면은 `ui/navigation/AppScreen`(sealed) 하나로 정하고, `AppNavigator`가 이동 상태와 `StreamUiState`를 합쳐 `MainViewModel.screen`으로 노출한다. `MainActivity`는 테마·광고 동의·전면 광고와 `ui/screens/AppRoot`만 맡고, 화면은 `ui/screens/`(메인·준비 등)에 있다. 재생 목록·위치 저장은 `data/PlaylistRepository`를 거친다.
 - 사용자에게 "재생 목록"으로 보이는 화면이 `MagnetHistoryScreen`, "저장 파일 관리"가 `StoredFilesScreen`이다.
 - 판단 로직은 Compose 밖의 작은 순수 객체(`*Policy`, `*Plan`, `*State`, `*Label`)로 빼고 각각 JVM 단위 테스트를 둔다. 에뮬레이터 테스트(`androidTest`)는 실제 libtorrent 네이티브와 화면 흐름을 검증한다.
 - 문자열은 전부 Kotlin 코드에 하드코딩되어 있고(`strings.xml`에는 앱 이름만 있음) 한국어와 영어가 섞여 있다.
