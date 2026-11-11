@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer
 import com.example.torrentstreamplayer.engine.MetadataDetails
 import com.example.torrentstreamplayer.ui.AppBackPolicy
 import com.example.torrentstreamplayer.ui.StreamUiState
+import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -30,14 +31,14 @@ class PreparationUiTest {
         assertEquals(10, details.pieceCount)
     }
     @Test fun activeStreamAndErrorsReturnToInputInsteadOfClosingActivity() {
-        val states = listOf(StreamUiState.FetchingMetadata("magnet"),
-            StreamUiState.Buffering("Sample", 1000, 0f, 0), StreamUiState.Playing("Sample"),
-            StreamUiState.Error("Failed"))
-        states.forEach { assertTrue(AppBackPolicy.returnsToInput(it, false, false)) }
+        val screens = listOf(AppScreen.Preparing.FetchingMetadata,
+            AppScreen.Preparing.Buffering(StreamUiState.Buffering("Sample", 1000, 0f, 0)), AppScreen.Player("Sample"),
+            AppScreen.Main("Failed"))
+        screens.forEach { assertTrue(AppBackPolicy.returnsToInput(it)) }
     }
     @Test fun idleAndListsKeepTheirOwnBackBehavior() {
-        assertFalse(AppBackPolicy.returnsToInput(StreamUiState.Idle, false, false))
-        assertFalse(AppBackPolicy.returnsToInput(StreamUiState.Playing("Sample"), true, false))
-        assertFalse(AppBackPolicy.returnsToInput(StreamUiState.Playing("Sample"), false, true))
+        assertFalse(AppBackPolicy.returnsToInput(AppScreen.Main()))
+        assertFalse(AppBackPolicy.returnsToInput(AppScreen.StoredFiles))
+        assertFalse(AppBackPolicy.returnsToInput(AppScreen.Playlist))
     }
 }
