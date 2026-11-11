@@ -65,7 +65,7 @@
 | `BrandColors` (`Color.kt`) | 위 2절 표의 색 + `brandGradient`, `brandButtonGradient`(`ButtonGradientStart`·`ButtonGradientEnd`) |
 | `Spacing` (`Dimens.kt`) | `xs`·`sm`·`md`·`lg`·`xl`·`xxl`, `screenGutter` |
 | `Shapes` (`Dimens.kt`) | `small`·`medium`·`large`·`pill` |
-| `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96, `contentMaxWidth` 600(가로·큰 화면 본문 최대 폭, #46) |
+| `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconSmall` 18(글자 버튼 안 아이콘, #47), `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96, `contentMaxWidth` 600(가로·큰 화면 본문 최대 폭, #46) |
 | `PieceMapColors` | 조각 맵 색 규칙(`of(PieceCell)`) |
 | `PlaybackColors` | 재생 화면 색. `Played`(그라데이션), `Downloaded`(primaryLight 40%), `Track`, `Panel`, `SeekPanel` 등 |
 
@@ -81,7 +81,9 @@
 | `ProgressBar` | 받은 부분 그라데이션, 나머지 `outline` |
 | `PieceMap` | 위 조각 색 규칙 |
 | `EmptyState` | 아이콘 + 한 줄 설명 + 동작 버튼 |
-| `ConfirmDialog` | 삭제 등 되돌릴 수 없는 동작 확인 |
+| `ConfirmDialog` | 삭제 등 되돌릴 수 없는 동작 확인. 링크 추가처럼 입력이 있는 대화상자도 이 모양을 쓴다(`content` 칸, #47) |
+| `TextAction` | 어두운 표면 위 글자 버튼. 기본 `primaryLight`, 삭제는 `error`, 덜 중요한 동작은 `onSurfaceVariant` (#47) |
+| `LinkTextField` | 마그넷·.torrent 링크 입력창. 메인 입력 카드와 링크 추가 대화상자가 같이 쓴다 (#47) |
 
 ## 6. 화면별 변경
 
@@ -93,6 +95,14 @@
 | 저장 파일 관리 | 목록, 확장자 필터 | `AppTopBar`. 전체 용량 요약. 확장자 필터 칩. 파일 행: 형식 아이콘, 이름, 크기, 삭제. 삭제는 `ConfirmDialog` |
 | 재생 | VLC 화면 위 컨트롤 | 상·하단 그라데이션 가림막. 재생 막대는 재생 구간 그라데이션 + 받은 구간 표시. 아이콘 크기 통일. 더보기 메뉴는 하단 시트 |
 | 대화상자 | 기본 대화상자 | 링크 추가·삭제 확인을 `ConfirmDialog` 스타일로 통일 |
+
+#47에서 정한 세부:
+
+- 재생 목록 일괄 선택은 상단 바를 바꾸지 않고, 목록 위 선택 줄이 `surfaceContainer` 막대로 바뀌며 전체 선택 · 삭제 · 다운로드/중지를 한 줄에 둔다(화면 테스트가 세 동작이 같은 줄인지 확인). 아무것도 고르지 않으면 "전체 선택"만 보인다.
+- 항목 카드: 제목(2줄) → 상태 칩 + 받은 양·속도 → 진행 막대 → (자세히) 조각 맵, 받은 날짜, 마그넷 주소 한 줄(말줄임) → 이어보기 → [재생] [다운로드/중지/대기 취소] … [파일과 함께 삭제 아이콘].
+- 상단 바 오른쪽 동작(링크 추가·간단히)과 "닫기"는 화면 테스트가 글자로 찾으므로 글자 버튼(`TextAction`, `primaryLight`)으로 둔다.
+- 요약·칩·선택 줄도 목록과 함께 스크롤된다(가로 화면에서 목록이 가려지지 않게).
+- 저장 파일 행은 파일 이름을 제목으로, 폴더 경로를 보조 줄로 보여 준다.
 
 화면 테스트가 글자로 버튼을 찾으므로 다음 문구는 유지한다: 재생 목록, 저장 파일 관리, 전체 선택, 삭제, 다운로드, 중지, 재생, 메인, 닫기. 바꾸면 테스트도 같이 고친다.
 
