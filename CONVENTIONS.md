@@ -11,6 +11,7 @@
 | planning | 별도 세션 (`planning/`에서 연다) | `planning/` | 요구사항, 화면 정의, 사용자 흐름, 스펙 | 코드, 리소스 |
 | design | 서브에이전트 `design` | `design/` | `ui/theme/`, `res/`, 컴포저블의 시각 부분, `design/`의 토큰·시안 문서 | `engine/`, ViewModel, `StreamUiState`, `*Policy`·`*Plan` 로직 |
 | program | 서브에이전트 `program` | `program/` | `engine/`, ViewModel, 상태·정책 객체, 테스트, Gradle·릴리스 | 색·간격·문구를 임의로 새로 만드는 일 |
+| reviewer | 서브에이전트 `reviewer` | `.claude/agents/reviewer.md` | 병합 전 PR 검토, 판정과 발견 사항 보고 | 코드 수정, PR 승인·병합 |
 
 팀 디렉터리에는 지침과 그 팀의 문서 산출물을 둔다. 앱 코드는 팀 디렉터리가 아니라 `program/android/`에 있다.
 

@@ -89,6 +89,7 @@ AdMob. `BuildConfig.DEBUG`이면 Google 테스트 단위 ID, 릴리스면 실제
 | planning | `planning/`에서 연 별도 세션 | `planning/CLAUDE.md` | 요구사항, 화면 정의, 사용자 흐름, 스펙 |
 | design | 서브에이전트 `design` | `design/CLAUDE.md` | 테마·토큰·문구·화면의 시각 표현 |
 | program | 서브에이전트 `program` | `program/CLAUDE.md` | 엔진·상태·정책·테스트·빌드 |
+| reviewer | 서브에이전트 `reviewer` | `.claude/agents/reviewer.md` | 병합 전 PR 독립 코드 리뷰(코드는 고치지 않음) |
 
 - 루트에서 연 세션은 PM이다. 코드를 직접 고치지 않고 `program`·`design` 에이전트에 맡긴다. 서브에이전트로 실행 중이면 이 줄은 해당하지 않고 자기 팀 지침을 따른다.
 - 팀 디렉터리(`planning/`, `design/`, `program/`, `launch/`)에는 지침과 그 팀의 문서 산출물을 둔다. 앱 코드(Gradle 프로젝트)는 `program/android/`에 있다.
