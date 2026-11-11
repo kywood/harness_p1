@@ -75,7 +75,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val request = ++requestVersion
         val trimmed = magnetUrl.trim()
         if (trimmed.isEmpty()) {
-            _uiState.value = StreamUiState.Error("Magnet link cannot be empty")
+            _uiState.value = StreamUiState.Error(getApplication<Application>().getString(com.example.torrentstreamplayer.R.string.error_empty_link))
             return
         }
 
@@ -95,7 +95,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 if (request == requestVersion)
-                    _uiState.value = StreamUiState.Error(e.localizedMessage ?: "주소를 처리하지 못했습니다.")
+                    _uiState.value = StreamUiState.Error(if (e is com.example.torrentstreamplayer.engine.InvalidMagnetException)
+                        getApplication<Application>().getString(com.example.torrentstreamplayer.R.string.error_invalid_magnet)
+                    else e.localizedMessage ?: "주소를 처리하지 못했습니다.")
             }
         }
     }

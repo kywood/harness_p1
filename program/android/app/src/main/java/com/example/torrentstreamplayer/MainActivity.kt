@@ -233,7 +233,7 @@ fun MagnetLinkInputScreen(
                 .fillMaxWidth()
                 .height(50.dp)
         ) {
-            Text("Stream & Auto Play")
+            Text(androidx.compose.ui.res.stringResource(R.string.action_stream_play))
         }
         TextButton(onClick = onOpenHistory, modifier = Modifier.padding(top = 12.dp)) {
             Text("재생 목록")
@@ -314,7 +314,7 @@ fun BufferingScreen(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = (if (state.autoPlay) "Buffering: " else "다운로드: ") + "${state.progress.toInt()}%",
+                text = androidx.compose.ui.res.stringResource(if (state.autoPlay) R.string.label_buffering else R.string.label_downloading) + ": ${state.progress.toInt()}%",
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(

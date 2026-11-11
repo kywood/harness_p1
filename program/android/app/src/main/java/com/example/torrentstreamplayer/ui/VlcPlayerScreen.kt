@@ -40,6 +40,8 @@ import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.util.Locale
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
     /**
@@ -81,6 +83,7 @@ fun VlcPlayerScreen(
     onPlaybackCompleted: (Long) -> Unit = {}, onPlaybackExited: ((Long) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val activity = remember(context) { VideoOrientation.activity(context) }
@@ -179,7 +182,7 @@ fun VlcPlayerScreen(
                     }
                     MediaPlayer.Event.EncounteredError -> {
                         isPlaying = false
-                        errorMessage = "Playback failed. Check peers and try streaming again."
+                        errorMessage = resources.getString(R.string.player_error_playback)
                     }
                 }
             }
@@ -187,7 +190,7 @@ fun VlcPlayerScreen(
             PlayerHolder(vlc, mp)
         } catch (t: Throwable) {
             Log.e("VlcPlayerScreen", "Error initializing VLC", t)
-            errorMessage = "VLC Player Error: ${t.localizedMessage ?: "Failed to initialize native VLC player"}"
+            errorMessage = resources.getString(R.string.player_error_init, t.localizedMessage ?: resources.getString(R.string.failure_unknown))
             null
         }
     }
@@ -301,7 +304,7 @@ fun VlcPlayerScreen(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Button(onClick = { exitPlayback() }) {
-                    Text("Go Back")
+                    Text(stringResource(R.string.action_go_back))
                 }
             }
         } else if (holder != null) {
@@ -329,11 +332,11 @@ fun VlcPlayerScreen(
                                 media.release()
                                 holder.mediaPlayer.play()
                             } else {
-                                errorMessage = "Video file not found on disk."
+                                errorMessage = ctx.getString(R.string.player_error_file_missing)
                             }
                         } catch (t: Throwable) {
                             Log.e("VlcPlayerScreen", "Error attaching video layout or starting media", t)
-                            errorMessage = "VLC Playback Error: ${t.localizedMessage}"
+                            errorMessage = ctx.getString(R.string.player_error_start, t.localizedMessage ?: ctx.getString(R.string.failure_unknown))
                         }
                     }
                 },
@@ -389,7 +392,7 @@ fun VlcPlayerScreen(
                             IconButton(onClick = { exitPlayback() }) {
                                 Icon(
                                     imageVector = Icons.Default.ArrowBack,
-                                    contentDescription = "Back",
+                                    contentDescription = stringResource(R.string.cd_back),
                                     tint = Color.White
                                 )
                             }
@@ -507,7 +510,7 @@ fun VlcPlayerScreen(
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play",
+                                    contentDescription = stringResource(R.string.cd_play),
                                     tint = Color.White,
                                     modifier = Modifier.size(48.dp)
                                 )

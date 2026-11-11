@@ -16,6 +16,7 @@ import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
 import java.io.File
 import com.example.torrentstreamplayer.meta.EngineSpec
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import com.example.torrentstreamplayer.meta.TorrentStorageDir
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -121,7 +122,7 @@ class TorrentEngine(private val context: Context) {
     ) {
         StrictMode.noteSlowCall("TorrentEngine.startStreaming")
         val key = try { MagnetIdentity.key(magnetUrl) }
-        catch (_: Exception) { onError("Invalid magnet link or info hash"); return }
+        catch (_: Exception) { onError(TorrentFailure.INVALID_MAGNET.text(context)); return }
         stop()
         val run = activeRun
         val cache = TorrentCache(stateRoot, key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
@@ -151,7 +152,7 @@ class TorrentEngine(private val context: Context) {
 
                 if (run != activeRun) return@Thread
                 if (metadataBytes == null || metadataBytes.isEmpty()) {
-                    onError("Failed to fetch torrent metadata within timeout. Please check your network or peer availability.")
+                    onError(TorrentFailure.METADATA_TIMEOUT.text(context))
                     return@Thread
                 }
 
@@ -163,7 +164,7 @@ class TorrentEngine(private val context: Context) {
                 }
 
                 if (torrentInfo == null) {
-                    onError("Failed to decode torrent metadata.")
+                    onError(TorrentFailure.METADATA_DECODE.text(context))
                     return@Thread
                 }
 
@@ -189,7 +190,7 @@ class TorrentEngine(private val context: Context) {
                 }
 
                 if (bestFileIndex == -1) {
-                    onError("No valid video file found in torrent.")
+                    onError(TorrentFailure.NO_VIDEO.text(context))
                     return@Thread
                 }
 
@@ -257,7 +258,7 @@ class TorrentEngine(private val context: Context) {
                     handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting sequential download flag", t)
-                    onError("Failed to enable sequential download.")
+                    onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
                     return@Thread
                 }
 
@@ -286,7 +287,7 @@ class TorrentEngine(private val context: Context) {
                     handle.piecePriority(lastPieceIndex, Priority.TOP_PRIORITY)
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting piece priorities", t)
-                    onError("Failed to configure video download priorities.")
+                    onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
                     return@Thread
                 }
 
@@ -357,7 +358,7 @@ class TorrentEngine(private val context: Context) {
 
             } catch (t: Throwable) {
                 Log.e(TAG, "Unhandled error in torrent streaming thread", t)
-                if (run == activeRun) onError("Torrent engine error: ${t.localizedMessage ?: "Unknown error"}")
+                if (run == activeRun) onError(TorrentFailure.ENGINE.text(context, t.localizedMessage))
             }
         }.also { it.start() }
     }

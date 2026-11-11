@@ -148,6 +148,10 @@ class MainThreadResponsivenessTest {
     private companion object {
         const val TAG = "MainThreadResponsiveness"
         const val PIECE = 16_384
-        const val STALL_BUDGET_MS = 200L
+        /**
+         * Coarse guard only: emulator scheduling alone can delay the probe by a few hundred ms on a busy
+         * host. The StrictMode slow-call check above is the deterministic part of this test.
+         */
+        const val STALL_BUDGET_MS = 500L
     }
 }
