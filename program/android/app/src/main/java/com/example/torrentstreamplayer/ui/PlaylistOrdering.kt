@@ -1,7 +1,11 @@
 package com.example.torrentstreamplayer.ui
+import androidx.annotation.StringRes
+import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.SavedMagnet
-enum class PlaylistSort(val label: String) { RECENT_PLAY("최근 재생순"), RECEIVED("받은 날짜순") }
-enum class PlaylistFilter(val label: String) { ALL("모두"), COMPLETE("다운로드 완료"), INCOMPLETE("다운로드 미완료") }
+enum class PlaylistSort(@StringRes val label: Int) { RECENT_PLAY(R.string.sort_recent_play), RECEIVED(R.string.sort_received) }
+enum class PlaylistFilter(@StringRes val label: Int) {
+    ALL(R.string.filter_all), COMPLETE(R.string.filter_complete), INCOMPLETE(R.string.filter_incomplete)
+}
 internal object PlaylistOrdering {
     fun downloadTargets(entries: List<SavedMagnet>, selected: Set<String>): List<SavedMagnet> =
         entries.filter { it.magnet in selected && !complete(it) }

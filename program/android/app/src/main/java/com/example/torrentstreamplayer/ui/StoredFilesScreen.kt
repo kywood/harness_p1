@@ -2,26 +2,69 @@ package com.example.torrentstreamplayer.ui
 
 import android.text.format.Formatter
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.StoredTorrentFile
+import com.example.torrentstreamplayer.ui.components.AppTopBar
+import com.example.torrentstreamplayer.ui.components.ConfirmDialog
+import com.example.torrentstreamplayer.ui.components.EmptyState
+import com.example.torrentstreamplayer.ui.theme.Shapes
+import com.example.torrentstreamplayer.ui.theme.Sizes
+import com.example.torrentstreamplayer.ui.theme.Spacing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** 저장 파일 관리: 받은 영상과 암호화된 진행 정보 파일을 확장자별로 보고 지운다. */
 @Composable
 fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
     deleteFile: (String) -> Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var bulkBusy by remember { mutableStateOf(false) }
@@ -36,84 +79,161 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
     var deleting by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var pending by remember { mutableStateOf<StoredTorrentFile?>(null) }
+    val idle = !loading && !deleting && !bulkBusy
     BackHandler(onBack = onBack)
     LaunchedEffect(visibleFiles) { selected = selected.intersect(visibleFiles.map { it.path }.toSet()) }
     LaunchedEffect(refresh) {
         loading = true
         error = null
         try { files = withContext(Dispatchers.IO) { loadFiles() } }
-        catch (e: Exception) { error = e.localizedMessage ?: "파일 목록을 읽지 못했습니다." }
+        catch (e: Exception) { error = e.localizedMessage ?: resources.getString(R.string.stored_files_load_error) }
         finally { loading = false }
     }
-    Scaffold(topBar = {
-        TopAppBar(title = { Text("저장 파일") },
-            navigationIcon = { TextButton(onClick = onBack) { Text("닫기") } },
-            actions = { TextButton(onClick = { refresh++ }, enabled = !loading && !deleting && !bulkBusy) {
-                Text("새로고침")
-            } })
-    }) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("다운로드 파일과 암호화된 진행 정보",
-                style = MaterialTheme.typography.bodyMedium)
-            Text("${visibleFiles.size}개 · " + Formatter.formatFileSize(context, visibleFiles.sumOf { it.size }),
-                style = MaterialTheme.typography.headlineSmall)
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = extension == null, enabled = !loading && !deleting && !bulkBusy,
-                    onClick = { extension = null; selected = emptySet() }, label = { Text("전체") })
-                extensions.forEach { type ->
-                    FilterChip(selected = extension == type, enabled = !loading && !deleting && !bulkBusy,
-                        onClick = { extension = type; selected = emptySet() },
-                        label = { Text(if (type.isEmpty()) "확장자 없음" else ".$type") })
-                }
+    Column(Modifier.fillMaxSize()) {
+        AppTopBar(stringResource(R.string.action_open_stored_files), onBack = onBack,
+            backLabel = stringResource(R.string.action_close)) {
+            IconButton(onClick = { refresh++ }, enabled = idle) {
+                Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.action_refresh),
+                    tint = if (idle) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline)
             }
-            if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
-            if (!loading && files.isEmpty()) Text("저장된 파일이 없습니다.")
-            if (!loading && files.isNotEmpty() && visibleFiles.isEmpty()) Text("해당 확장자의 파일이 없습니다.")
-            BulkSelectionActions(visibleFiles.map { it.path }, selected, { selected = it }, { deleteFile(it) },
-                "선택한 실제 파일을 삭제합니다. 재생 중인 파일은 재생이 중단될 수 있으며 다시 받아야 할 수 있습니다.",
-                !loading && !deleting, { bulkBusy = it }, { refresh++ })
-            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(visibleFiles, key = { it.path }) { file ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            Text(file.name, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                            Checkbox(checked = file.path in selected, enabled = !deleting && !bulkBusy && !loading,
-                                onCheckedChange = { selected = BulkSelection.toggle(selected, file.path, it) })
-                            }
-                            Text(file.path, style = MaterialTheme.typography.bodySmall)
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text(Formatter.formatFileSize(context, file.size))
-                                TextButton(onClick = { pending = file }, enabled = !deleting && !bulkBusy) { Text("삭제") }
+        }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            LazyColumn(
+                Modifier.widthIn(max = Sizes.contentMaxWidth).fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = Spacing.screenGutter, vertical = Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm)
+            ) {
+                item(key = "summary") {
+                    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        Text(stringResource(R.string.stored_files_summary, visibleFiles.size,
+                            Formatter.formatFileSize(context, visibleFiles.sumOf { it.size })),
+                            style = MaterialTheme.typography.headlineSmall)
+                        Text(stringResource(R.string.stored_files_note), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    }
+                }
+                item(key = "extensions") {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        ExtensionChip(stringResource(R.string.filter_all), extension == null, idle) {
+                            extension = null
+                            selected = emptySet()
+                        }
+                        extensions.forEach { type ->
+                            ExtensionChip(if (type.isEmpty()) stringResource(R.string.stored_files_no_extension)
+                                else stringResource(R.string.stored_files_extension, type), extension == type, idle) {
+                                extension = type
+                                selected = emptySet()
                             }
                         }
                     }
+                }
+                if (loading) item(key = "loading") {
+                    LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.tertiary,
+                        trackColor = MaterialTheme.colorScheme.outline)
+                }
+                if (visibleFiles.isNotEmpty()) item(key = "selection") {
+                    BulkSelectionActions(visibleFiles.map { it.path }, selected, { selected = it }, { deleteFile(it) },
+                        stringResource(R.string.stored_files_bulk_delete_message),
+                        !loading && !deleting, { bulkBusy = it }, { refresh++ })
+                }
+                if (!loading && visibleFiles.isEmpty()) item(key = "empty") {
+                    if (files.isEmpty()) EmptyState(ImageVector.vectorResource(R.drawable.ic_folder),
+                        stringResource(R.string.stored_files_empty))
+                    else EmptyState(Icons.Filled.Info, stringResource(R.string.stored_files_filter_empty))
+                }
+                items(visibleFiles, key = { it.path }) { file ->
+                    StoredFileRow(file, Formatter.formatFileSize(context, file.size), file.path in selected,
+                        checkEnabled = !deleting && !bulkBusy && !loading, deleteEnabled = !deleting && !bulkBusy,
+                        onCheckedChange = { selected = BulkSelection.toggle(selected, file.path, it) },
+                        onDelete = { pending = file })
                 }
             }
         }
     }
     pending?.let { file ->
-        AlertDialog(onDismissRequest = { if (!deleting) pending = null },
-            title = { Text("이 파일을 삭제할까요?") },
-            text = { Text(file.path + "\n\n삭제하면 해당 파일을 다시 받아야 할 수 있습니다.") },
-            dismissButton = { TextButton(onClick = { pending = null }, enabled = !deleting) { Text("취소") } },
-            confirmButton = {
-                TextButton(enabled = !deleting, onClick = {
-                    scope.launch {
-                        deleting = true
-                        try {
-                            check(withContext(Dispatchers.IO) { deleteFile(file.path) }) {
-                                "파일이 없거나 삭제할 수 없습니다."
-                            }
-                            pending = null
-                            refresh++
-                        } catch (e: Exception) { error = e.localizedMessage ?: "삭제 실패"; pending = null }
-                        finally { deleting = false }
+        ConfirmDialog(
+            title = stringResource(R.string.stored_files_delete_title),
+            message = stringResource(R.string.stored_files_delete_message, file.name.substringAfterLast('/')),
+            confirmLabel = stringResource(if (deleting) R.string.action_deleting else R.string.action_delete),
+            dismissLabel = stringResource(R.string.action_cancel),
+            onConfirm = {
+                scope.launch {
+                    deleting = true
+                    try {
+                        check(withContext(Dispatchers.IO) { deleteFile(file.path) }) {
+                            resources.getString(R.string.stored_files_delete_missing)
+                        }
+                        pending = null
+                        refresh++
+                    } catch (e: Exception) {
+                        error = e.localizedMessage ?: resources.getString(R.string.stored_files_delete_failed)
+                        pending = null
+                    } finally {
+                        deleting = false
                     }
-                }) { Text(if (deleting) "삭제 중…" else "삭제") }
-            })
+                }
+            },
+            onDismiss = { pending = null },
+            enabled = !deleting
+        )
+    }
+}
+
+@Composable
+private fun ExtensionChip(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        enabled = enabled,
+        label = { Text(label, style = MaterialTheme.typography.labelLarge) },
+        shape = Shapes.pill,
+        border = null,
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = colors.surfaceContainer,
+            labelColor = colors.onSurface,
+            selectedContainerColor = colors.primary,
+            selectedLabelColor = colors.onPrimary
+        )
+    )
+}
+
+/** 저장 파일 한 줄: 형식 아이콘, 이름, 크기, 선택, 삭제. */
+@Composable
+private fun StoredFileRow(
+    file: StoredTorrentFile,
+    sizeText: String,
+    checked: Boolean,
+    checkEnabled: Boolean,
+    deleteEnabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onDelete: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(color = colors.surface, shape = Shapes.medium, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = Spacing.lg, end = Spacing.xs, top = Spacing.sm, bottom = Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            Box(Modifier.size(Sizes.iconLarge).background(colors.surfaceContainer, Shapes.small),
+                contentAlignment = Alignment.Center) {
+                Icon(ImageVector.vectorResource(StoredFileKind.of(file.name).icon), contentDescription = null,
+                    tint = colors.tertiary, modifier = Modifier.size(Sizes.icon))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Text(file.name.substringAfterLast('/'), style = MaterialTheme.typography.titleSmall, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis)
+                Text(sizeText, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
+                Text(file.name.substringBeforeLast('/', ""), style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Checkbox(checked = checked, enabled = checkEnabled, onCheckedChange = onCheckedChange,
+                colors = CheckboxDefaults.colors(checkedColor = colors.tertiary, checkmarkColor = colors.background,
+                    uncheckedColor = colors.onSurfaceVariant))
+            IconButton(onClick = onDelete, enabled = deleteEnabled) {
+                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.action_delete),
+                    tint = if (deleteEnabled) colors.onSurfaceVariant else colors.outline)
+            }
+        }
     }
 }

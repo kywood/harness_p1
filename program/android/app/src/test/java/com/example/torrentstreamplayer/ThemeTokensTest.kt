@@ -44,6 +44,24 @@ class ThemeTokensTest {
         }
     }
 
+    /** sRGB 성분을 직선으로 섞는다(Compose 그라데이션이 그리는 방식). */
+    private fun mix(a: Color, b: Color, t: Float): Color =
+        Color(a.red + (b.red - a.red) * t, a.green + (b.green - a.green) * t, a.blue + (b.blue - a.blue) * t)
+
+    @Test fun whiteLabelIsReadableAcrossTheWholeButtonGradient() {
+        val worst = (0..10).minOf { step ->
+            contrast(BrandColors.OnPrimary, mix(BrandColors.ButtonGradientStart, BrandColors.ButtonGradientEnd, step / 10f))
+        }
+        assertTrue("button gradient worst contrast $worst must be at least 4.5:1", worst >= 4.5)
+        assertEquals(5.28, worst, 0.01)
+    }
+
+    @Test fun primaryButtonUsesTheButtonGradient() {
+        val buttons = File("src/main/java/com/example/torrentstreamplayer/ui/components/Buttons.kt").readText()
+        assertTrue(buttons.contains("brandButtonGradient"))
+        assertFalse("the bright brand gradient is for progress, not for white labels", buttons.contains("brandGradient,"))
+    }
+
     @Test fun documentedContrastValuesMatchTheTokens() {
         assertEquals(16.5, contrast(BrandColors.OnSurface, BrandColors.Background), 0.1)
         assertEquals(4.9, contrast(BrandColors.OnPrimary, BrandColors.Primary), 0.1)

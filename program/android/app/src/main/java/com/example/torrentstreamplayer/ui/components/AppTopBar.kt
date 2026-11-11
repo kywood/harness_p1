@@ -23,12 +23,17 @@ import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
 
-/** 상단 바: 뒤로 버튼 + 제목 + 오른쪽 동작. `surface` 배경. 상태 표시줄 여백은 바깥 Scaffold가 맡는다. */
+/**
+ * 상단 바: 뒤로 버튼 + 제목 + 오른쪽 동작. `surface` 배경. 상태 표시줄 여백은 바깥 Scaffold가 맡는다.
+ * [backLabel]을 주면 뒤로 화살표 대신 그 글자 버튼("닫기")을 둔다.
+ */
 @Composable
 fun AppTopBar(
     title: String,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    backLabel: String? = null,
+    backEnabled: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
     Surface(color = MaterialTheme.colorScheme.surface, modifier = modifier.fillMaxWidth()) {
@@ -36,8 +41,12 @@ fun AppTopBar(
             Modifier.heightIn(min = Sizes.touchTarget + Spacing.lg).padding(horizontal = Spacing.xs),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (onBack != null) IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+            if (onBack != null && backLabel != null) {
+                TextAction(backLabel, onBack, enabled = backEnabled)
+            } else if (onBack != null) {
+                IconButton(onClick = onBack, enabled = backEnabled) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
+                }
             }
             Text(
                 title,

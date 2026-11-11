@@ -18,6 +18,13 @@ object BrandColors {
     val OnAccent = Color(0xFF00281C)
     val Error = Color(0xFFFF6B7A)
 
-    /** 주요 버튼, 진행 막대의 받은 부분, 완료 조각에만 쓴다. */
+    /** 진행 막대의 받은 부분, 완료 조각에 쓴다. 가운데가 밝아 흰 글자를 올리지 않는다. */
     val brandGradient: Brush = Brush.horizontalGradient(listOf(Primary, Accent))
+
+    /** 주요 버튼 그라데이션 양 끝. 흰 글자 대비가 그라데이션 어디서나 4.5:1 이상(최저 5.28:1). */
+    val ButtonGradientStart = Color(0xFF2456D2)
+    val ButtonGradientEnd = Color(0xFF0E7A62)
+
+    /** 주요 버튼(`PrimaryButton`) 배경. */
+    val brandButtonGradient: Brush = Brush.horizontalGradient(listOf(ButtonGradientStart, ButtonGradientEnd))
 }

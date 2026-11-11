@@ -10,6 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -23,7 +25,7 @@ fun PieceMap(snapshot: PieceMapSnapshot, modifier: Modifier = Modifier,
     labelColor: Color = MaterialTheme.colorScheme.onSurface, compact: Boolean = false, inlineInfo: Boolean = false,
     showInfo: Boolean = true) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (!compact && !inlineInfo) Text("다운로드 조각 · 파일 용량 기준", color = labelColor, style = MaterialTheme.typography.labelSmall)
+        if (!compact && !inlineInfo) Text(stringResource(R.string.piece_map_title), color = labelColor, style = MaterialTheme.typography.labelSmall)
         Canvas(Modifier.fillMaxWidth().height(12.dp).clip(RoundedCornerShape(3.dp))) {
             drawRect(PieceMapColors.Missing)
             if (snapshot.cells.isNotEmpty()) {
@@ -36,17 +38,21 @@ fun PieceMap(snapshot: PieceMapSnapshot, modifier: Modifier = Modifier,
         }
         if (!compact) Row(Modifier.fillMaxWidth().then(if (inlineInfo) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (inlineInfo) Text(if (snapshot.total == 0) "피스 정보 확인 전" else "피스 ${snapshot.verified}/${snapshot.total} · 파일 용량 기준",
+            if (inlineInfo) Text(if (snapshot.total == 0) stringResource(R.string.piece_map_pending)
+                else stringResource(R.string.piece_map_inline, snapshot.verified, snapshot.total),
                 color = labelColor, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-            PieceLegend("완료", PieceMapColors.Verified, labelColor)
-            PieceLegend("1–33%", PieceMapColors.Low, labelColor)
-            PieceLegend("34–66%", PieceMapColors.Medium, labelColor)
-            PieceLegend("67–99%", PieceMapColors.High, labelColor)
-            PieceLegend("미완료", PieceMapColors.Missing, labelColor)
+            PieceLegend(stringResource(R.string.label_complete), PieceMapColors.Verified, labelColor)
+            PieceLegend(stringResource(R.string.piece_legend_low), PieceMapColors.Low, labelColor)
+            PieceLegend(stringResource(R.string.piece_legend_medium), PieceMapColors.Medium, labelColor)
+            PieceLegend(stringResource(R.string.piece_legend_high), PieceMapColors.High, labelColor)
+            PieceLegend(stringResource(R.string.label_incomplete), PieceMapColors.Missing, labelColor)
         }
-        if (!inlineInfo && showInfo) Text(if (snapshot.total == 0) "피스 정보 확인 전" else
-            "파일 앞 → 뒤 · 피스 " + snapshot.verified + " / " + snapshot.total +
-                if (snapshot.total > snapshot.cells.size) " · 한 칸에 여러 피스" else "",
+        if (!inlineInfo && showInfo) Text(when {
+            snapshot.total == 0 -> stringResource(R.string.piece_map_pending)
+            snapshot.total > snapshot.cells.size ->
+                stringResource(R.string.piece_map_info_grouped, snapshot.verified, snapshot.total)
+            else -> stringResource(R.string.piece_map_info, snapshot.verified, snapshot.total)
+        },
             color = labelColor, style = MaterialTheme.typography.labelSmall)
     }
 }

@@ -10,6 +10,7 @@
     <string name="action_ad_privacy">광고 개인정보 설정</string>
     <string name="cd_app_logo">PiecePlay 로고</string>
     <string name="label_link_input">마그넷 또는 .torrent 다운로드 링크</string>
+    <string name="label_link_input_short">마그넷 또는 .torrent 링크</string>
     <string name="action_open_playlist">재생 목록</string>
     <string name="action_open_stored_files">저장 파일 관리</string>
     <string name="main_tagline">받으면서 바로 재생</string>
@@ -53,4 +54,84 @@
     <string name="action_go_back">돌아가기</string>
     <string name="cd_back">뒤로</string>
     <string name="cd_play">재생</string>
+    <!-- Common actions and states -->
+    <string name="action_close">닫기</string>
+    <string name="action_cancel">취소</string>
+    <string name="action_delete">삭제</string>
+    <string name="action_deleting">삭제 중…</string>
+    <string name="action_download">다운로드</string>
+    <string name="action_stop">중지</string>
+    <string name="action_play">재생</string>
+    <string name="action_retry">다시 시도</string>
+    <string name="action_refresh">새로고침</string>
+    <string name="action_add_link">링크 추가</string>
+    <string name="label_complete">완료</string>
+    <string name="label_incomplete">미완료</string>
+    <string name="filter_all">전체</string>
+
+    <!-- Playlist -->
+    <string name="action_simple">간단히</string>
+    <string name="action_detailed">자세히</string>
+    <string name="action_stop_download">다운로드 중지</string>
+    <string name="action_stop_all">전체 중지</string>
+    <string name="action_cancel_queue">대기 취소</string>
+    <string name="action_delete_with_file">파일과 함께 삭제</string>
+    <string name="action_reset_position">위치 초기화</string>
+    <string name="playlist_summary">다운로드 중 %1$d개</string>
+    <string name="playlist_summary_queued">다운로드 중 %1$d개 · 대기 %2$d개</string>
+    <string name="playlist_storage_note">최근 50개를 암호화해 보관합니다.</string>
+    <string name="playlist_load_error">목록을 읽지 못했습니다.</string>
+    <string name="playlist_empty">재생 목록이 비어 있습니다.</string>
+    <string name="playlist_filter_empty">해당 조건의 영상이 없습니다.</string>
+    <string name="playlist_added_at">받은 날짜 %1$s</string>
+    <string name="playlist_resume">이어보기 %1$s</string>
+    <string name="playlist_reset_failed">위치를 초기화하지 못했습니다.</string>
+    <string name="playlist_sort">정렬: %1$s</string>
+    <string name="playlist_filter">표시: %1$s</string>
+    <string name="sort_recent_play">최근 재생순</string>
+    <string name="sort_received">받은 날짜순</string>
+    <string name="filter_complete">다운로드 완료</string>
+    <string name="filter_incomplete">다운로드 미완료</string>
+    <string name="status_downloading">다운로드 중</string>
+    <string name="status_queued">다운로드 대기 중</string>
+    <string name="status_failed">실패</string>
+    <string name="playlist_delete_title">영상 파일과 함께 삭제할까요?</string>
+    <string name="playlist_delete_message">이 항목의 다운로드를 중지하고 영상·메타데이터·이어받기 기록을 모두 삭제합니다. 복구할 수 없습니다.</string>
+    <string name="playlist_delete_failed">관련 파일을 삭제하지 못했습니다.</string>
+    <string name="playlist_bulk_delete_message">선택한 항목의 다운로드를 중지하고 영상·메타데이터·이어받기 기록을 함께 삭제합니다. 복구할 수 없습니다.</string>
+
+    <!-- Bulk selection -->
+    <string name="bulk_select_all">전체 선택</string>
+    <string name="bulk_delete_selected">선택 삭제 (%1$d)</string>
+    <string name="bulk_delete_title">%1$d개 항목을 삭제할까요?</string>
+    <string name="bulk_delete_partial">%1$d개 삭제 실패. 실패한 항목은 선택을 유지합니다.</string>
+
+    <!-- Quick download (링크 추가) -->
+    <string name="quick_download_invalid">주소를 확인해 주세요.</string>
+
+    <!-- Stored files -->
+    <string name="stored_files_note">다운로드 파일과 암호화된 진행 정보</string>
+    <string name="stored_files_summary">%1$d개 · %2$s</string>
+    <string name="stored_files_no_extension">확장자 없음</string>
+    <string name="stored_files_extension" translatable="false">.%1$s</string>
+    <string name="stored_files_empty">저장된 파일이 없습니다.</string>
+    <string name="stored_files_filter_empty">해당 확장자의 파일이 없습니다.</string>
+    <string name="stored_files_load_error">파일 목록을 읽지 못했습니다.</string>
+    <string name="stored_files_bulk_delete_message">선택한 실제 파일을 삭제합니다. 재생 중인 파일은 재생이 중단될 수 있으며 다시 받아야 할 수 있습니다.</string>
+    <string name="stored_files_delete_title">이 파일을 삭제할까요?</string>
+    <string name="stored_files_delete_message">%1$s
+
+삭제하면 해당 파일을 다시 받아야 할 수 있습니다.</string>
+    <string name="stored_files_delete_missing">파일이 없거나 삭제할 수 없습니다.</string>
+    <string name="stored_files_delete_failed">삭제하지 못했습니다.</string>
+
+    <!-- Piece map -->
+    <string name="piece_map_title">다운로드 조각 · 파일 용량 기준</string>
+    <string name="piece_map_pending">피스 정보 확인 전</string>
+    <string name="piece_map_inline">피스 %1$d/%2$d · 파일 용량 기준</string>
+    <string name="piece_map_info">파일 앞 → 뒤 · 피스 %1$d / %2$d</string>
+    <string name="piece_map_info_grouped">파일 앞 → 뒤 · 피스 %1$d / %2$d · 한 칸에 여러 피스</string>
+    <string name="piece_legend_low" formatted="false" translatable="false">1–33%</string>
+    <string name="piece_legend_medium" formatted="false" translatable="false">34–66%</string>
+    <string name="piece_legend_high" formatted="false" translatable="false">67–99%</string>
 </resources>
