@@ -43,6 +43,7 @@ class TorrentEngine(private val context: Context) {
     private var priorityWindow = IntRange.EMPTY
     private var backgroundPiecePriority = -1
     private var playbackByteOffset = 0L
+    @Volatile private var playbackDurationMs = 0L
     @Volatile private var startupPieces: Set<Int> = emptySet()
     private var startupIndex: StartupIndexState? = null
     private val readDemands = ReadDemandRegistry()
@@ -387,12 +388,13 @@ class TorrentEngine(private val context: Context) {
         val requestedPiece = (absoluteTorrentOffset / pieceLength).toInt()
             .coerceIn(firstPieceIndex, lastPieceIndex)
         val startPieceIndex = SequentialPiecePlan.nextMissing(requestedPiece, lastPieceIndex, handle::havePiece) ?: requestedPiece
-        val window = SequentialPiecePlan.window(startPieceIndex, lastPieceIndex)
+        val buffer = PlaybackBuffer.of(pieceLength, PlaybackBuffer.bytesPerSecond(selectedFileLength, playbackDurationMs) ?: EngineSpec.DEFAULT_BYTES_PER_SECOND)
+        val window = SequentialPiecePlan.window(startPieceIndex, lastPieceIndex, buffer)
         val offsets = readDemands.offsets().filter { it in 0 until selectedFileLength }
         val pins = startupPieces + offsets.flatMap { offset ->
             val first = ((selectedFileStartOffset + offset) / pieceLength).toInt()
             val missing = SequentialPiecePlan.nextMissing(first, lastPieceIndex, handle::havePiece) ?: first
-            SequentialPiecePlan.window(missing, lastPieceIndex).toList()
+            SequentialPiecePlan.window(missing, lastPieceIndex, buffer).toList()
         }
         val background = (offsets.ifEmpty { listOf(playbackByteOffset) }).minOf { position ->
             PlaybackDownloadPolicy.backgroundPriority(position, selectedFileLength,
@@ -417,7 +419,7 @@ class TorrentEngine(private val context: Context) {
                 handle.piecePriority(p, Priority.TOP_PRIORITY); handle.setPieceDeadline(p, 1000)
             }
             priorityPins = pins
-            for (request in SequentialPiecePlan.requests(startPieceIndex, lastPieceIndex, handle::havePiece)) {
+            for (request in SequentialPiecePlan.requests(startPieceIndex, lastPieceIndex, buffer, handle::havePiece)) {
                 handle.piecePriority(request.piece, Priority.fromSwig(request.priority))
                 handle.setPieceDeadline(request.piece, request.deadlineMs)
             }
@@ -451,6 +453,11 @@ class TorrentEngine(private val context: Context) {
         if (seekRequests.isPriorityCurrent(generation)) readDemands.open(offset) else -1
     internal fun closeRead(id: Long) { readDemands.close(id) }
 
+    /** The player's video length; sizes the urgent window from the real bitrate. */
+    @Synchronized internal fun updatePlaybackDuration(durationMs: Long) {
+        StrictMode.noteSlowCall("TorrentEngine.updatePlaybackDuration")
+        playbackDurationMs = durationMs
+    }
     @Synchronized fun beginSeek(targetMs: Long = 0, durationMs: Long = 0) {
         StrictMode.noteSlowCall("TorrentEngine.beginSeek")
         seekRequests.beginSeek()

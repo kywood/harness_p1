@@ -14,9 +14,16 @@ class VideoPlaybackPolicyTest {
         assertTrue(VideoPlaybackPolicy.hardwareDecoding("qcom"))
     }
     @Test fun lateFramesCanBeSkippedToCatchUpWithPlayback() {
-        assertTrue(VideoPlaybackPolicy.options.contains("--drop-late-frames"))
-        assertTrue(VideoPlaybackPolicy.options.contains("--skip-frames"))
-        assertFalse(VideoPlaybackPolicy.options.contains("--no-drop-late-frames"))
-        assertFalse(VideoPlaybackPolicy.options.contains("--no-skip-frames"))
+        listOf(true, false).forEach { debug ->
+            val options = VideoPlaybackPolicy.options(debug)
+            assertTrue(options.contains("--drop-late-frames"))
+            assertTrue(options.contains("--skip-frames"))
+            assertFalse(options.contains("--no-drop-late-frames"))
+            assertFalse(options.contains("--no-skip-frames"))
+        }
+    }
+    @Test fun verboseNativeLoggingIsOnlyForDebugBuilds() {
+        assertTrue(VideoPlaybackPolicy.options(debug = true).contains("-vvv"))
+        assertFalse(VideoPlaybackPolicy.options(debug = false).contains("-vvv"))
     }
 }
