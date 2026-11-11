@@ -62,7 +62,7 @@ import kotlinx.coroutines.withContext
 /** 저장 파일 관리: 받은 영상과 암호화된 진행 정보 파일을 확장자별로 보고 지운다. */
 @Composable
 fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
-    deleteFile: (String) -> Boolean, onBack: () -> Unit) {
+    deleteFile: suspend (String) -> Boolean, onBack: () -> Unit) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val scope = rememberCoroutineScope()

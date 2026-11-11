@@ -81,7 +81,7 @@ class MainThreadResponsivenessTest {
             assertTrue("main thread stalled: $stalls", stalls.values.all { it < STALL_BUDGET_MS })
         } finally {
             instrumentation.runOnMainSync { model.stopStream(); model.downloads.stop() }
-            model.downloads.awaitStoppedWrites()
+            model.downloads.awaitStoppedWrites(model.downloads.stoppedWriters())
         }
     }
 

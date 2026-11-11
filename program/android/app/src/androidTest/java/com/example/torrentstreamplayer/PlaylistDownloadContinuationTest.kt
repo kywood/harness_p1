@@ -64,7 +64,7 @@ class PlaylistDownloadContinuationTest {
             assertEquals(StreamUiState.Idle, model.uiState.value)
         } finally {
             instrumentation.runOnMainSync { model.stopStream(); model.stopDownloads() }
-            model.downloads.awaitStoppedWrites(); root.deleteRecursively()
+            model.downloads.awaitStoppedWrites(model.downloads.stoppedWriters()); root.deleteRecursively()
         }
     }
 }

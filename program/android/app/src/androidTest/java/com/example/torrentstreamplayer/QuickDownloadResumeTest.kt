@@ -70,7 +70,7 @@ class QuickDownloadResumeTest {
         } finally {
             server.stop(); scope.cancel()
             instrumentation.runOnMainSync { model.stopStream(); model.stopDownloads() }
-            model.downloads.awaitStoppedWrites(); root.deleteRecursively()
+            model.downloads.awaitStoppedWrites(model.downloads.stoppedWriters()); root.deleteRecursively()
         }
     }
 }
