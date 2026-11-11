@@ -41,7 +41,35 @@ import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.util.Locale
 
-private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer)
+private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
+    /**
+     * VLC stop/release waits for its input thread, which can be blocked on a stream read for seconds.
+     * Views are detached on the main thread; the native teardown runs on a background thread.
+     */
+    fun releaseAsync(streamServer: TorrentStreamServer) {
+        try { mediaPlayer.detachViews() } catch (e: Exception) { Log.e("VlcPlayerScreen", "Error detaching VLC views", e) }
+        // Closing the stream first unblocks VLC's pending read so its stop() returns quickly.
+        RELEASER.execute { runCatching { streamServer.stop() }.onFailure { Log.e("VlcPlayerScreen", "Error stopping stream", it) } }
+        // Seeks posted earlier still touch mediaPlayer; schedule the release only after they have run.
+        EngineCommandQueue.shared.post { RELEASER.execute(::release) }
+    }
+
+    private fun release() {
+        try {
+            mediaPlayer.stop()
+            mediaPlayer.release()
+            libVlc.release()
+        } catch (e: Exception) {
+            Log.e("VlcPlayerScreen", "Error releasing VLC player", e)
+        }
+    }
+
+    private companion object {
+        val RELEASER: java.util.concurrent.ExecutorService = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+            Thread(task, "vlc-release").apply { isDaemon = true }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -171,17 +199,10 @@ fun VlcPlayerScreen(
         }
         lifecycle.addObserver(observer)
         onDispose {
-            streamServer.stop()
             lifecycle.removeObserver(observer)
             if (resumeApplied && totalLengthMs > 0) positionCallback(currentTimeMs, totalLengthMs)
-            try {
-                playerHolder?.mediaPlayer?.stop()
-                playerHolder?.mediaPlayer?.detachViews()
-                playerHolder?.mediaPlayer?.release()
-                playerHolder?.libVlc?.release()
-            } catch (e: Exception) {
-                Log.e("VlcPlayerScreen", "Error releasing VLC player", e)
-            }
+            if (playerHolder != null) playerHolder.releaseAsync(streamServer)
+            else EngineCommandQueue.shared.post { streamServer.stop() } // Player failed to start; only the server is open.
         }
     }
 
@@ -210,8 +231,12 @@ fun VlcPlayerScreen(
         if (holder == null || totalLengthMs <= 0) return
         val position = target.coerceIn(0, totalLengthMs)
         seekUi = seekUi.requested(position, totalLengthMs, currentTimeMs)
-        torrentEngine.beginSeek(position, totalLengthMs)
-        holder.mediaPlayer.time = position
+        val length = totalLengthMs
+        // beginSeek must precede VLC's new range request; both run in order on the engine queue.
+        EngineCommandQueue.shared.post {
+            torrentEngine.beginSeek(position, length)
+            holder.mediaPlayer.time = position
+        }
         currentTimeMs = position
         sliderPosition = position.toFloat() / totalLengthMs
     }

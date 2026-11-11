@@ -20,6 +20,7 @@ import com.example.torrentstreamplayer.engine.SavedMagnet
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val commands = EngineCommandQueue.shared
     private val engine = lazy { TorrentEngine(application.applicationContext) }
     private var sharedPlayback: TorrentEngine? = null
     val torrentEngine: TorrentEngine get() = sharedPlayback ?: engine.value
@@ -39,6 +40,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             downloads.stop(key)
             listOfNotNull(if (engine.isInitialized()) engine.value.selectedVideoFile else null) + downloads.protectedFiles()
         }
+        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
         if (engine.isInitialized()) engine.value.awaitStoppedWrites()
         downloads.awaitStoppedWrites()
         torrentEngine.deleteTorrentFiles(magnet, protectedFiles)
@@ -49,6 +51,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         { magnet, name -> withContext(Dispatchers.IO) { history.updateTitle(magnet, name) }; Unit }) })
     fun deleteStoredFile(path: String): Boolean {
         check(downloads.tasks.value.values.none { it.phase == DownloadPhase.RUNNING || it.phase == DownloadPhase.QUEUED }) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
+        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
         return torrentEngine.deleteStoredFile(path)
     }
 
@@ -115,12 +118,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = StreamUiState.Error(task?.error ?: "다운로드가 중지되었습니다.")
                     break
                 }
-                if (source.selectedVideoFile != null) {
+                // requestPlayback/isPlaybackReady take the engine lock and query libtorrent synchronously.
+                val next = withContext(commands.dispatcher) {
+                    val file = source.selectedVideoFile ?: return@withContext null
                     if (!focused) focused = source.requestPlayback()
-                    _uiState.value = if (source.isPlaybackReady()) StreamUiState.Playing(source.selectedVideoFile!!.name)
-                    else StreamUiState.Buffering(source.selectedVideoFile!!.name, source.selectedFileLength,
+                    if (source.isPlaybackReady()) StreamUiState.Playing(file.name)
+                    else StreamUiState.Buffering(file.name, source.selectedFileLength,
                         source.downloadProgress, source.downloadSpeedBytes)
-                    if (_uiState.value is StreamUiState.Playing) {
+                }
+                if (request != requestVersion) break
+                if (next != null) {
+                    _uiState.value = next
+                    if (next is StreamUiState.Playing) {
                         withContext(Dispatchers.IO) { runCatching { history.markPlayed(magnet) } }
                         break
                     }
@@ -164,12 +173,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun stopStream() {
         val shared = sharedPlayback
         sharedPlayback = null
-        if (shared != null) shared.releasePlaybackPriority()
+        if (shared != null) commands.post { shared.releasePlaybackPriority() }
         _activeKey.value?.let { downloads.release(it) }
         _activeKey.value = null
         inputJob?.cancel()
         requestVersion++
-        if (engine.isInitialized()) engine.value.stop()
+        if (engine.isInitialized()) engine.value.let { idle -> commands.post { idle.stop() } }
         _uiState.value = StreamUiState.Idle
     }
 
@@ -180,6 +189,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         downloads.stop()
-        if (engine.isInitialized()) engine.value.stop()
+        if (engine.isInitialized()) engine.value.let { idle -> commands.post { idle.stop() } }
     }
 }

@@ -10,7 +10,8 @@ internal data class DownloadTaskState(val key: String? = null, val speed: Long =
 internal class DownloadController(private val scope: CoroutineScope,
     private val createEngine: () -> TorrentEngine,
     private val save: suspend (String) -> Unit,
-    private val title: suspend (String, String) -> Unit) {
+    private val title: suspend (String, String) -> Unit,
+    private val commands: EngineCommandQueue = EngineCommandQueue.shared) {
     private val lazyEngine = lazy(createEngine)
     val engine get() = lazyEngine.value
     private val mutableState = MutableStateFlow(DownloadTaskState())
@@ -29,7 +30,8 @@ internal class DownloadController(private val scope: CoroutineScope,
                 mutableState.value = DownloadTaskState(key = key)
                 save(resolved)
                 if (request != generation) return@launch
-                engine.startStreaming(resolved, onMetadataReceived = { name, _ ->
+                // startStreaming takes the engine lock; run it on the engine queue, never on the main thread.
+                withContext(commands.dispatcher) { engine.startStreaming(resolved, onMetadataReceived = { name, _ ->
                     scope.launch {
                         if (request != generation) return@launch
                         mutableState.value = mutableState.value.copy(title = name)
@@ -43,26 +45,33 @@ internal class DownloadController(private val scope: CoroutineScope,
                 }, onError = { error ->
                     scope.launch {
                         if (request == generation) {
-                            engine.stop()
+                            stopEngine()
                             mutableState.value = DownloadTaskState(error = error)
                         }
                     }
-                }, prioritizePlayback = false)
+                }, prioritizePlayback = false) }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (error: Exception) {
                 if (request == generation) {
-                    engine.stop()
+                    stopEngine()
                     mutableState.value = DownloadTaskState(error = error.localizedMessage ?: "다운로드를 시작하지 못했습니다.")
                 }
             }
         }
     }
-    fun awaitStoppedWrites() { if (lazyEngine.isInitialized()) engine.awaitStoppedWrites() }
+    /** Call from a background thread: waits for queued engine stops, then for their disk writes. */
+    fun awaitStoppedWrites() {
+        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
+        if (lazyEngine.isInitialized()) engine.awaitStoppedWrites()
+    }
+    private fun stopEngine() {
+        if (lazyEngine.isInitialized()) engine.let { stopping -> commands.post { stopping.stop() } }
+    }
     fun stop() {
         generation++
         job?.cancel()
         job = null
-        if (lazyEngine.isInitialized()) engine.stop()
+        stopEngine()
         mutableState.value = DownloadTaskState()
     }
 }
