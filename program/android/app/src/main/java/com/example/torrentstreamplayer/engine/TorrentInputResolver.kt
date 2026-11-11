@@ -34,15 +34,15 @@ internal class TorrentInputResolver(
         return ResolvedTorrentInput(magnet, bytes)
     }
     companion object {
-        const val MAX_BYTES = 2 * 1024 * 1024
+        const val MAX_BYTES = NetworkSpec.TORRENT_MAX_BYTES
         private fun download(initial: URL): ByteArray {
             var url = initial
-            repeat(6) {
+            repeat(NetworkSpec.TORRENT_MAX_REQUESTS) {
                 require(url.protocol in listOf("http", "https"))
                 val connection = url.openConnection() as HttpURLConnection
                 try {
-                    connection.connectTimeout = 10_000
-                    connection.readTimeout = 10_000
+                    connection.connectTimeout = NetworkSpec.TORRENT_TIMEOUT_MS
+                    connection.readTimeout = NetworkSpec.TORRENT_TIMEOUT_MS
                     connection.instanceFollowRedirects = false
                     connection.setRequestProperty("Accept", "application/x-bittorrent, application/octet-stream")
                     val code = connection.responseCode
