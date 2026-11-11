@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.TorrentStreamPlayer" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- 다크 테마 하나(design/renewal-plan.md). 시작 화면이 하얗게 번쩍이지 않도록 창 배경을 브랜드 배경색으로 둔다. -->
+    <style name="Theme.TorrentStreamPlayer" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_background</item>
+    </style>
 </resources>

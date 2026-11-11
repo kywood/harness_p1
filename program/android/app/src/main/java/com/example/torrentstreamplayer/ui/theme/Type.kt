@@ -1,34 +1,17 @@
 package com.example.torrentstreamplayer.ui.theme
 
 import androidx.compose.material3.Typography
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
 
-// Set of Material typography styles to start with
-val Typography = Typography(
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
-    )
-    /* Other default text styles to override
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
-    */
+/** 숫자 열이 흔들리지 않게 고정폭 숫자를 쓴다. */
+private const val TABULAR_NUMBERS = "tnum"
+
+private val Base = Typography()
+
+/** Material 3 기본 타입 스케일에 굵기만 조정한다(`design/renewal-plan.md` 3절). 글꼴은 시스템 글꼴. */
+val Typography = Base.copy(
+    headlineMedium = Base.headlineMedium.copy(fontWeight = FontWeight.Bold),
+    titleLarge = Base.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+    titleMedium = Base.titleMedium.copy(fontWeight = FontWeight.Medium),
+    labelMedium = Base.labelMedium.copy(fontFeatureSettings = TABULAR_NUMBERS)
 )
