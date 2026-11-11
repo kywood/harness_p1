@@ -153,7 +153,7 @@ fun VlcPlayerScreen(
 
     val playerHolder = remember(torrentEngine) {
         try {
-            val options = VideoPlaybackPolicy.options
+            val options = VideoPlaybackPolicy.options(com.example.torrentstreamplayer.BuildConfig.DEBUG)
             val vlc = LibVLC(context, options)
             val mp = MediaPlayer(vlc)
 
@@ -168,6 +168,9 @@ fun VlcPlayerScreen(
                     }
                     MediaPlayer.Event.LengthChanged -> {
                         totalLengthMs = event.lengthChanged
+                        val length = event.lengthChanged
+                        // The engine sizes its urgent download window from the real bitrate (file size / length).
+                        EngineCommandQueue.shared.post { torrentEngine.updatePlaybackDuration(length) }
                     }
                     MediaPlayer.Event.Buffering -> { seekUi = seekUi.buffered(event.buffering) }
                     MediaPlayer.Event.EndReached -> {

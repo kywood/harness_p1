@@ -35,7 +35,10 @@ internal class DownloadController(private val scope: CoroutineScope,
                     scope.launch {
                         if (request != generation) return@launch
                         mutableState.value = mutableState.value.copy(title = name)
-                        title(resolved, name)
+                        // Saving the title is best effort; a failed history write must not crash the app.
+                        try { title(resolved, name) }
+                        catch (cancelled: CancellationException) { throw cancelled }
+                        catch (failure: Exception) { android.util.Log.w("DownloadController", "Unable to save title", failure) }
                     }
                 }, onProgress = { progress, speed ->
                     scope.launch {
