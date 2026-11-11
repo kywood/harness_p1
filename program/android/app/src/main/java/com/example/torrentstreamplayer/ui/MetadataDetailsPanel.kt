@@ -1,29 +1,45 @@
 package com.example.torrentstreamplayer.ui
 
 import android.text.format.Formatter
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.MetadataDetails
-import com.example.torrentstreamplayer.engine.PieceMapSnapshot
+import com.example.torrentstreamplayer.ui.theme.Spacing
+
+/** 준비 화면의 접는 세부 정보: 진행 단계, 정보 출처, 파일·피스 구성, 받은 양. */
+@Composable
+internal fun MetadataDetailsPanel(details: MetadataDetails) {
+    val context = LocalContext.current
+    fun size(bytes: Long) = Formatter.formatFileSize(context, bytes)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Text(details.phase, style = MaterialTheme.typography.titleSmall)
+        if (details.source.isNotEmpty()) DetailLine(stringResource(R.string.metadata_source, details.source, details.peers))
+        if (details.hasMetadata) {
+            Text(details.name.orEmpty(), style = MaterialTheme.typography.titleMedium, maxLines = 2)
+            DetailLine(stringResource(R.string.metadata_files, details.fileCount, size(details.totalSize)))
+            DetailLine(stringResource(R.string.metadata_pieces, details.pieceCount, size(details.pieceSize)))
+            DetailLine(
+                if (details.videoSize > 0) {
+                    stringResource(R.string.metadata_received_video, size(details.downloadedBytes), size(details.videoSize))
+                } else {
+                    stringResource(R.string.metadata_received_video_pending, size(details.downloadedBytes))
+                }
+            )
+        } else {
+            DetailLine(stringResource(R.string.metadata_unknown))
+        }
+    }
+}
 
 @Composable
-internal fun MetadataDetailsPanel(details: MetadataDetails, pieces: PieceMapSnapshot) {
-    val context = LocalContext.current
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(details.phase, style = MaterialTheme.typography.titleSmall)
-        if (details.source.isNotEmpty()) Text("정보 출처: ${details.source} · 연결 피어: ${details.peers}명")
-        if (details.hasMetadata) {
-            Text(details.name.orEmpty(), style = MaterialTheme.typography.titleMedium)
-            Text("파일 ${details.fileCount}개 · " + Formatter.formatFileSize(context, details.totalSize))
-            Text("전체 피스 ${details.pieceCount}개 · 피스당 " + Formatter.formatFileSize(context, details.pieceSize))
-        } else Text("메타데이터 수신 전에는 파일 크기와 피스 배치를 알 수 없습니다.")
-        if (pieces.total > 0) PieceMap(pieces)
-        if (details.hasMetadata) Text("받은 영상: " + Formatter.formatFileSize(context, details.downloadedBytes) +
-            if (details.videoSize > 0) " / " + Formatter.formatFileSize(context, details.videoSize) else " · 크기 확인 중")
-        else if (details.hasMetadata) Text("피스 검증 상태를 확인하고 있습니다.")
-    }
+private fun DetailLine(text: String) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

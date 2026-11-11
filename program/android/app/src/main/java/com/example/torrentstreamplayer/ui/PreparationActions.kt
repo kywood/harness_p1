@@ -1,13 +1,24 @@
 package com.example.torrentstreamplayer.ui
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
+import com.example.torrentstreamplayer.ui.components.PrimaryButton
+import com.example.torrentstreamplayer.ui.components.SecondaryButton
+import com.example.torrentstreamplayer.ui.theme.Sizes
+import com.example.torrentstreamplayer.ui.theme.Spacing
+
+/** 준비 화면 하단 동작: 메인으로 돌아가기, 재생 목록에서 계속 받기. */
 @Composable
 internal fun PreparationActions(onMain: () -> Unit, onPlaylist: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedButton(onClick = onMain, modifier = Modifier.weight(1f)) { Text("메인") }
-        Button(onClick = onPlaylist, modifier = Modifier.weight(1f)) { Text("재생 목록") }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        SecondaryButton(stringResource(R.string.action_go_main), onMain,
+            Modifier.weight(1f).height(Sizes.primaryButtonHeight))
+        PrimaryButton(stringResource(R.string.action_open_playlist), onPlaylist, Modifier.weight(1f))
     }
 }
