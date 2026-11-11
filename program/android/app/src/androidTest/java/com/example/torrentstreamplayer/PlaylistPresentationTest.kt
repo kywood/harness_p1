@@ -253,7 +253,8 @@ class PlaylistPresentationTest {
                 await { nodes("재생 목록").isNotEmpty() && nodes(name).isNotEmpty() }
                 assertEquals(StreamUiState.Idle, model.uiState.value)
                 await { model.downloads.entry(key)?.phase == DownloadPhase.RUNNING }
-                assertTrue(model.downloads.engineFor(key)!!.isDownloading)
+                // The engine starts on the engine command queue shortly after the task is marked running.
+                await { model.downloads.engineFor(key)?.isDownloading == true }
                 click("재생")
                 click("메인")
                 await { nodes("저장 파일 관리").isNotEmpty() }

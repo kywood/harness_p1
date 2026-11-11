@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer.engine
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
+import com.example.torrentstreamplayer.meta.NetworkSpec
 
 internal data class ResolvedTorrentInput(val magnet: String, val metadata: ByteArray? = null)
 internal class TorrentInputResolver(
@@ -20,7 +21,11 @@ internal class TorrentInputResolver(
         require(uri.scheme in listOf("http", "https") && !uri.host.isNullOrEmpty()) {
             "마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요."
         }
-        val bytes = fetch(uri.toURL())
+        val target = NetworkSpec.secure(uri.toURL())
+        val bytes = try { fetch(target) } catch (e: java.io.IOException) {
+            if (target.protocol != uri.scheme) throw IllegalArgumentException("보안 연결(HTTPS)을 지원하지 않는 주소입니다. https:// 주소를 입력하세요.", e)
+            throw e
+        }
         require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES && bytes[0] == 'd'.code.toByte()) {
             ".torrent 파일이 아닙니다. 파일의 직접 다운로드 주소를 입력하세요."
         }
@@ -42,7 +47,7 @@ internal class TorrentInputResolver(
                     connection.setRequestProperty("Accept", "application/x-bittorrent, application/octet-stream")
                     val code = connection.responseCode
                     if (code in listOf(301, 302, 303, 307, 308)) {
-                        url = URL(url, connection.getHeaderField("Location") ?: error("리디렉션 주소가 없습니다."))
+                        url = NetworkSpec.secure(URL(url, connection.getHeaderField("Location") ?: error("리디렉션 주소가 없습니다.")))
                     } else {
                         check(code in 200..299) { "토렌트 다운로드 실패 (HTTP " + code + ")" }
                         require(connection.contentLengthLong <= MAX_BYTES) { "토렌트 파일이 너무 큽니다." }

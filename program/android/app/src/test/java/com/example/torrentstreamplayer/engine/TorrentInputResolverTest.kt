@@ -46,6 +46,36 @@ class TorrentInputResolverTest {
             assertArrayEquals(bytes, result.metadata)
         } finally { server.stop(0) }
     }
+    @Test fun externalHttpLinkIsFetchedOverHttps() {
+        val requested = mutableListOf<String>()
+        val bytes = "d4:infodee".toByteArray()
+        val resolver = TorrentInputResolver({ magnet }, { requested += it.toString(); bytes })
+        resolver.resolve("http://example.test/a.torrent")
+        resolver.resolve("http://example.test:80/b.torrent")
+        resolver.resolve("http://example.test:8080/c.torrent")
+        resolver.resolve("https://example.test/d.torrent")
+        assertEquals(listOf("https://example.test/a.torrent", "https://example.test/b.torrent",
+            "https://example.test:8080/c.torrent", "https://example.test/d.torrent"), requested)
+    }
+    @Test fun localStreamHostKeepsPlainHttp() {
+        var requested = ""
+        TorrentInputResolver({ magnet }, { requested = it.toString(); "d4:infodee".toByteArray() })
+            .resolve("http://127.0.0.1:9000/a.torrent")
+        assertEquals("http://127.0.0.1:9000/a.torrent", requested)
+    }
+    @Test fun upgradedLinkWithoutHttpsExplainsWhatToEnter() {
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            TorrentInputResolver({ magnet }, { throw java.net.ConnectException("refused") })
+                .resolve("http://example.test/a.torrent")
+        }
+        assertTrue(error.message!!.contains("HTTPS"))
+    }
+    @Test fun networkSecurityConfigAllowsExactlyTheRegisteredCleartextHosts() {
+        val xml = java.io.File("src/main/res/xml/network_security_config.xml").readText()
+        val hosts = Regex("<domain[^>]*>([^<]+)</domain>").findAll(xml).map { it.groupValues[1].trim() }.toSet()
+        assertEquals(com.example.torrentstreamplayer.meta.NetworkSpec.CLEARTEXT_HOSTS, hosts)
+        assertTrue(xml.contains("<base-config cleartextTrafficPermitted=\"false\""))
+    }
     @Test fun httpErrorIsReportedInsteadOfParsingErrorPage() {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/missing") { it.sendResponseHeaders(404, -1); it.close() }
