@@ -10,14 +10,15 @@ internal object MagnetIdentity {
     private val BTMH = Regex("urn:btmh:1220[0-9a-f]{64}")
     private val BASE32_BTIH = Regex("urn:btih:[a-z2-7]{32}")
     fun key(magnet: String): String {
-        val uri = URI(magnet.trim())
+        // A malformed link must surface as InvalidMagnetException so the UI shows its localized text.
+        val uri = try { URI(magnet.trim()) } catch (_: java.net.URISyntaxException) { throw InvalidMagnetException() }
         if (!uri.scheme.equals("magnet", true)) throw InvalidMagnetException()
         if (!uri.rawSchemeSpecificPart.startsWith("?")) throw InvalidMagnetException()
         val query = uri.rawQuery ?: uri.rawSchemeSpecificPart.removePrefix("?")
         val topics = query.split('&').mapNotNull {
             val parts = it.split('=', limit = 2)
             if (parts.size == 2 && parts[0].equals("xt", true))
-                URLDecoder.decode(parts[1], "UTF-8").lowercase(Locale.ROOT) else null
+                runCatching { URLDecoder.decode(parts[1], "UTF-8") }.getOrNull()?.lowercase(Locale.ROOT) else null
         }
         val identity = topics.firstNotNullOfOrNull(::normalize)
             ?: throw InvalidMagnetException()

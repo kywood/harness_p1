@@ -26,6 +26,12 @@ class MagnetIdentityTest {
         }
         assertTrue(MagnetIdentity.key(link("c".repeat(40))).matches(Regex("[0-9a-f]{64}")))
     }
+    @Test fun malformedLinksAreReportedAsInvalidMagnetInsteadOfParserErrors() {
+        listOf(link("a".repeat(40)) + "&dn=[Group] Title", link("a".repeat(40)) + "&dn=100%",
+            "magnet:?xt=urn%3Abtih%3A" + "a".repeat(40) + "%zz").forEach {
+            assertThrows(InvalidMagnetException::class.java) { MagnetIdentity.key(it) }
+        }
+    }
     @Test fun v2InfoHashIsAccepted() {
         assertEquals(64, MagnetIdentity.key("magnet:?xt=urn:btmh:1220" + "a".repeat(64)).length)
     }
