@@ -20,8 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
 import com.example.torrentstreamplayer.R
+import com.example.torrentstreamplayer.ui.components.LinkTextField
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
 import com.example.torrentstreamplayer.ui.components.SecondaryButton
 import com.example.torrentstreamplayer.ui.components.SectionCard
@@ -48,12 +47,6 @@ import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import kotlinx.coroutines.launch
-
-/** 링크 형식 예시. 문장이 아니라 입력 형식이라 번역하지 않는다. */
-private const val MAGNET_PLACEHOLDER = "magnet:?xt=urn:btih:..."
-
-/** 링크 입력창 최대 줄 수. 긴 마그넷도 카드가 지나치게 커지지 않게 한다. */
-private const val LINK_MAX_LINES = 3
 
 /** 메인: 링크를 넣고 바로 재생하거나 재생 목록·저장 파일 관리로 간다. */
 @Composable
@@ -88,7 +81,7 @@ internal fun MagnetLinkInputScreen(
         ) {
             BrandHeader()
             SectionCard {
-                LinkField(magnetLink, { magnetLink = it }, errorMessage)
+                LinkTextField(magnetLink, { magnetLink = it }, errorMessage)
                 SecondaryButton(
                     text = stringResource(R.string.action_paste),
                     icon = ImageVector.vectorResource(R.drawable.ic_content_paste),
@@ -142,31 +135,6 @@ private fun BrandHeader() {
             textAlign = TextAlign.Center
         )
     }
-}
-
-@Composable
-private fun LinkField(value: String, onValueChange: (String) -> Unit, errorMessage: String?) {
-    val colors = MaterialTheme.colorScheme
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(stringResource(R.string.label_link_input)) },
-        placeholder = { Text(MAGNET_PLACEHOLDER) },
-        isError = errorMessage != null,
-        supportingText = errorMessage?.let { message -> { Text(message) } },
-        maxLines = LINK_MAX_LINES,
-        shape = Shapes.small,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = colors.surfaceContainer,
-            unfocusedContainerColor = colors.surfaceContainer,
-            errorContainerColor = colors.surfaceContainer,
-            unfocusedBorderColor = colors.outline,
-            focusedBorderColor = colors.tertiary,
-            focusedLabelColor = colors.tertiary,
-            cursorColor = colors.tertiary
-        ),
-        modifier = Modifier.fillMaxWidth()
-    )
 }
 
 /** 메인 아래 바로가기 카드(재생 목록·저장 파일 관리). */

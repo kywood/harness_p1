@@ -31,6 +31,9 @@ object Shapes {
 object Sizes {
     val touchTarget = 48.dp
     val icon = 24.dp
+
+    /** 글자 버튼 안 아이콘, 형식 아이콘 옆 보조 아이콘. */
+    val iconSmall = 18.dp
     val iconLarge = 48.dp
     val primaryButtonHeight = 52.dp
     val progressBarHeight = 8.dp
