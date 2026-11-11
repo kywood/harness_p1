@@ -2,10 +2,11 @@ package com.example.torrentstreamplayer.engine
 
 import java.io.File
 import java.io.RandomAccessFile
+import com.example.torrentstreamplayer.meta.VideoFormat
 
 internal class StartupIndexState(private val file: File, private val size: Long,
     private val offset: Long, private val pieceSize: Long, extension: String) {
-    @Volatile var ready = extension.lowercase(java.util.Locale.ROOT) !in setOf("mp4", "mov", "m4v")
+    @Volatile var ready = VideoFormat.ofExtension(extension)?.needsMoovIndex != true
         private set
     private var found: Mp4IndexProbe.Found? = null
     private fun pieces(start: Long, length: Long): Set<Int> =
