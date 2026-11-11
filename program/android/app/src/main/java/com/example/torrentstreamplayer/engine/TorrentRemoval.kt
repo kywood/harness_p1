@@ -2,12 +2,14 @@ package com.example.torrentstreamplayer.engine
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
+private val KEY = Regex("[0-9a-f]{64}")
+private val KEY_FOLDER = Regex("[0-9a-fA-F]{64}")
 internal class TorrentRemoval(private val downloads: File, private val state: File) {
     fun delete(key: String, legacyPaths: List<String>, protectedFiles: List<File> = emptyList()) {
         ActiveTorrentFiles.deleting { removeFiles(key, legacyPaths, protectedFiles) }
     }
     private fun removeFiles(key: String, legacyPaths: List<String>, protectedFiles: List<File>) {
-        require(key.matches(Regex("[0-9a-f]{64}")))
+        require(key.matches(KEY))
         fun keyed(root: File): File {
             val target = File(root, key)
             require(target.canonicalFile.parentFile == root.canonicalFile) { "항목 저장 경로가 올바르지 않습니다." }
@@ -17,7 +19,7 @@ internal class TorrentRemoval(private val downloads: File, private val state: Fi
         val cache = keyed(state)
         val legacy = legacyPaths.distinct().map { path ->
             require(path.isNotBlank() && !File(path).isAbsolute)
-            require(!path.split('/', '\\').first().matches(Regex("[0-9a-fA-F]{64}")))
+            require(!path.split('/', '\\').first().matches(KEY_FOLDER))
             val file = File(downloads, path)
             require(file.canonicalFile != downloads.canonicalFile &&
                 file.canonicalFile.toPath().startsWith(downloads.canonicalFile.toPath())) { "파일이 앱 저장 공간 밖을 가리킵니다." }
