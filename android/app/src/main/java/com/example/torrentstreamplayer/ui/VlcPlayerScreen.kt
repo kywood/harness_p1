@@ -50,7 +50,7 @@ fun VlcPlayerScreen(
     torrentEngine: TorrentEngine,
     onBackClicked: () -> Unit, onAddDownload: (() -> Unit)? = null,
     initialPositionMs: Long = 0, onPositionChanged: (Long, Long) -> Unit = { _, _ -> },
-    onPlaybackCompleted: (Long) -> Unit = {}
+    onPlaybackCompleted: (Long) -> Unit = {}, onPlaybackExited: ((Long) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
@@ -76,7 +76,15 @@ fun VlcPlayerScreen(
     val positionCallback by rememberUpdatedState(onPositionChanged)
     val completionCallback by rememberUpdatedState(onPlaybackCompleted)
     val watchTime = remember(torrentEngine) { PlaybackWatchTime() }
+    val exitGate = remember(torrentEngine) { PlaybackExitGate() }
+    fun exitPlayback() {
+        if (exitGate.consume()) {
+            if (onPlaybackExited != null && errorMessage == null) onPlaybackExited(watchTime.watchedMs)
+            else onBackClicked()
+        }
+    }
     var playbackCompleted by remember(torrentEngine) { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler { exitPlayback() }
 
     var showControls by remember { mutableStateOf(true) }
     var showSeekBarOnly by remember { mutableStateOf(false) }
@@ -179,7 +187,7 @@ fun VlcPlayerScreen(
 
     val holder = playerHolder
     LaunchedEffect(playbackCompleted) {
-        if (playbackCompleted) completionCallback(watchTime.watchedMs)
+        if (playbackCompleted && exitGate.consume()) completionCallback(watchTime.watchedMs)
     }
     LaunchedEffect(holder, lifecycle) {
         while (holder != null) {
@@ -267,7 +275,7 @@ fun VlcPlayerScreen(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onBackClicked) {
+                Button(onClick = { exitPlayback() }) {
                     Text("Go Back")
                 }
             }
@@ -353,7 +361,7 @@ fun VlcPlayerScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            IconButton(onClick = onBackClicked) {
+                            IconButton(onClick = { exitPlayback() }) {
                                 Icon(
                                     imageVector = Icons.Default.ArrowBack,
                                     contentDescription = "Back",

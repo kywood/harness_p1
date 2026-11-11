@@ -135,6 +135,11 @@ class MainActivity : ComponentActivity() {
                                     fileName = state.fileName,
                                     torrentEngine = viewModel.torrentEngine,
                                     onBackClicked = { closePlayback() },
+                                    onPlaybackExited = { watchedMs ->
+                                        closePlayback()
+                                        completionAd.showIfReady(watchedMs,
+                                            lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED))
+                                    },
                                     onAddDownload = { showDownloadDialog = true },
                                     initialPositionMs = viewModel.resumePositionMs, onPositionChanged = positionWriter,
                                     onPlaybackCompleted = { watchedMs ->
