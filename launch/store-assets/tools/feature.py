@@ -1,6 +1,9 @@
 import sys
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 fg_path, out = sys.argv[1], sys.argv[2]
+NOTO='C:/Windows/Fonts/NotoSansKR-VF.ttf'
+def font(size,weight):
+    f=ImageFont.truetype(NOTO,size); f.set_variation_by_axes([weight]); return f
 W,H=1024,500
 BG=(0x0A,0x0F,0x1E); C1=(0x2F,0x66,0xF0); C2=(0x2E,0xE6,0xB0)
 img=Image.new('RGB',(W,H),BG)
@@ -14,9 +17,9 @@ bbox=fg.getchannel('A').point(lambda a:255 if a>8 else 0).getbbox(); fg=fg.crop(
 s=300/fg.height; fg=fg.resize((int(fg.width*s),300),Image.LANCZOS)
 img.paste(fg,(90,(H-300)//2),fg)
 d=ImageDraw.Draw(img)
-fb=ImageFont.truetype('C:/Windows/Fonts/malgunbd.ttf',88)
-fr=ImageFont.truetype('C:/Windows/Fonts/malgun.ttf',38)
-fs=ImageFont.truetype('C:/Windows/Fonts/malgun.ttf',26)
+fb=font(88,700)
+fr=font(38,400)
+fs=font(26,400)
 x=520
 # wordmark with gradient fill
 title='PiecePlay'; tb=d.textbbox((0,0),title,font=fb); tw,th=tb[2]-tb[0],tb[3]-tb[1]

@@ -25,7 +25,7 @@
 
 ## 다시 만들기
 
-`tools/`의 스크립트(Python + Pillow, Windows 맑은 고딕 글꼴)로 만들었다.
+`tools/`의 스크립트(Python + Pillow, Windows의 Noto Sans KR 가변 글꼴 `NotoSansKR-VF.ttf`. 맑은 고딕은 작은 크기에서 "받"이 깨져 쓰지 않는다)로 만들었다.
 
 - `feature.py <적응형 아이콘 전경 png> <출력>`: 그래픽 이미지
 - `compose.py <작업 폴더> <출력 폴더>`: 작업 폴더의 `final/` 아래 원본 캡처(`01_main.png`, `02_preparing.png`, `player_landscape.png`, `player_portrait.png`, `02_playlist.png`, `03_stored_files.png`)로 스크린샷 6장을 만든다. 문구는 스크립트 안에 있다.
