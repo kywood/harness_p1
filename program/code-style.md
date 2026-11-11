@@ -60,6 +60,34 @@
 - 실패 가능성이 있는 연산의 결과는 예외 대신 `Result` 또는 sealed 결과 타입으로 돌려준다. 예외는 프로그래밍 오류와 호출 측이 처리할 수 없는 상황에만 쓴다.
 - 의미 있는 원시값은 값 객체로 감싼다(예: 마그넷 키 64자리 문자열 → `@JvmInline value class MagnetKey`). 새 코드부터 적용한다.
 
+### 하드코딩 금지: enum과 메타 테이블
+
+값과 종류를 코드 곳곳에 직접 적지 않는다. 종류는 `enum`으로 정의하고, 종류마다 다른 값·동작은 그 종류의 메타 테이블에 등록한 뒤 조회해서 쓴다. 새 종류를 추가할 때 **테이블에 항목 하나만 추가하면 되고, 사용하는 코드는 고치지 않게** 만드는 것이 목표다.
+
+1. **종류는 enum**: 문자열·정수 상수로 종류를 구분하지 않는다(`"magnet"`, `phase == 2` 금지). `DownloadPhase`, `PieceCell`처럼 enum으로 만든다.
+2. **종류별 속성은 enum 항목에 등록**: 표시 이름, 정렬 기준, 아이콘, 제한값처럼 종류마다 달라지는 것은 enum 생성자 인자나 프로퍼티로 그 항목에 함께 둔다. 사용하는 쪽에서 `if (x == A) … else …`나 `when`으로 값을 고르지 않는다.
+3. **설정값은 메타 테이블에**: 시간·크기·횟수·URL·광고 단위 ID 같은 값은 기능별 메타 객체(`…Spec`, `…Config`) 한 곳에 이름을 붙여 등록한다. 같은 값을 두 곳 이상에 적지 않는다. 메타 객체는 `meta/` 패키지(`com.example.torrentstreamplayer.meta`)에 둔다.
+4. **확장 가능한 목록은 레지스트리로**: 지원 확장자, 컨테이너 형식, 광고 노출 화면처럼 늘어날 수 있는 목록은 `enum` 또는 `Map<Key, Spec>` 테이블로 등록하고, 판단은 그 테이블을 조회한다(`VideoFormat.entries.any { it.matches(path) }`).
+5. **`when`은 빠짐없이**: enum에 대한 `when`은 `else` 없이 모든 항목을 나열해, 항목을 추가하면 컴파일 오류로 처리할 곳이 드러나게 한다. 다만 2번처럼 항목에 등록할 수 있는 값이면 `when`보다 등록을 먼저 쓴다.
+6. **예외**: 0, 1, -1 같은 산술 상수와 테스트 데이터는 허용한다. 사용자에게 보이는 문구·색·간격은 enum이 아니라 `strings.xml`과 테마 토큰에 두고(design 소유), enum 항목에는 그 리소스 ID(`@StringRes`)를 등록한다.
+
+예시: 현재 `PlaylistSort`는 표시 이름은 항목에 있지만 정렬 기준은 사용하는 쪽에서 `if (sort == PlaylistSort.RECENT_PLAY)`로 고른다. 메타 테이블 방식에서는 정렬 기준도 항목에 등록한다.
+
+```kotlin
+enum class PlaylistSort(@StringRes val label: Int, val key: (SavedMagnet) -> Long) {
+    RECENT_PLAY(R.string.sort_recent_play, SavedMagnet::lastPlayedAt),
+    RECEIVED(R.string.sort_received, SavedMagnet::addedAt),
+}
+// 사용하는 쪽: entries.sortedByDescending(sort.key) — 새 정렬을 추가해도 이 줄은 바뀌지 않는다.
+```
+
+현재 하드코딩된 값이 모여 있는 곳(새로 고칠 때 메타 테이블로 옮긴다):
+
+- 광고: `CompletionAdPolicy`(5분·10분·5회·단위 ID), `TestAdPolicy`(배너 단위 ID, 노출 화면 조건)
+- 엔진 시간·크기: `TorrentEngine`의 조각 deadline(1000·5000ms), 진행 저장 주기(5초·15초), 메타데이터 대기 시간
+- 재생 판단: `TorrentPlayback`의 영상 확장자 목록
+- 입력: `TorrentInputResolver`의 최대 크기·타임아웃·리디렉션 횟수
+
 ### 순수 로직
 
 - 판단·계산 로직은 상태 없는 `internal object` 또는 작은 불변 클래스로 두고 Android·Compose에 의존하지 않는다. 이 객체들은 OOP 구조의 도메인 계층에 속하며, JVM 단위 테스트를 붙인다.
@@ -78,7 +106,7 @@
 
 - 판단 로직은 Android·Compose에 의존하지 않는 `internal object` 또는 작은 클래스로 분리하고 JVM 단위 테스트를 붙인다.
 - 공개 범위는 가장 좁게: 모듈 밖에서 쓰지 않으면 `internal`, 파일 밖에서 쓰지 않으면 `private`.
-- 매직 넘버(타임아웃, 크기, 간격)는 이름 있는 상수로 만든다. 같은 값을 두 곳에서 쓰면 한 곳에 둔다.
+- 매직 넘버(타임아웃, 크기, 간격)는 "하드코딩 금지: enum과 메타 테이블" 규칙에 따라 메타 테이블에 등록한다.
 - 새 파일 하나에는 한 가지 책임만 둔다. 300줄을 넘는 파일(`TorrentEngine.kt`, `VlcPlayerScreen.kt`)에는 새 기능을 추가하지 말고 별도 파일로 뺀다.
 
 ## 리소스 풀링
