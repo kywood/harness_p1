@@ -87,7 +87,7 @@ class MultipleDownloadsTest {
             assertTrue(model.downloads.engineFor(MagnetIdentity.key(waiting.last()))!!.isDownloading)
         } finally {
             instrumentation.runOnMainSync { model.stopStream(); model.stopDownloads() }
-            model.downloads.awaitStoppedWrites()
+            model.downloads.awaitStoppedWrites(model.downloads.stoppedWriters())
             root.deleteRecursively()
         }
     }

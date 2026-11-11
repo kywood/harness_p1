@@ -63,7 +63,7 @@ class CompletedPlaybackSwitchTest {
             await { model.uiState.value == StreamUiState.Playing("finished.mp4") }
         } finally {
             instrumentation.runOnMainSync { model.stopStream(); model.downloads.stop() }
-            model.downloads.awaitStoppedWrites()
+            model.downloads.awaitStoppedWrites(model.downloads.stoppedWriters())
             root.deleteRecursively()
         }
     }

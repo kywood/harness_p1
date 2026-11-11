@@ -107,8 +107,10 @@ internal class DownloadManager(private val scope: CoroutineScope,
     }
     fun protectedFiles() = tasks.value.values.filter { it.phase == DownloadPhase.RUNNING }
         .mapNotNull { nodes[it.key]?.controller?.engine?.selectedVideoFile }
-    fun awaitStoppedWrites() {
-        nodes.values.toList().forEach { it.controller.awaitStoppedWrites() }
-        retired.toList().forEach { it.awaitStoppedWrites(); retired.remove(it) }
+    /** Call on the main thread: [nodes] is not thread-safe, so a delete snapshots its writers here first. */
+    fun stoppedWriters(): List<DownloadController> = nodes.values.map { it.controller } + retired
+    /** Call from a background thread with a [stoppedWriters] snapshot: waits for their disk writes. */
+    fun awaitStoppedWrites(writers: List<DownloadController>) {
+        writers.forEach { it.awaitStoppedWrites(); retired.remove(it) }
     }
 }

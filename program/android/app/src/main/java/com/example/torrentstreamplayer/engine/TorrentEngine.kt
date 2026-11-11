@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer.engine
 import android.content.Context
 import android.os.StrictMode
 import android.util.Log
+import com.example.torrentstreamplayer.BuildConfig
 import org.libtorrent4j.Priority
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.SessionParams
@@ -136,7 +137,7 @@ class TorrentEngine(private val context: Context) {
         worker = Thread {
             try {
                 check(teardown.await()) { "Previous download is still stopping" }
-                Log.d(TAG, "Fetching magnet metadata...")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Fetching magnet metadata...")
                 val cachedMetadata = cache.read("metadata")
                 _metadataDetails.value = MetadataDetails(phase = if (cachedMetadata == null)
                     "네트워크 세션 준비 중…" else "저장된 토렌트 정보 확인 중…",
@@ -222,7 +223,7 @@ class TorrentEngine(private val context: Context) {
                     torrentInfo.pieceLength().toLong(), candidate.extension).takeIf { prioritizePlayback } ?: emptySet()
                 startupIndex = StartupIndexState(candidate, maxFileSize, startOffset,
                     torrentInfo.pieceLength().toLong(), candidate.extension).takeIf { prioritizePlayback }
-                Log.d(TAG, "Initial playback requires ${startupPieces.size} verified pieces")
+                if (BuildConfig.DEBUG) Log.d(TAG, "Initial playback requires ${startupPieces.size} verified pieces")
                 _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { false }
                 if (cache.isComplete(candidate, maxFileSize)) {
                     _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { true }
@@ -236,7 +237,8 @@ class TorrentEngine(private val context: Context) {
                     return@Thread
                 }
 
-                Log.d(TAG, "Selected file: $selectedRelativePath, Size: $maxFileSize bytes, Offset in torrent: $selectedFileStartOffset")
+                // Never log the file name or path: logcat would expose what the user watches.
+                if (BuildConfig.DEBUG) Log.d(TAG, "Selected video: $maxFileSize bytes at offset $selectedFileStartOffset")
                 }
 
                 if (run != activeRun) return@Thread
@@ -505,7 +507,7 @@ class TorrentEngine(private val context: Context) {
             val required = startupPieces
             if (required.isNotEmpty()) {
                 val ready = StartupBufferPlan.ready(required, handle::havePiece)
-                if (ready) { startupPieces = emptySet(); Log.d(TAG, "Initial verified playback buffer ready") }
+                if (ready) { startupPieces = emptySet(); if (BuildConfig.DEBUG) Log.d(TAG, "Initial verified playback buffer ready") }
                 return ready
             }
             val info = handle.torrentFile() ?: return false

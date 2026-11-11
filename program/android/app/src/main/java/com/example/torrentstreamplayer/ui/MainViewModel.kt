@@ -49,26 +49,37 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Stops [magnet] on the main thread, then waits for its writes and deletes its files on [Dispatchers.IO]. */
     suspend fun deleteSavedMagnet(magnet: String) {
         val key = MagnetIdentity.key(magnet)
-        val protectedFiles = withContext(Dispatchers.Main.immediate) {
+        val (protectedFiles, writers) = withContext(Dispatchers.Main.immediate) {
             if (_activeKey.value == key) stopStream()
             downloads.stop(key)
-            listOfNotNull(if (engine.isInitialized()) engine.value.selectedVideoFile else null) + downloads.protectedFiles()
+            (listOfNotNull(if (engine.isInitialized()) engine.value.selectedVideoFile else null) +
+                downloads.protectedFiles()) to downloads.stoppedWriters()
         }
         withContext(Dispatchers.IO) {
-            check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
-            if (engine.isInitialized()) engine.value.awaitStoppedWrites()
-            downloads.awaitStoppedWrites()
+            awaitStoppedWrites(writers)
             torrentEngine.deleteTorrentFiles(magnet, protectedFiles)
             playlist.delete(magnet)
         }
     }
+    /** Background thread: waits for queued engine stops and every stopped engine's disk writes. */
+    private fun awaitStoppedWrites(writers: List<DownloadController>) {
+        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
+        if (engine.isInitialized()) engine.value.awaitStoppedWrites()
+        downloads.awaitStoppedWrites(writers)
+    }
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { playlist.add(it) }; Unit },
         { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit }) })
-    fun deleteStoredFile(path: String): Boolean {
-        check(downloads.tasks.value.values.none { it.phase == DownloadPhase.RUNNING || it.phase == DownloadPhase.QUEUED }) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
-        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
-        return torrentEngine.deleteStoredFile(path)
+    /** Stopped downloads may still be writing their files; waits for them on [Dispatchers.IO] before deleting. */
+    suspend fun deleteStoredFile(path: String): Boolean {
+        val writers = withContext(Dispatchers.Main.immediate) {
+            check(downloads.tasks.value.values.none { it.phase == DownloadPhase.RUNNING || it.phase == DownloadPhase.QUEUED }) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
+            downloads.stoppedWriters()
+        }
+        return withContext(Dispatchers.IO) {
+            awaitStoppedWrites(writers)
+            torrentEngine.deleteStoredFile(path)
+        }
     }
 
     private val _uiState = MutableStateFlow<StreamUiState>(StreamUiState.Idle)
