@@ -102,6 +102,37 @@ enum class PlaylistSort(@StringRes val label: Int, val key: (SavedMagnet) -> Lon
 
 `engine/`의 한 파일·10줄 규칙은 기존 파일 수정에 적용한다. 분리로 생기는 새 파일은 새 파일 하나 단위로 추가하고, 기존 파일에서 위임으로 바꾸는 변경을 10줄 이내로 나눈다.
 
+## 디자인 패턴
+
+패턴은 이름을 붙이기 위해서가 아니라 아래 문제를 풀 때 쓴다. 새 코드와 리팩터링에 적용하고, 기존 코드는 "적용 순서"대로 이슈 단위로 옮긴다.
+
+### 이 코드에서 쓰는 패턴
+
+| 패턴 | 언제 | 이 코드에서 |
+|---|---|---|
+| 퍼사드 + 어댑터(포트) | 외부 시스템(libtorrent, LibVLC, AdMob/UMP, 파일, 시계)을 쓸 때 | 작은 `interface`(포트)를 도메인 쪽에 두고, 실제 구현(`Libtorrent…`, `Vlc…`)은 어댑터로 감싼다. 테스트는 가짜 구현을 넣는다. 예: `TorrentSession`, `VideoPlayer`, `AdsGateway`, `Clock` |
+| 저장소(Repository) | 디스크·암호화 저장 데이터를 읽고 쓸 때 | ViewModel은 `MagnetHistory`·`TorrentCache`·`TorrentDiskStore`를 직접 만들지 않고 `PlaylistRepository`, `StorageRepository` 같은 저장소에 의존한다 |
+| 상태(State) | 화면·재생·다운로드처럼 상태가 바뀌는 흐름 | `sealed` 타입으로 상태를 정의하고 상태 전환은 한 객체가 맡는다. 불리언 플래그 조합으로 화면을 고르지 않는다(`showFiles`·`showHistory` → `sealed AppScreen`) |
+| 전략(Strategy) | 같은 일을 모드에 따라 다르게 할 때 | 불리언 인자로 분기하지 않고 전략 객체를 주입한다. 예: `prioritizePlayback: Boolean` → `PiecePriorityStrategy`(재생 / 다운로드 전용) |
+| 명령(Command) | 블로킹 엔진 호출, 순서가 중요한 작업 | `EngineCommandQueue`에 명령으로 넣는다(이미 적용) |
+| 관찰자(Observer) | 상태를 화면에 알릴 때 | `StateFlow` 한 방향. 화면은 구독만 하고 상태를 바꾸려면 ViewModel 메서드를 부른다 |
+| 레지스트리 | 종류별 값·동작 | `meta/`의 enum·메타 객체(이미 적용) |
+| 팩토리 + 생성자 주입 | 객체 생성 | 앱 단위 의존 객체는 `AppContainer`(직접 작성, 외부 DI 라이브러리 없음) 하나가 만든다. ViewModel은 `ViewModelProvider.Factory`로 의존 객체를 받는다. 반복 생성이 필요하면 팩토리 함수를 주입한다(`DownloadManager`의 `createController` 방식) |
+
+### 피할 것
+
+- **거대 클래스**: 300줄 또는 책임 두 개 이상이면 위 패턴으로 나눈다(`TorrentEngine`, `VlcPlayerScreen`).
+- **상태를 가진 전역 객체**: `object`나 `companion`에 변하는 상태를 두지 않는다. 상태 없는 정책 `object`는 괜찮다. 지금 있는 전역 상태(`ActiveTorrentFiles`, `TestAdsRuntime`, `AdConsent.get`, `EngineCommandQueue.shared`)는 `AppContainer`로 옮긴다.
+- **상속 계층**: `open`·`abstract` 클래스로 동작을 나누지 않는다. 인터페이스 + 조합을 쓴다.
+- **패턴 과용**: 구현이 하나뿐이고 외부 시스템도 아닌 클래스에 인터페이스를 미리 만들지 않는다.
+
+### 기존 코드 적용 순서
+
+1. 화면 구조(#37): `sealed AppScreen`(상태), 화면용 상태를 ViewModel이 노출(관찰자), 저장소 도입 시작
+2. `AppContainer` 도입: 전역 상태 객체와 ViewModel의 직접 생성을 옮김
+3. 엔진 분리: `TorrentSession` 포트(퍼사드), `PiecePriorityStrategy`(전략), 우선순위·재생 준비·다운로드 작업 분리
+4. 재생 화면: `VideoPlayer` 포트와 `PlaybackController`, 컨트롤 UI 분리
+
 ## 구조
 
 - 판단 로직은 Android·Compose에 의존하지 않는 `internal object` 또는 작은 클래스로 분리하고 JVM 단위 테스트를 붙인다.
