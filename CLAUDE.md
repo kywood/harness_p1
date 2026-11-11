@@ -54,7 +54,7 @@ $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
 - 완료된 파일(`engine.localVideo != null`)은 파일 URI로 직접 연다.
 - 미완료 파일은 `TorrentStreamServer`(NanoHTTPD, `127.0.0.1` 임의 포트 `/stream`)를 통해 연다. Range 요청마다 `VerifiedTorrentInputStream`이 해당 조각의 해시 검증이 끝날 때까지 블로킹하면서 엔진에 우선순위를 요청한다. 탐색(seek)은 새 Range 요청 → `prioritizeRequest`/`beginSeek`로 다운로드 창을 옮기는 방식이다.
 - 엔진은 네이티브 sequential 모드를 끄고, 재생 위치를 따라가는 조각 deadline 창(`prioritizeOffset`, `advanceDownloadWindow`, `SequentialPiecePlan`)으로 순서를 제어한다. 토렌트 안에서는 가장 큰 영상 파일 하나만 받고 나머지는 `IGNORE`다.
-- `ui/PlayerScreen.kt` + `engine/TorrentFileDataSource.kt`(Media3/ExoPlayer 경로)는 어디에서도 호출되지 않는 미사용 코드다.
+- 재생기는 LibVLC 하나다. 예전에 있던 Media3/ExoPlayer 경로는 제거했으므로 다시 추가하지 않는다.
 
 ### 취소·경합 처리 규칙
 
