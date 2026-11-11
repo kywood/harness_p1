@@ -7,6 +7,7 @@
     <string name="error_invalid_magnet">올바른 마그넷 링크가 아닙니다. 링크를 다시 확인해 주세요.</string>
     <string name="label_buffering">버퍼링</string>
     <string name="label_downloading">다운로드</string>
+    <string name="action_ad_privacy">광고 개인정보 설정</string>
 
     <!-- Torrent engine failures (meta/TorrentFailure) -->
     <string name="failure_invalid_magnet">올바른 마그넷 링크가 아닙니다. 링크를 다시 확인해 주세요.</string>

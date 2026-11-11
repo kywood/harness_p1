@@ -17,7 +17,9 @@ import kotlinx.coroutines.withContext
 internal object TestAdsRuntime {
     private val lock = kotlinx.coroutines.sync.Mutex()
     private var initialized = false
-    suspend fun initialize(context: android.content.Context) {
+    /** Initializes the Mobile Ads SDK once consent allows it. Returns whether ads may be requested. */
+    suspend fun initialize(context: android.content.Context): Boolean {
+        if (!AdConsent.get(context).canRequestAds.value) return false
         lock.lock()
         try {
             if (!initialized) withContext(Dispatchers.IO) {
@@ -25,6 +27,7 @@ internal object TestAdsRuntime {
                 initialized = true
             }
         } finally { lock.unlock() }
+        return true
     }
 }
 
@@ -34,8 +37,9 @@ internal fun TestBannerAd() {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var ready by remember { mutableStateOf(false) }
     var banner by remember { mutableStateOf<AdView?>(null) }
-    LaunchedEffect(Unit) {
-        ready = runCatching { TestAdsRuntime.initialize(context) }.isSuccess
+    val consented by AdConsent.get(context).canRequestAds.collectAsState()
+    LaunchedEffect(consented) {
+        ready = consented && runCatching { TestAdsRuntime.initialize(context) }.getOrDefault(false)
     }
     DisposableEffect(banner, lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
