@@ -5,14 +5,17 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.nio.file.AtomicMoveNotSupportedException
 
+private val KEY = Regex("[0-9a-f]{64}")
+private val KIND = Regex("[a-z]+")
+
 internal class TorrentCache(
     root: File, key: String,
     private val encrypt: (ByteArray) -> ByteArray,
     private val decrypt: (ByteArray) -> ByteArray
 ) {
-    private val directory = File(root, key).also { require(key.matches(Regex("[0-9a-f]{64}"))) }
+    private val directory = File(root, key).also { require(key.matches(KEY)) }
     private fun path(kind: String): File {
-        require(kind.matches(Regex("[a-z]+")))
+        require(kind.matches(KIND))
         return File(directory, kind + ".bin")
     }
     @Synchronized fun read(kind: String): ByteArray? = try {
