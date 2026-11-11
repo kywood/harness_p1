@@ -3,38 +3,57 @@ package com.example.torrentstreamplayer.ui.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.example.torrentstreamplayer.R
+import com.example.torrentstreamplayer.ui.components.PrimaryButton
+import com.example.torrentstreamplayer.ui.components.SecondaryButton
+import com.example.torrentstreamplayer.ui.components.SectionCard
+import com.example.torrentstreamplayer.ui.theme.Shapes
+import com.example.torrentstreamplayer.ui.theme.Sizes
+import com.example.torrentstreamplayer.ui.theme.Spacing
+import kotlinx.coroutines.launch
 
 /** 링크 형식 예시. 문장이 아니라 입력 형식이라 번역하지 않는다. */
 private const val MAGNET_PLACEHOLDER = "magnet:?xt=urn:btih:..."
+
+/** 링크 입력창 최대 줄 수. 긴 마그넷도 카드가 지나치게 커지지 않게 한다. */
+private const val LINK_MAX_LINES = 3
 
 /** 메인: 링크를 넣고 바로 재생하거나 재생 목록·저장 파일 관리로 간다. */
 @Composable
@@ -47,6 +66,8 @@ internal fun MagnetLinkInputScreen(
 ) {
     var magnetLink by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val versionName = remember(context) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
     }
@@ -56,60 +77,121 @@ internal fun MagnetLinkInputScreen(
             .fillMaxSize()
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = Spacing.screenGutter, vertical = Spacing.xl),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Column(
+            Modifier.widthIn(max = Sizes.contentMaxWidth).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            BrandHeader()
+            SectionCard {
+                LinkField(magnetLink, { magnetLink = it }, errorMessage)
+                SecondaryButton(
+                    text = stringResource(R.string.action_paste),
+                    icon = ImageVector.vectorResource(R.drawable.ic_content_paste),
+                    onClick = {
+                        scope.launch {
+                            val clip = clipboard.getClipEntry()?.clipData
+                            val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)
+                            if (!text.isNullOrBlank()) magnetLink = text.toString().trim()
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.End)
+                )
+            }
+            PrimaryButton(
+                text = stringResource(R.string.action_stream_play),
+                onClick = { onStartStream(magnetLink) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+            ) {
+                ShortcutCard(Icons.AutoMirrored.Filled.List, stringResource(R.string.action_open_playlist),
+                    stringResource(R.string.main_playlist_hint), onOpenHistory, Modifier.weight(1f))
+                ShortcutCard(ImageVector.vectorResource(R.drawable.ic_folder),
+                    stringResource(R.string.action_open_stored_files), stringResource(R.string.main_files_hint),
+                    onOpenFiles, Modifier.weight(1f))
+            }
+            Footer(versionName, onPrivacyOptions)
+        }
+    }
+}
+
+@Composable
+private fun BrandHeader() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
         Image(
             painter = painterResource(R.drawable.pieceplay_icon_foreground),
             contentDescription = stringResource(R.string.cd_app_logo),
-            modifier = Modifier.padding(bottom = 12.dp).size(96.dp)
-                .clip(RoundedCornerShape(20.dp))
+            modifier = Modifier.size(Sizes.logo).clip(Shapes.large)
         )
         Text(
             text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Text(
+            text = stringResource(R.string.main_tagline),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
 
+@Composable
+private fun LinkField(value: String, onValueChange: (String) -> Unit, errorMessage: String?) {
+    val colors = MaterialTheme.colorScheme
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(stringResource(R.string.label_link_input)) },
+        placeholder = { Text(MAGNET_PLACEHOLDER) },
+        isError = errorMessage != null,
+        supportingText = errorMessage?.let { message -> { Text(message) } },
+        maxLines = LINK_MAX_LINES,
+        shape = Shapes.small,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = colors.surfaceContainer,
+            unfocusedContainerColor = colors.surfaceContainer,
+            errorContainerColor = colors.surfaceContainer,
+            unfocusedBorderColor = colors.outline,
+            focusedBorderColor = colors.tertiary,
+            focusedLabelColor = colors.tertiary,
+            cursorColor = colors.tertiary
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/** 메인 아래 바로가기 카드(재생 목록·저장 파일 관리). */
+@Composable
+private fun ShortcutCard(icon: ImageVector, title: String, hint: String, onClick: () -> Unit, modifier: Modifier) {
+    SectionCard(onClick = onClick, modifier = modifier.fillMaxHeight()) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(Sizes.icon))
+        Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+        Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun Footer(versionName: String, onPrivacyOptions: (() -> Unit)?) {
+    Column(
+        Modifier.fillMaxWidth().padding(top = Spacing.sm),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(versionName, color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall)
-
-        OutlinedTextField(
-            value = magnetLink,
-            onValueChange = { magnetLink = it },
-            label = { Text(stringResource(R.string.label_link_input)) },
-            placeholder = { Text(MAGNET_PLACEHOLDER) },
-            isError = errorMessage != null,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        if (errorMessage != null) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = { onStartStream(magnetLink) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-        ) {
-            Text(stringResource(R.string.action_stream_play))
-        }
-        TextButton(onClick = onOpenHistory, modifier = Modifier.padding(top = 12.dp)) {
-            Text(stringResource(R.string.action_open_playlist))
-        }
-        TextButton(onClick = onOpenFiles) { Text(stringResource(R.string.action_open_stored_files)) }
         if (onPrivacyOptions != null) TextButton(onClick = onPrivacyOptions) {
-            Text(stringResource(R.string.action_ad_privacy))
+            Text(stringResource(R.string.action_ad_privacy), style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Spacer(Modifier.height(Spacing.xs))
     }
 }

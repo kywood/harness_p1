@@ -35,4 +35,7 @@ object Sizes {
     val primaryButtonHeight = 52.dp
     val progressBarHeight = 8.dp
     val logo = 96.dp
+
+    /** 가로 화면·큰 화면에서 본문이 지나치게 넓어지지 않게 하는 최대 폭. */
+    val contentMaxWidth = 600.dp
 }
