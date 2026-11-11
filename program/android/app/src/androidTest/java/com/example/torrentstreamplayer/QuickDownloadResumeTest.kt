@@ -1,5 +1,8 @@
 package com.example.torrentstreamplayer
 
+import com.example.torrentstreamplayer.engine.TorrentStorage
+import com.example.torrentstreamplayer.meta.TorrentStorageDir
+
 import android.app.Application
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.engine.*
@@ -29,9 +32,9 @@ class QuickDownloadResumeTest {
         fun link(bytes: ByteArray) = libtorrent.make_magnet_uri(AddTorrentParams().apply { setTorrentInfo(TorrentInfo.bdecode(bytes)) }.swig())
         val playingBytes = metadata("playing.mkv")
         val playing = link(playingBytes); val key = MagnetIdentity.key(playing)
-        val cache = TorrentCache(File(app.cacheDir, "torrent_state"), key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
+        val cache = TorrentCache(TorrentStorage.of(app).dir(TorrentStorageDir.STATE), key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
         cache.write("metadata", playingBytes)
-        val video = File(File(File(app.cacheDir, "torrent_downloads"), key), "playing.mkv")
+        val video = File(File(TorrentStorage.of(app).dir(TorrentStorageDir.DOWNLOADS), key), "playing.mkv")
         video.parentFile!!.mkdirs(); video.writeBytes(ByteArray(32768)); cache.recordComplete(video, 32768)
         val extra = metadata("extra.mkv"); val extraKey = MagnetIdentity.key(link(extra))
         val server = object : fi.iki.elonen.NanoHTTPD(0) {

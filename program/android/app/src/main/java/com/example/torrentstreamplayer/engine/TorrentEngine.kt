@@ -15,6 +15,7 @@ import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
 import java.io.File
 import com.example.torrentstreamplayer.meta.EngineSpec
+import com.example.torrentstreamplayer.meta.TorrentStorageDir
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -46,8 +47,9 @@ class TorrentEngine(private val context: Context) {
     internal val metadataDetails = _metadataDetails.asStateFlow()
     private val _activeDownload = MutableStateFlow<DownloadSnapshot?>(null)
     internal val activeDownload = _activeDownload.asStateFlow()
-    private val downloadRoot = File(context.cacheDir, "torrent_downloads")
-    private val stateRoot = File(context.cacheDir, "torrent_state")
+    private val storage = TorrentStorage.of(context)
+    private val downloadRoot = storage.dir(TorrentStorageDir.DOWNLOADS)
+    private val stateRoot = storage.dir(TorrentStorageDir.STATE)
     private val diskStore = TorrentDiskStore(listOf(downloadRoot, stateRoot))
     private val teardown = EngineTeardown(onError = { Log.e(TAG, "Error stopping torrent engine", it) })
     var selectedVideoFile: File? = null

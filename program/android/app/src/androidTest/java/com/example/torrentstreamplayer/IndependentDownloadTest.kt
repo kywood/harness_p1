@@ -1,4 +1,7 @@
 package com.example.torrentstreamplayer
+
+import com.example.torrentstreamplayer.engine.TorrentStorage
+import com.example.torrentstreamplayer.meta.TorrentStorageDir
 import android.app.Application
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.engine.*
@@ -31,10 +34,10 @@ class IndependentDownloadTest {
             val params = AddTorrentParams().apply { setTorrentInfo(TorrentInfo.bdecode(metadata)) }
             val link = libtorrent.make_magnet_uri(params.swig())
             val key = MagnetIdentity.key(link)
-            val cache = TorrentCache(File(app.cacheDir, "torrent_state"), key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
+            val cache = TorrentCache(TorrentStorage.of(app).dir(TorrentStorageDir.STATE), key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
             cache.write("metadata", metadata)
             if (complete) {
-                val file = File(File(File(app.cacheDir, "torrent_downloads"), key), name)
+                val file = File(File(TorrentStorage.of(app).dir(TorrentStorageDir.DOWNLOADS), key), name)
                 check(file.parentFile!!.mkdirs()); file.writeBytes(ByteArray(32768))
                 cache.recordComplete(file, 32768)
             }
@@ -62,15 +65,15 @@ class IndependentDownloadTest {
             assertTrue(engine.activeDownload.value != null)
             model.deleteSavedMagnet(completed)
             assertTrue(engine.isDownloading)
-            assertFalse(File(app.cacheDir, "torrent_downloads/" + MagnetIdentity.key(completed)).exists())
-            assertFalse(File(app.cacheDir, "torrent_state/" + MagnetIdentity.key(completed)).exists())
+            assertFalse(File(TorrentStorage.of(app).dir(TorrentStorageDir.DOWNLOADS), MagnetIdentity.key(completed)).exists())
+            assertFalse(File(TorrentStorage.of(app).dir(TorrentStorageDir.STATE), MagnetIdentity.key(completed)).exists())
             assertTrue(model.savedMagnets().none { it.magnet == completed })
             model.deleteSavedMagnet(downloading)
             assertFalse(engine.isDownloading)
             assertNull(model.downloads.state.value.key)
             Thread.sleep(200)
-            assertFalse(File(app.cacheDir, "torrent_downloads/" + MagnetIdentity.key(downloading)).exists())
-            assertFalse(File(app.cacheDir, "torrent_state/" + MagnetIdentity.key(downloading)).exists())
+            assertFalse(File(TorrentStorage.of(app).dir(TorrentStorageDir.DOWNLOADS), MagnetIdentity.key(downloading)).exists())
+            assertFalse(File(TorrentStorage.of(app).dir(TorrentStorageDir.STATE), MagnetIdentity.key(downloading)).exists())
             assertTrue(model.savedMagnets().isEmpty())
         } finally {
             instrumentation.runOnMainSync { model.stopStream(); model.downloads.stop() }
