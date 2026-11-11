@@ -1,10 +1,13 @@
 package com.example.torrentstreamplayer.engine
 
+import com.example.torrentstreamplayer.meta.EngineSpec
+
 internal object StartupBufferPlan {
     fun required(size: Long, offset: Long, pieceSize: Long, extension: String): Set<Int> {
         if (size <= 0 || offset < 0 || pieceSize <= 0) return emptySet()
         val first = (offset / pieceSize).toInt()
-        val headEnd = ((offset + minOf(size, 2L * 1024 * 1024) - 1) / pieceSize).toInt()
+        val startupBytes = EngineSpec.STARTUP_BUFFER_SEC * EngineSpec.DEFAULT_BYTES_PER_SECOND
+        val headEnd = ((offset + minOf(size, startupBytes) - 1) / pieceSize).toInt()
         val pieces = (first..headEnd).toMutableSet()
         return pieces
     }
