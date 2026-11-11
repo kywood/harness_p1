@@ -65,9 +65,9 @@
 | `BrandColors` (`Color.kt`) | 위 2절 표의 색 + `brandGradient`, `brandButtonGradient`(`ButtonGradientStart`·`ButtonGradientEnd`) |
 | `Spacing` (`Dimens.kt`) | `xs`·`sm`·`md`·`lg`·`xl`·`xxl`, `screenGutter` |
 | `Shapes` (`Dimens.kt`) | `small`·`medium`·`large`·`pill` |
-| `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconSmall` 18(글자 버튼 안 아이콘, #47), `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96, `contentMaxWidth` 600(가로·큰 화면 본문 최대 폭, #46) |
+| `Sizes` (`Dimens.kt`) | `touchTarget` 48, `icon` 24, `iconSmall` 18(글자 버튼 안 아이콘, #47), `iconLarge` 48, `primaryButtonHeight` 52, `progressBarHeight` 8, `logo` 96, `contentMaxWidth` 600(가로·큰 화면 본문 최대 폭, #46), 재생 화면(#48): `iconMedium` 32(회전·10초 이동 아이콘), `playerControl` 56·`playerControlLarge` 72(가운데 버튼 지름), `seekTrackHeight` 6, `seekThumb` 16 |
 | `PieceMapColors` | 조각 맵 색 규칙(`of(PieceCell)`) |
-| `PlaybackColors` | 재생 화면 색. `Played`(그라데이션), `Downloaded`(primaryLight 40%), `Track`, `Panel`, `SeekPanel` 등 |
+| `PlaybackColors` | 재생 화면 색. `Played`(그라데이션), `Downloaded`(primaryLight 40%), `Track`, `Panel`, `SeekPanel`, #48에서 `Video`(검정 바탕), `OnVideo`(흰색), `OnVideoMuted`, `ControlButton`(흰색 16%), `Chip`(surface 70%), `Error`, `ScrimTop`·`ScrimBottom`(background 85% ↔ 투명 그라데이션) |
 
 ## 5. 공용 컴포넌트 (`ui/components/`)
 
@@ -103,6 +103,15 @@
 - 상단 바 오른쪽 동작(링크 추가·간단히)과 "닫기"는 화면 테스트가 글자로 찾으므로 글자 버튼(`TextAction`, `primaryLight`)으로 둔다.
 - 요약·칩·선택 줄도 목록과 함께 스크롤된다(가로 화면에서 목록이 가려지지 않게).
 - 저장 파일 행은 파일 이름을 제목으로, 폴더 경로를 보조 줄로 보여 준다.
+
+#48에서 정한 재생 화면 세부:
+
+- 상·하단 가림막은 `ScrimTop`·`ScrimBottom` 그라데이션이고, 화면 전체 어둡게 하는 `ControlsScrim`(15%)은 그대로 둔다.
+- 재생 막대(`ui/player/PlayerSeekBar`): 트랙 `Track` 위에 받은 조각을 `Downloaded`로 칠하고, 재생한 구간을 `brandGradient`로 덮는다. 손잡이는 흰색 16dp. 숨은 상태에서 밀어 이동할 때 나오는 막대(`SwipeSeekBar`)도 같은 막대를 쓴다.
+- 아이콘: 상단 동작 24dp, 회전·10초 이동 32dp, 재생/일시 정지 48dp. "-10s"/"+10s"/"❚❚"/"⋮" 글자 대신 Material 아이콘(replay_10, forward_10, pause, more_vert, zoom_in/out)을 쓴다.
+- 더보기는 `ModalBottomSheet`(링크 추가, 재생 위치 초기화 · 처음부터).
+- 오류는 경고 아이콘(`error`) + 문구 + "돌아가기"(`SecondaryButton`).
+- 버퍼링·이동 안내는 가운데 버튼 바로 위 패널로 옮겼다.
 
 화면 테스트가 글자로 버튼을 찾으므로 다음 문구는 유지한다: 재생 목록, 저장 파일 관리, 전체 선택, 삭제, 다운로드, 중지, 재생, 메인, 닫기. 바꾸면 테스트도 같이 고친다.
 

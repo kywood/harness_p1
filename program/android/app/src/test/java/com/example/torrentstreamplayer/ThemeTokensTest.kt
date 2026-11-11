@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.example.torrentstreamplayer.engine.PieceCell
 import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.PieceMapColors
+import com.example.torrentstreamplayer.ui.theme.PlaybackColors
 import com.example.torrentstreamplayer.ui.theme.PiecePlayColorScheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -95,6 +96,22 @@ class ThemeTokensTest {
             .filter { literal.containsMatchIn(it.readText()) }
             .map { it.name }
         assertEquals(emptyList<String>(), offenders)
+    }
+
+    @Test fun playerOverlayUsesPlaybackColorsInsteadOfLiterals() {
+        val literal = Regex("""Color\(0x|Color\.(White|Black|Red)""")
+        val ui = File("src/main/java/com/example/torrentstreamplayer/ui")
+        val files = File(ui, "player").walk().filter(File::isFile).toList() +
+            listOf("VlcPlayerScreen.kt", "VideoOrientationButton.kt", "SwipeSeekBar.kt").map { File(ui, it) }
+        val offenders = files.filter { literal.containsMatchIn(it.readText()) }.map { it.name }
+        assertEquals(emptyList<String>(), offenders)
+    }
+
+    @Test fun playedRangeKeepsTheBrandGradientAndDownloadedRangeIsLighter() {
+        assertEquals(BrandColors.brandGradient, PlaybackColors.Played)
+        assertEquals(0.4f, PlaybackColors.Downloaded.alpha, 0.01f)
+        assertTrue("white over the darkest scrim must stay readable",
+            contrast(PlaybackColors.OnVideo, BrandColors.Background) >= 4.5)
     }
 
     @Test fun pieceMapColorsFollowTheTokenRule() {
