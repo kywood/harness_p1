@@ -11,6 +11,7 @@ import org.junit.Test
 import org.libtorrent4j.*
 import org.libtorrent4j.swig.libtorrent
 import java.io.File
+import kotlinx.coroutines.runBlocking
 class MultipleDownloadsTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private fun await(check: () -> Boolean) {
@@ -62,7 +63,7 @@ class MultipleDownloadsTest {
             assertTrue(model.downloads.engineFor(keys[0])!!.isDownloading)
             assertTrue(model.downloads.engineFor(keys[3])!!.isDownloading)
             assertSame(sharedSession, model.downloads.engineFor(keys[3])!!.nativeSessionIdentity)
-            model.deleteSavedMagnet(links[0])
+            runBlocking { model.deleteSavedMagnet(links[0]) }
             assertNull(model.downloads.entry(keys[0]))
             assertTrue(model.downloads.engineFor(keys[2])!!.isDownloading)
             assertTrue(model.downloads.engineFor(keys[3])!!.isDownloading)

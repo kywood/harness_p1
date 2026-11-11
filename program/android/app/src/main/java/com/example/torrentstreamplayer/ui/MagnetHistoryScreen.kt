@@ -16,7 +16,7 @@ import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: (String) -> Unit,
+internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend (String) -> Unit,
     onPlay: (String) -> Unit, onBack: () -> Unit, onDownload: (String) -> Unit = {},
     onStopDownload: () -> Unit = {}, activeKey: String? = null,
     activeProgress: Pair<Long, Long>? = null,

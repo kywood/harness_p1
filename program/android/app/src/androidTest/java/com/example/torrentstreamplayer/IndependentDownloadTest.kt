@@ -11,6 +11,7 @@ import org.junit.Test
 import org.libtorrent4j.*
 import org.libtorrent4j.swig.libtorrent
 import java.io.File
+import kotlinx.coroutines.runBlocking
 class IndependentDownloadTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private fun waitUntil(check: () -> Boolean) {
@@ -63,12 +64,12 @@ class IndependentDownloadTest {
             instrumentation.runOnMainSync { model.stopStream() }
             assertTrue(engine.isDownloading)
             assertTrue(engine.activeDownload.value != null)
-            model.deleteSavedMagnet(completed)
+            runBlocking { model.deleteSavedMagnet(completed) }
             assertTrue(engine.isDownloading)
             assertFalse(File(TorrentStorage.of(app).dir(TorrentStorageDir.DOWNLOADS), MagnetIdentity.key(completed)).exists())
             assertFalse(File(TorrentStorage.of(app).dir(TorrentStorageDir.STATE), MagnetIdentity.key(completed)).exists())
             assertTrue(model.savedMagnets().none { it.magnet == completed })
-            model.deleteSavedMagnet(downloading)
+            runBlocking { model.deleteSavedMagnet(downloading) }
             assertFalse(engine.isDownloading)
             assertNull(model.downloads.state.value.key)
             Thread.sleep(200)

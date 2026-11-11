@@ -19,6 +19,7 @@ import org.junit.Test
 import org.libtorrent4j.*
 import org.libtorrent4j.swig.libtorrent
 import java.io.File
+import kotlinx.coroutines.runBlocking
 class PlaylistPresentationTest {
     private fun verifyQuickActions(link: String, position: java.util.concurrent.atomic.AtomicLong, added: java.util.concurrent.atomic.AtomicBoolean) {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
@@ -269,7 +270,7 @@ class PlaylistPresentationTest {
                 assertEquals(StreamUiState.Idle, model.uiState.value)
                 click("닫기")
                 await { nodes("저장 파일 관리").isNotEmpty() }
-            } finally { model.deleteSavedMagnet(link) }
+            } finally { runBlocking { model.deleteSavedMagnet(link) } }
         }
     }
 }

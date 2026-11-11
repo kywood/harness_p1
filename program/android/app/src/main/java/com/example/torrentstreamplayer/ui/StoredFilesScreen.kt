@@ -72,7 +72,7 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (!loading && files.isEmpty()) Text("저장된 파일이 없습니다.")
             if (!loading && files.isNotEmpty() && visibleFiles.isEmpty()) Text("해당 확장자의 파일이 없습니다.")
-            BulkSelectionActions(visibleFiles.map { it.path }, selected, { selected = it }, deleteFile,
+            BulkSelectionActions(visibleFiles.map { it.path }, selected, { selected = it }, { deleteFile(it) },
                 "선택한 실제 파일을 삭제합니다. 재생 중인 파일은 재생이 중단될 수 있으며 다시 받아야 할 수 있습니다.",
                 !loading && !deleting, { bulkBusy = it }, { refresh++ })
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
