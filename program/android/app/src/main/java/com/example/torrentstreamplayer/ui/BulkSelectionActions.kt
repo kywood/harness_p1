@@ -10,7 +10,7 @@ import kotlinx.coroutines.withContext
 
 @Composable
 internal fun BulkSelectionActions(keys: List<String>, selected: Set<String>,
-    onSelection: (Set<String>) -> Unit, delete: (String) -> Boolean, description: String,
+    onSelection: (Set<String>) -> Unit, delete: suspend (String) -> Boolean, description: String,
     enabled: Boolean, onBusy: (Boolean) -> Unit, onChanged: () -> Unit,
     deleteLabel: String? = null, trailingActions: @Composable (Boolean) -> Unit = {}) {
     val scope = rememberCoroutineScope()
@@ -43,7 +43,7 @@ internal fun BulkSelectionActions(keys: List<String>, selected: Set<String>,
                     onBusy(true)
                     scope.launch {
                         try {
-                            val removed = withContext(Dispatchers.IO) { BulkSelection.delete(targets, delete) }
+                            val removed = withContext(Dispatchers.IO) { BulkSelection.delete(targets) { delete(it) } }
                             onSelection(selected - removed)
                             if (removed.size < targets.size) error = "${targets.size - removed.size}개 삭제 실패. 실패한 항목은 선택을 유지합니다."
                             pending = null

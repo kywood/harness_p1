@@ -6,6 +6,9 @@ import java.security.MessageDigest
 import java.util.Locale
 
 internal object MagnetIdentity {
+    private val HEX_BTIH = Regex("urn:btih:[0-9a-f]{40}")
+    private val BTMH = Regex("urn:btmh:1220[0-9a-f]{64}")
+    private val BASE32_BTIH = Regex("urn:btih:[a-z2-7]{32}")
     fun key(magnet: String): String {
         val uri = URI(magnet.trim())
         if (!uri.scheme.equals("magnet", true)) throw InvalidMagnetException()
@@ -22,9 +25,9 @@ internal object MagnetIdentity {
             .joinToString("") { "%02x".format(it.toInt() and 255) }
     }
     private fun normalize(topic: String): String? {
-        if (topic.matches(Regex("urn:btih:[0-9a-f]{40}"))) return topic
-        if (topic.matches(Regex("urn:btmh:1220[0-9a-f]{64}"))) return topic
-        if (!topic.matches(Regex("urn:btih:[a-z2-7]{32}"))) return null
+        if (topic.matches(HEX_BTIH)) return topic
+        if (topic.matches(BTMH)) return topic
+        if (!topic.matches(BASE32_BTIH)) return null
         var bits = 0
         var value = 0
         val result = ArrayList<Byte>()

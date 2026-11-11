@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.engine
 
 internal object TorrentPlayback {
+    private val BYTE_RANGE = Regex("bytes=(\\d*)-(\\d*)")
     private val videoExtensions = setOf("mp4", "mkv", "avi", "webm", "mov", "m4v", "ts", "flv")
     fun isVideo(path: String, size: Long): Boolean =
         size > 0 && path.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT) in videoExtensions
@@ -19,7 +20,7 @@ internal object TorrentPlayback {
     fun httpRange(header: String?, size: Long): LongRange? {
         if (size <= 0) return null
         if (header == null) return 0L..(size - 1)
-        val match = Regex("bytes=(\\d*)-(\\d*)").matchEntire(header.trim()) ?: return null
+        val match = BYTE_RANGE.matchEntire(header.trim()) ?: return null
         val (start, end) = match.destructured
         return parseRange(start, end, size)
     }

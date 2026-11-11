@@ -14,6 +14,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.withLock
 import com.example.torrentstreamplayer.engine.MagnetHistory
+import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentCache
 import com.example.torrentstreamplayer.engine.TorrentCacheCipher
 import com.example.torrentstreamplayer.engine.SavedMagnet
@@ -33,18 +34,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var playingMagnet: String? = null
     var resumePositionMs: Long = 0; private set
     fun savedMagnets(): List<SavedMagnet> = history.list().map(torrentEngine::savedMagnet)
-    fun deleteSavedMagnet(magnet: String) {
-        val key = com.example.torrentstreamplayer.engine.MagnetIdentity.key(magnet)
-        val protectedFiles = kotlinx.coroutines.runBlocking(Dispatchers.Main.immediate) {
+    /** Stops [magnet] on the main thread, then waits for its writes and deletes its files on [Dispatchers.IO]. */
+    suspend fun deleteSavedMagnet(magnet: String) {
+        val key = MagnetIdentity.key(magnet)
+        val protectedFiles = withContext(Dispatchers.Main.immediate) {
             if (_activeKey.value == key) stopStream()
             downloads.stop(key)
             listOfNotNull(if (engine.isInitialized()) engine.value.selectedVideoFile else null) + downloads.protectedFiles()
         }
-        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
-        if (engine.isInitialized()) engine.value.awaitStoppedWrites()
-        downloads.awaitStoppedWrites()
-        torrentEngine.deleteTorrentFiles(magnet, protectedFiles)
-        history.delete(magnet)
+        withContext(Dispatchers.IO) {
+            check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
+            if (engine.isInitialized()) engine.value.awaitStoppedWrites()
+            downloads.awaitStoppedWrites()
+            torrentEngine.deleteTorrentFiles(magnet, protectedFiles)
+            history.delete(magnet)
+        }
     }
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { history.add(it) }; Unit },
