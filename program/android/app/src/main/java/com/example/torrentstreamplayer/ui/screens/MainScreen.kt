@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,11 +79,14 @@ internal fun MagnetLinkInputScreen(
     val snackbar = remember { SnackbarHostState() }
     val openExternal = rememberExternalLinkOpener()
     val browserUnavailable = stringResource(R.string.error_browser_unavailable)
+    var showUsageGuide by rememberSaveable { mutableStateOf(false) }
     val footerActions = FooterActions(
+        openUsageGuide = { showUsageGuide = true },
         openExternal = { url -> if (!openExternal(url)) scope.launch { snackbar.showSnackbar(browserUnavailable) } },
         openLicenses = onOpenLicenses,
         privacyOptions = onPrivacyOptions
     )
+    if (showUsageGuide) UsageGuideSheet(onDismiss = { showUsageGuide = false }, openExternal = openExternal)
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -172,6 +176,7 @@ private fun ShortcutCard(icon: ImageVector, title: String, hint: String, onClick
 
 /** 하단 링크가 부르는 동작. [privacyOptions]는 동의 필요 지역에서만 있다. */
 private class FooterActions(
+    val openUsageGuide: () -> Unit,
     val openExternal: (String) -> Unit,
     val openLicenses: () -> Unit,
     val privacyOptions: (() -> Unit)?
@@ -215,6 +220,7 @@ private fun Footer(versionName: String?, actions: FooterActions) {
 private fun FooterLink(link: LegalLink, actions: FooterActions) {
     val url = link.url?.let { stringResource(it) }
     val onClick: () -> Unit = when (link) {
+        LegalLink.USAGE_GUIDE -> actions.openUsageGuide
         LegalLink.PRIVACY_POLICY -> { { url?.let(actions.openExternal) } }
         LegalLink.OPEN_SOURCE_LICENSES -> actions.openLicenses
         LegalLink.AD_PRIVACY -> actions.privacyOptions ?: return

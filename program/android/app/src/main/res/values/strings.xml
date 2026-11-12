@@ -175,4 +175,19 @@
     <string name="separator_dot" translatable="false">·</string>
     <!-- Play Console 등록정보의 개인정보처리방침 URL과 같아야 한다. -->
     <string name="url_privacy_policy" translatable="false">https://shine-antler-dd8.notion.site/PiecePlay-Torrent-Player-403c3f3da78780ec88cbdce8e89d314d</string>
+
+    <!-- Usage guide sheet (design/specs/usage-guide.md 2절) -->
+    <string name="action_usage_guide">이용 안내</string>
+    <string name="action_confirm">확인</string>
+    <string name="guide_rights_body">PiecePlay는 콘텐츠를 제공하거나 찾아 주지 않습니다. 재생할 링크는 직접 고르며, 저작권을 침해하는 이용에 대한 책임은 사용자에게 있습니다.</string>
+    <string name="guide_what_title">영상 하나만 받습니다</string>
+    <string name="guide_what_body">마그넷 링크나 .torrent 파일 주소를 넣으면, 다 받기 전에 앞부분부터 받아 바로 재생합니다. 토렌트 안에서 가장 큰 영상 파일 하나만 받고 나머지 파일은 받지 않습니다.</string>
+    <string name="guide_upload_title">올려 보내지 않습니다</string>
+    <string name="guide_upload_body">받기만 하고 다른 사람에게 올려 보내지 않습니다. 다 받으면 바로 연결을 멈춥니다. 다만 토렌트 방식의 특성상, 연결된 사용자에게 이 기기의 IP 주소가 보입니다.</string>
+    <string name="guide_storage_title">기기 안에만 저장합니다</string>
+    <string name="guide_storage_body">받은 영상과 재생 목록은 이 기기에만 저장되고 어디로도 보내지 않습니다. 재생 목록과 이어받기 정보는 암호화해 보관합니다. 저장 파일 관리에서 지우거나 앱을 삭제하면 모두 지워집니다.</string>
+    <string name="guide_data_title">데이터를 많이 씁니다</string>
+    <string name="guide_data_body">영상 크기만큼 데이터를 씁니다. 모바일 데이터에서는 요금이 나올 수 있으니 Wi-Fi에서 쓰는 것을 권합니다.</string>
+    <string name="guide_ads_title">광고</string>
+    <string name="guide_ads_body">메인과 재생 목록에 배너 광고가 나오고, 재생을 마친 뒤 가끔 전면 광고가 나옵니다. 재생하는 동안에는 광고가 나오지 않습니다.</string>
 </resources>

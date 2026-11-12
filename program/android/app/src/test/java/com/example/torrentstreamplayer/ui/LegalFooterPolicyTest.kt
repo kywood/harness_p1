@@ -10,7 +10,8 @@ import org.junit.Test
 class LegalFooterPolicyTest {
     @Test fun consentRegionShowsAllLinksInFixedOrder() {
         assertEquals(
-            listOf(LegalLink.PRIVACY_POLICY, LegalLink.OPEN_SOURCE_LICENSES, LegalLink.AD_PRIVACY),
+            listOf(LegalLink.USAGE_GUIDE, LegalLink.PRIVACY_POLICY, LegalLink.OPEN_SOURCE_LICENSES,
+                LegalLink.AD_PRIVACY),
             LegalFooterPolicy.links(consentOptionsAvailable = true)
         )
     }
@@ -30,7 +31,8 @@ class LegalFooterPolicyTest {
         assertEquals(R.string.url_privacy_policy, LegalLink.PRIVACY_POLICY.url)
     }
 
-    @Test fun privacyPolicyIsAlwaysShown() {
+    @Test fun usageGuideAndPrivacyPolicyAreAlwaysShown() {
+        assertTrue(LegalLink.USAGE_GUIDE in LegalFooterPolicy.links(consentOptionsAvailable = false))
         assertTrue(LegalLink.PRIVACY_POLICY in LegalFooterPolicy.links(consentOptionsAvailable = false))
         assertTrue(LegalLink.OPEN_SOURCE_LICENSES in LegalFooterPolicy.links(consentOptionsAvailable = false))
     }
