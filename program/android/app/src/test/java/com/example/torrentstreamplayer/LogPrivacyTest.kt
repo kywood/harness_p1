@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
@@ -15,6 +16,7 @@ class LogPrivacyTest {
     private val sensitive = Regex("""\$\{?(selectedRelativePath|candidate|videoFile|selectedVideoFile|uri|url|magnet|magnetUrl|path|fileName|name)\b""")
 
     @Test fun debugAndVerboseLogsOnlyRunInDebugBuilds() {
+        assertTrue("src/main/java not found", sources.isNotEmpty())
         val ungated = sources.filter { (_, line) ->
             logCall.findAll(line).any { it.groupValues[1] in setOf("d", "v") } && !line.contains("BuildConfig.DEBUG")
         }.map { it.first }
@@ -22,6 +24,7 @@ class LogPrivacyTest {
     }
 
     @Test fun noLogInterpolatesFileNamesPathsOrLinks() {
+        assertTrue("src/main/java not found", sources.isNotEmpty())
         val leaking = sources.filter { (_, line) -> logCall.containsMatchIn(line) && sensitive.containsMatchIn(line) }
             .map { it.first }
         assertEquals("logs that interpolate user content", emptyList<String>(), leaking)
