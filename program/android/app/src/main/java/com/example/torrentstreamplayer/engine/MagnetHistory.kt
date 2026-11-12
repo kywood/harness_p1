@@ -1,8 +1,7 @@
 package com.example.torrentstreamplayer.engine
 
+import com.example.torrentstreamplayer.meta.NetworkSpec
 import java.io.*
-import java.net.URI
-import java.net.URLDecoder
 
 data class SavedMagnet(val magnet: String, val title: String, val addedAt: Long,
     val fileSize: Long? = null, val downloadedBytes: Long? = null, val pieces: PieceMapSnapshot? = null,
@@ -25,7 +24,7 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         }
     } catch (_: Exception) { emptyList() }
     @Synchronized fun add(magnet: String, now: Long = System.currentTimeMillis()) {
-        require(magnet.length <= 8192)
+        require(magnet.length <= NetworkSpec.MAX_LINK_CHARS)
         val key = MagnetIdentity.key(magnet)
         val previous = list()
         val saved = previous.firstOrNull { MagnetIdentity.key(it.magnet) == key }
