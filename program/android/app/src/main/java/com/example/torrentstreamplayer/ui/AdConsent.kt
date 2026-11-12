@@ -45,7 +45,7 @@ internal class AdConsent private constructor(private val information: ConsentInf
     }
 
     private fun report(error: FormError?) {
-        if (error != null) Log.w(TAG, "Consent: ${error.errorCode} ${error.message}")
+        if (error != null) Log.w(TAG, "Consent: ${error.errorCode}")
     }
 
     companion object {

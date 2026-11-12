@@ -2,6 +2,8 @@ package com.example.torrentstreamplayer.ui
 
 import android.app.Activity
 import android.os.SystemClock
+import android.util.Log
+import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.interstitial.*
 import com.example.torrentstreamplayer.BuildConfig
@@ -42,7 +44,8 @@ internal class CompletionInterstitial(private val activity: Activity) {
                     .putInt("completions", 0).apply()
             }
         }
-        runCatching { ready.show(activity) }.onFailure { android.util.Log.w("CompletionAd", "Display failed", it) }
+        runCatching { ready.show(activity) }
+            .onFailure { Log.w("CompletionAd", "Display failed: ${EngineFailureLog.describe(it)}") }
     }
     fun dispose() { disposed = true; ad = null }
 }

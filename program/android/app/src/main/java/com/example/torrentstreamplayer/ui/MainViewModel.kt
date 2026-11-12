@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.torrentstreamplayer.engine.TorrentEngine
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import com.example.torrentstreamplayer.data.PlaylistRepository
+import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.MetadataDetails
 import com.example.torrentstreamplayer.engine.PieceMapSnapshot
@@ -260,7 +262,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return { position, duration -> resume.saved(magnet, position, duration)
             viewModelScope.launch { positionWrites.withLock {
             withContext(Dispatchers.IO) { runCatching { playlist.savePosition(magnet, position, duration) }
-                .onFailure { android.util.Log.w("PlaybackPosition", "Unable to save playback position", it) } }
+                .onFailure {
+                    Log.w("PlaybackPosition", "Unable to save playback position: ${EngineFailureLog.describe(it)}")
+                } }
         } }; Unit }
     }
     fun stopForMain() {

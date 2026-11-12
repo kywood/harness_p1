@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
+import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.ui.AdConsent
 import com.example.torrentstreamplayer.ui.CompletionInterstitial
 import com.example.torrentstreamplayer.ui.MainViewModel
@@ -54,7 +55,7 @@ class MainActivity : ComponentActivity() {
                         } catch (cancelled: CancellationException) {
                             throw cancelled
                         } catch (failure: Exception) {
-                            Log.w("CompletionAd", "Load failed", failure)
+                            Log.w("CompletionAd", "Load failed: ${EngineFailureLog.describe(failure)}")
                         }
                     }
                 }
