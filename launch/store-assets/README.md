@@ -6,18 +6,21 @@
 
 Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-KR 번역) > 그래픽.
 
-| Play 슬롯 | 올릴 파일 (번호 순서대로) | 크기 | 규격(공식) | 상태 |
+| Play 슬롯 | 한국어(ko-KR) 등록정보 | 영어(en-US) 등록정보 | 크기 | 규격(공식) |
 |---|---|---|---|---|
-| 앱 아이콘 | `1_Play_Store_Assets/app_icon_512x512.png` | 512x512 PNG | 512x512, 32비트 PNG, 1MB 이하, 필수 | 기존 그대로 |
-| 그래픽 이미지 | `1_Play_Store_Assets/feature_graphic_1024x500.png` | 1024x500 PNG, 알파 없음 | 1024x500, JPEG 또는 24비트 PNG(알파 없음), 필수 | 보조 문구 수정 |
-| 휴대전화 스크린샷 | `4_Play_Store_Screenshots/ko-KR/01_main.png` ~ `06_stored_files.png` (6장) | 1080x1920, `03`만 1920x1080 | 2~8장, 변 320~3840px, 긴 변 ≤ 짧은 변 x2, 추천 노출은 1080px 이상 4장 이상 | 캡션 새로 |
-| 7인치 태블릿 스크린샷 | `5_Tablet_7in/01_main.png` ~ `06_stored_files.png` (6장) | 1080x1920, `03`만 1920x1080 | 대화면: 변 1080~7680px, 9:16 또는 16:9, 4장 이상, 선택 | 새로 |
-| 10인치 태블릿 스크린샷 | `6_Tablet_10in/01_main.png` ~ `06_stored_files.png` (6장) | 2560x1440 | 위와 같음 | 새로 |
-| Chromebook 스크린샷 | 없음 | | 위와 같음, 선택 | 비워 둠 |
+| 앱 아이콘 | `1_Play_Store_Assets/app_icon_512x512.png` | 같은 파일 | 512x512 PNG | 512x512, 32비트 PNG, 1MB 이하, 필수. 지금 Console 아이콘과 같아 그대로 둔다 |
+| 그래픽 이미지 | `1_Play_Store_Assets/feature_graphic_1024x500_ko-KR.png` | `1_Play_Store_Assets/feature_graphic_1024x500_en-US.png` | 1024x500 PNG, 알파 없음 | 1024x500, JPEG 또는 24비트 PNG(알파 없음), 필수 |
+| 동영상 | 비움 | 비움 | | YouTube URL만 받음 |
+| 휴대전화 스크린샷 | `4_Play_Store_Screenshots/ko-KR/01~06` | `4_Play_Store_Screenshots/en-US/01~06` | 1080x1920, `03`만 1920x1080 | 2~8장, 변 320~3840px, 긴 변 ≤ 짧은 변 x2, 추천 노출은 1080px 이상 4장 이상 |
+| 7인치 태블릿 | `5_Tablet_7in/01~06` | 영어판 준비 중 | 1080x1920, `03`만 1920x1080 | 대화면: 변 1080~7680px, 9:16 또는 16:9, 4장 이상, 선택 |
+| 10인치 태블릿 | `6_Tablet_10in/01~06` | 영어판 준비 중 | 2560x1440 | 위와 같음 |
+| Chromebook | 비움 | 비움 | | 위와 같음, 선택 |
+
+- 현재 Console 기본 등록정보(en-US)에는 로고만 있는 옛 그래픽 이미지와 옛 이름 "Torrent Stream Player"의 휴대전화 스크린샷 2장이 있다. 둘 다 위 en-US 파일로 바꾼다(옛 스크린샷 2장은 삭제).
+- 영어 스크린샷도 앱 화면은 한국어다(앱이 한국어만 지원). 영어 설명에 그 사실을 적는다(`launch/listing/en-US.md`).
 
 규격 출처: [Play Console 고객센터 "미리보기 애셋 추가"](https://support.google.com/googleplay/android-developer/answer/9866151?hl=ko) (2026-11-12 확인). 그 밖의 요구: 실제 앱 화면을 보여 줄 것, "지금 다운로드" 같은 행동 유도 문구 금지, 문구가 이미지의 20%를 넘지 않을 것, 각 애셋에 140자 이하 대체 텍스트 권장.
 
-- 출시 국가가 대한민국 하나이고 기본 언어 등록정보를 한국어로 쓰면 기본 등록정보에 올린다. 영어 등 다른 기본 언어 아래 ko-KR 번역을 두는 경우에는 ko-KR 번역의 그래픽에 올린다.
 - Chromebook은 비워 둔다. 태블릿 이미지를 그대로 올려도 규격에는 맞지만, Chromebook에서 앱을 확인하지 않았다.
 - 예전 휴대전화 스크린샷(`4_Play_Store_Screenshots/01~06`, #49 캡션)은 지웠다. 이미 Console에 올라가 있으면 `ko-KR/`로 바꾼다.
 
@@ -34,9 +37,20 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 | 5 | 재생 목록 | 보던 곳부터 이어보기 | 최근 50개를 기기 안에 암호화해 보관 |
 | 6 | 저장 파일 관리 | 업로드 없이, 기록은 기기 안에 | 받은 파일은 형식별로 보고 바로 삭제 |
 
+영어(en-US) 캡션(앱 이름 "PiecePlay - Torrent Player", 등록정보 문구 톤):
+
+| 순서 | 제목 | 보조 |
+|---|---|---|
+| 1 | Paste a magnet link, play right away | Works with magnet links and .torrent file URLs |
+| 2 | The beginning downloads first | No need to wait for the whole file |
+| 3 | No ads during playback | See downloaded pieces and your position at a glance |
+| 4 | Seek, and it downloads from there | 10-second skip · zoom in · zoom out |
+| 5 | Pick up where you left off | Your last 50 links, encrypted on your device |
+| 6 | No uploads. History stays on device | Browse saved files by type and delete them |
+
 - 예전 4번 보조 문구 "10초 이동 · 확대 · 배속 조절"의 배속 조절은 앱에 없는 기능이라 뺐다.
 - 3번 "재생 중에는 광고 없이"는 사실이다(배너는 메인·재생 목록, 전면 광고는 재생 종료·완료 때만). 광고 정책이 바뀌면 이 캡션도 바꿔야 한다. 이 표현을 쓸지는 `marketing/aso/ko-KR.md` "결정 필요" 2번으로 PM이 정한다.
-- 그래픽 이미지: "받으면서 바로 재생" / "다 받기 전에 재생하는 토렌트 플레이어". 앱 이름 `PiecePlay - 토렌트 플레이어`와 같은 키워드를 쓰고, "바로"가 두 줄에 겹치던 것을 고쳤다.
+- 그래픽 이미지: 한국어 "받으면서 바로 재생" / "다 받기 전에 재생하는 토렌트 플레이어", 영어 "Play while it downloads" / "Paste a magnet link and play right away". 앱 이름 `PiecePlay - 토렌트 플레이어`와 같은 키워드를 쓰고, "바로"가 두 줄에 겹치던 것을 고쳤다.
 
 ## 원본 캡처
 
@@ -63,5 +77,5 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 
 `tools/`의 스크립트(Python + Pillow, Windows의 Noto Sans KR 가변 글꼴 `NotoSansKR-VF.ttf`. 맑은 고딕은 작은 크기에서 "받"이 깨져 쓰지 않는다)로 만든다. Pillow가 없으면 `uv run --no-project --with pillow python ...`로 실행한다.
 
-- `screens.py <store-assets 폴더> [phone|tab7|tab10]`: 각 `raw/` 원본으로 휴대전화·7인치·10인치 스크린샷을 만든다. 캡션과 파일 대응은 스크립트 위쪽 `CAPTIONS`, `TARGETS`에 있다. 원본은 비율을 유지한 채 틀 안에 맞춘다.
-- `feature.py <적응형 아이콘 전경 png> <출력>`: 그래픽 이미지(`2_Android_Adaptive_Icon/ic_launcher_foreground.png` 사용)
+- `screens.py <store-assets 폴더> <ko-KR|en-US|all> [phone|tab7|tab10]`: 각 `raw/` 원본으로 휴대전화·7인치·10인치 스크린샷을 만든다. 캡션과 파일 대응은 스크립트 위쪽 `CAPTIONS`, `TARGETS`에 있다. 원본은 비율을 유지한 채 틀 안에 맞춘다.
+- `feature.py <적응형 아이콘 전경 png> <출력> [ko-KR|en-US]`: 그래픽 이미지(`2_Android_Adaptive_Icon/ic_launcher_foreground.png` 사용)

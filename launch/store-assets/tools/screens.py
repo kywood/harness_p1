@@ -1,6 +1,6 @@
 """Play 스토어 스크린샷 생성 (휴대전화·7인치·10인치 태블릿).
 
-사용: python screens.py <store-assets 폴더> [phone|tab7|tab10 ...]
+사용: python screens.py <store-assets 폴더> <ko-KR|en-US|all> [phone|tab7|tab10 ...]
 필요: Pillow, Windows Noto Sans KR 가변 글꼴(NotoSansKR-VF.ttf)
 
 원본 캡처(raw/)를 브랜드 틀(배경 #0A0F1E, 그라데이션 #2F66F0 -> #2EE6B0)에 넣고
@@ -20,19 +20,26 @@ SUB = (0xA7, 0xB3, 0xD1)
 OUTL = (0x2A, 0x37, 0x57)
 NOTO = 'C:/Windows/Fonts/NotoSansKR-VF.ttf'
 
-# (제목, 보조) — 화면 키별 캡션
-CAPTIONS = {
+# (제목, 보조) — 언어별, 화면 키별 캡션
+CAPTIONS = {'ko-KR': {
     'main': ('링크를 넣으면 바로 재생', '마그넷 링크나 토렌트 파일 주소만 붙여넣으세요'),
     'preparing': ('앞부분부터 먼저 받아요', '다 받을 때까지 기다리지 않아도 돼요'),
     'player_noads': ('재생 중에는 광고 없이', '받은 조각과 재생 위치를 한눈에'),
     'player_seek': ('이동하면 그 위치부터 받아요', '10초 이동 · 확대 · 축소'),
     'playlist': ('보던 곳부터 이어보기', '최근 50개를 기기 안에 암호화해 보관'),
     'stored': ('업로드 없이, 기록은 기기 안에', '받은 파일은 형식별로 보고 바로 삭제'),
-}
+}, 'en-US': {
+    'main': ('Paste a magnet link, play right away', 'Works with magnet links and .torrent file URLs'),
+    'preparing': ('The beginning downloads first', 'No need to wait for the whole file'),
+    'player_noads': ('No ads during playback', 'See downloaded pieces and your position at a glance'),
+    'player_seek': ('Seek, and it downloads from there', '10-second skip · zoom in · zoom out'),
+    'playlist': ('Pick up where you left off', 'Your last 50 links, encrypted on your device'),
+    'stored': ('No uploads. History stays on device', 'Browse saved files by type and delete them'),
+}}
 
 # 대상별: 출력 폴더, 원본 폴더, [(출력 파일, 원본 파일, 캡션 키, 캔버스 W, H)]
 TARGETS = {
-    'phone': ('4_Play_Store_Screenshots/ko-KR', '4_Play_Store_Screenshots/raw', [
+    'phone': ('4_Play_Store_Screenshots/{lang}', '4_Play_Store_Screenshots/raw', [
         ('01_main.png', 'main.png', 'main', 1080, 1920),
         ('02_preparing.png', 'preparing.png', 'preparing', 1080, 1920),
         ('03_player_landscape.png', 'player-landscape.png', 'player_noads', 1920, 1080),
@@ -40,7 +47,7 @@ TARGETS = {
         ('05_playlist.png', 'playlist.png', 'playlist', 1080, 1920),
         ('06_stored_files.png', 'stored-files.png', 'stored', 1080, 1920),
     ]),
-    'tab7': ('5_Tablet_7in', '5_Tablet_7in/raw', [
+    'tab7': ('5_Tablet_7in/{lang}', '5_Tablet_7in/raw', [
         ('01_main.png', 'main.png', 'main', 1080, 1920),
         ('02_preparing.png', 'preparing.png', 'preparing', 1080, 1920),
         ('03_player_landscape.png', 'player-landscape.png', 'player_noads', 1920, 1080),
@@ -48,7 +55,7 @@ TARGETS = {
         ('05_playlist.png', 'playlist.png', 'playlist', 1080, 1920),
         ('06_stored_files.png', 'stored-files.png', 'stored', 1080, 1920),
     ]),
-    'tab10': ('6_Tablet_10in', '6_Tablet_10in/raw', [
+    'tab10': ('6_Tablet_10in/{lang}', '6_Tablet_10in/raw', [
         ('01_main.png', 'main.png', 'main', 2560, 1440),
         ('02_preparing.png', 'preparing.png', 'preparing', 2560, 1440),
         ('03_player.png', 'player.png', 'player_noads', 2560, 1440),
@@ -133,16 +140,18 @@ def compose(src, out, W, H, title, sub):
 
 def main():
     root = sys.argv[1]
-    names = sys.argv[2:] or list(TARGETS)
-    for name in names:
-        out_dir, raw_dir, items = TARGETS[name]
+    langs = list(CAPTIONS) if sys.argv[2] == 'all' else [sys.argv[2]]
+    names = sys.argv[3:] or list(TARGETS)
+    for lang, name in [(l, n) for l in langs for n in names]:
+        out_tpl, raw_dir, items = TARGETS[name]
+        out_dir = out_tpl.format(lang=lang)
         os.makedirs(os.path.join(root, out_dir), exist_ok=True)
         for out, raw, key, W, H in items:
             src = os.path.join(root, raw_dir, raw)
             if not os.path.exists(src):
                 print('skip (no raw):', src)
                 continue
-            title, sub = CAPTIONS[key]
+            title, sub = CAPTIONS[lang][key]
             compose(src, os.path.join(root, out_dir, out), W, H, title, sub)
             print('wrote', out_dir + '/' + out, W, 'x', H)
 
