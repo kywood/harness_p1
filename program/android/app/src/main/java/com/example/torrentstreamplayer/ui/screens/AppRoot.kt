@@ -46,7 +46,9 @@ internal fun AppRoot(
     var playlistFilter by rememberSaveable { mutableStateOf(PlaylistFilter.ALL) }
     val downloadJobs by viewModel.downloads.tasks.collectAsState()
     val downloadError by viewModel.downloads.error.collectAsState()
+    val mobileConfirm by viewModel.mobilePlaybackConfirm.collectAsState()
     if (showDownloadDialog) QuickDownloadDialog(onDismiss = { showDownloadDialog = false }, submit = viewModel::queueDownload)
+    if (mobileConfirm != null) MobilePlaybackConfirmDialog(viewModel::confirmMobilePlayback, viewModel::dismissMobilePlayback)
     BackHandler(enabled = AppBackPolicy.returnsToInput(screen)) { viewModel.closePlayback() }
 
     Scaffold(modifier = Modifier.fillMaxSize(), bottomBar = {
@@ -57,6 +59,14 @@ internal fun AppRoot(
                 AppScreen.StoredFiles -> StoredFilesScreen(viewModel::storedFiles, viewModel::deleteStoredFile,
                     onBack = viewModel::closeList)
                 AppScreen.OpenSourceLicenses -> OpenSourceLicensesScreen(onBack = viewModel::closeList)
+                AppScreen.Settings -> {
+                    val settings by viewModel.settings.collectAsState()
+                    val saveFailed by viewModel.settingsSaveFailed.collectAsState()
+                    SettingsScreen(settings, viewModel::setWifiOnly, viewModel::setAutoSubtitles,
+                        onBack = viewModel::closeList, onOpenLicenses = viewModel::openOpenSourceLicenses,
+                        onPrivacyOptions = onPrivacyOptions,
+                        saveFailed = saveFailed, onSaveFailedShown = viewModel::consumeSettingsSaveFailed)
+                }
                 AppScreen.Playlist -> MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
                     onPlay = viewModel::playFromPlaylist,
                     onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
@@ -74,7 +84,8 @@ internal fun AppRoot(
                     onOpenFiles = viewModel::openStoredFiles,
                     onOpenHistory = viewModel::openPlaylist,
                     onOpenLicenses = viewModel::openOpenSourceLicenses,
-                    onPrivacyOptions = onPrivacyOptions
+                    onPrivacyOptions = onPrivacyOptions,
+                    onOpenSettings = viewModel::openSettings
                 )
                 is AppScreen.Preparing -> {
                     val metadata by viewModel.metadataDetails.collectAsState()

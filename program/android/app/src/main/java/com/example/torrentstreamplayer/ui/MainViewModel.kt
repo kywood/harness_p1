@@ -291,11 +291,23 @@ class MainViewModel @JvmOverloads internal constructor(
 
     fun setAutoSubtitles(enabled: Boolean) = updateSettings { it.copy(autoSubtitles = enabled) }
 
+    private val _settingsSaveFailed = MutableStateFlow(false)
+
+    /** 설정을 디스크에 저장하지 못했으면 true. 설정 화면이 스낵바를 한 번 보이고 [consumeSettingsSaveFailed]를 부른다. */
+    internal val settingsSaveFailed: StateFlow<Boolean> = _settingsSaveFailed.asStateFlow()
+
+    fun consumeSettingsSaveFailed() {
+        _settingsSaveFailed.value = false
+    }
+
     private fun updateSettings(change: (AppSettings) -> AppSettings) {
         viewModelScope.launch {
             try { settingsRepository.update(change) }
             catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) { Log.w("Settings", "Unable to save: ${EngineFailureLog.describe(failure)}") }
+            catch (failure: Exception) {
+                Log.w("Settings", "Unable to save: ${EngineFailureLog.describe(failure)}")
+                _settingsSaveFailed.value = true
+            }
         }
     }
 
@@ -375,7 +387,10 @@ class MainViewModel @JvmOverloads internal constructor(
     /** 오픈소스 라이선스를 연다. 진입점(메인 하단 링크, design 시안 A)은 개인정보처리방침 주소가 정해진 뒤 연결한다. */
     fun openOpenSourceLicenses() = navigator.openOpenSourceLicenses()
 
-    /** 재생 목록·저장 파일 관리·오픈소스 라이선스에서 뒤로 간다. */
+    /** 메인 오른쪽 위 톱니: 설정을 연다. */
+    fun openSettings() = navigator.openSettings()
+
+    /** 재생 목록·저장 파일 관리·오픈소스 라이선스·설정에서 뒤로 간다. */
     fun closeList() = navigator.closeList()
 
     /**

@@ -108,8 +108,8 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     val selectedKeys = visibleEntries.filter { it.magnet in selected }.map { MagnetIdentity.key(it.magnet) }.toSet()
     val stoppable = DownloadSelection.stoppable(selectedKeys, downloadJobs, activeKey)
     val targets = PlaylistOrdering.downloadTargets(visibleEntries, selected)
-    val pendingCount = downloadJobs.values.count { it.phase == DownloadPhase.QUEUED }
-    val refreshing = activeKey != null || downloadCount > 0 || pendingCount > 0
+    val summary = PlaylistSummary.of(downloadJobs.values, downloadCount)
+    val refreshing = activeKey != null || summary.hasLiveJobs
     val jobIdentity = downloadJobs.values.joinToString { it.key + it.phase.name }
     val loadErrorText = stringResource(R.string.playlist_load_error)
     BackHandler { if (!bulkBusy) onBack() }
@@ -139,10 +139,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                 item(key = "summary") {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            val count = downloadCount.coerceAtLeast(0)
-                            Text(if (pendingCount > 0) stringResource(R.string.playlist_summary_queued, count, pendingCount)
-                                else stringResource(R.string.playlist_summary, count),
-                                Modifier.weight(1f), color = MaterialTheme.colorScheme.tertiary,
+                            Text(summaryText(summary), Modifier.weight(1f), color = MaterialTheme.colorScheme.tertiary,
                                 style = MaterialTheme.typography.titleSmall)
                             if (refreshing) TextAction(stringResource(if (downloadJobs.isEmpty()) R.string.action_stop_download
                                 else R.string.action_stop_all), onStopDownload, enabled = !bulkBusy,
@@ -191,11 +188,14 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                     val task = downloadJobs[key]
                     val active = task?.phase == DownloadPhase.RUNNING || activeKey == key
                     val queued = task?.phase == DownloadPhase.QUEUED
+                    val status = PlaylistItemStatus.of(active, queued, task?.error != null, PlaylistOrdering.complete(entry),
+                        waitingForWifi = task?.phase == DownloadPhase.WAITING_FOR_WIFI)
                     PlaylistItemCard(
                         entry = entry,
                         active = active,
-                        status = PlaylistItemStatus.of(active, queued, task?.error != null, PlaylistOrdering.complete(entry)),
-                        speedBytes = if (active && !PlaylistOrdering.complete(entry)) task?.speed ?: downloadSpeedBytes else null,
+                        status = status,
+                        speedBytes = if (active && status.showsSpeed && !PlaylistOrdering.complete(entry))
+                            task?.speed ?: downloadSpeedBytes else null,
                         errorMessage = task?.error,
                         simple = simple,
                         checked = entry.magnet in selected,
@@ -204,7 +204,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                         onCheckedChange = { selected = BulkSelection.toggle(selected, entry.magnet, it) },
                         onPlay = { onPlay(entry.magnet) },
                         onDownloadAction = {
-                            if ((active || queued) && task != null) onStopItem(key)
+                            if ((active || task?.phase?.stoppable == true) && task != null) onStopItem(key)
                             else if (active) onStopDownload() else onDownload(entry.magnet)
                         },
                         onDelete = { deleting = entry },
@@ -251,6 +251,17 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     }
 }
 
+/** 요약 줄: 다운로드 중(늘) · 대기(있을 때) · Wi-Fi 대기(있을 때). */
+@Composable
+private fun summaryText(summary: PlaylistSummary): String {
+    val base = if (summary.showsQueued)
+        stringResource(R.string.playlist_summary_queued, summary.downloading, summary.queued)
+        else stringResource(R.string.playlist_summary, summary.downloading)
+    if (!summary.showsWifiWaiting) return base
+    val wifi = stringResource(R.string.playlist_summary_wifi_waiting, summary.waitingForWifi)
+    return listOf(base, wifi).joinToString(" ${stringResource(R.string.separator_dot)} ")
+}
+
 /** 항목 카드의 다운로드 버튼 모양: 상태마다 문구와 아이콘. */
 private enum class DownloadButton(@StringRes val label: Int) {
     CANCEL_QUEUE(R.string.action_cancel_queue),
@@ -269,6 +280,7 @@ private enum class DownloadButton(@StringRes val label: Int) {
     companion object {
         fun of(status: PlaylistItemStatus, active: Boolean): DownloadButton = when {
             status == PlaylistItemStatus.QUEUED -> CANCEL_QUEUE
+            status == PlaylistItemStatus.WAITING_FOR_WIFI -> STOP
             status == PlaylistItemStatus.COMPLETED -> COMPLETE
             active -> STOP
             else -> START
@@ -305,7 +317,8 @@ private fun PlaylistItemCard(
                     uncheckedColor = colors.onSurfaceVariant))
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            StatusChip(stringResource(status.label), status.tone)
+            StatusChip(stringResource(status.label), status.tone,
+                icon = status.icon?.let { ImageVector.vectorResource(it) })
             SavedMagnetProgress(entry, Modifier.weight(1f), speedBytes)
         }
         val size = entry.fileSize

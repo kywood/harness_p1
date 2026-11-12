@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** 사용자가 고른 목적지. [MAIN]이면 메인·준비·재생 중 무엇을 보일지는 스트림 상태가 정한다. */
-internal enum class Destination { MAIN, PLAYLIST, STORED_FILES, OPEN_SOURCE_LICENSES }
+internal enum class Destination { MAIN, PLAYLIST, STORED_FILES, OPEN_SOURCE_LICENSES, SETTINGS }
 
 /** 재생을 시작한 곳. 재생·준비를 닫으면 [closeTo]로 돌아간다. */
 internal enum class PlaybackOrigin(val closeTo: Destination) {
@@ -14,10 +14,14 @@ internal enum class PlaybackOrigin(val closeTo: Destination) {
     PLAYLIST(Destination.PLAYLIST),
 }
 
-/** 화면 이동 상태. 함께 바뀌는 값이라 하나로 묶어 한 번에 교체한다. */
+/**
+ * 화면 이동 상태. 함께 바뀌는 값이라 하나로 묶어 한 번에 교체한다.
+ * [back]은 목록 화면에서 뒤로 갈 곳이다(설정에서 연 오픈소스 라이선스는 설정으로 돌아간다).
+ */
 internal data class NavigationState(
     val destination: Destination = Destination.MAIN,
     val origin: PlaybackOrigin = PlaybackOrigin.MAIN,
+    val back: Destination = Destination.MAIN,
 )
 
 /**
@@ -36,14 +40,18 @@ internal class AppNavigator(stream: StreamUiState = StreamUiState.Idle) {
         publish()
     }
 
-    fun openPlaylist() = moveTo(navigation.copy(destination = Destination.PLAYLIST))
+    fun openPlaylist() = moveTo(navigation.copy(destination = Destination.PLAYLIST, back = Destination.MAIN))
 
-    fun openStoredFiles() = moveTo(navigation.copy(destination = Destination.STORED_FILES))
+    fun openStoredFiles() = moveTo(navigation.copy(destination = Destination.STORED_FILES, back = Destination.MAIN))
 
-    fun openOpenSourceLicenses() = moveTo(navigation.copy(destination = Destination.OPEN_SOURCE_LICENSES))
+    /** 메인 하단에서 열면 메인으로, 설정의 "정보" 묶음에서 열면 설정으로 돌아간다. */
+    @Synchronized fun openOpenSourceLicenses() =
+        moveTo(navigation.copy(destination = Destination.OPEN_SOURCE_LICENSES, back = navigation.destination))
 
-    /** 재생 목록·저장 파일 관리·오픈소스 라이선스에서 뒤로 가면 메인 흐름으로 돌아간다. */
-    fun closeList() = moveTo(navigation.copy(destination = Destination.MAIN))
+    fun openSettings() = moveTo(navigation.copy(destination = Destination.SETTINGS, back = Destination.MAIN))
+
+    /** 재생 목록·저장 파일 관리·오픈소스 라이선스·설정에서 뒤로 간다. 연 곳이 목록 화면이면 그리로, 아니면 메인 흐름으로. */
+    @Synchronized fun closeList() = moveTo(navigation.copy(destination = navigation.back, back = Destination.MAIN))
 
     fun startPlayback(origin: PlaybackOrigin) = moveTo(NavigationState(Destination.MAIN, origin))
 
@@ -74,6 +82,7 @@ internal class AppNavigator(stream: StreamUiState = StreamUiState.Idle) {
             Destination.PLAYLIST -> AppScreen.Playlist
             Destination.STORED_FILES -> AppScreen.StoredFiles
             Destination.OPEN_SOURCE_LICENSES -> AppScreen.OpenSourceLicenses
+            Destination.SETTINGS -> AppScreen.Settings
             Destination.MAIN -> when (stream) {
                 is StreamUiState.Idle -> AppScreen.Main()
                 is StreamUiState.Error -> AppScreen.Main(stream.message)

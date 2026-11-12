@@ -7,6 +7,6 @@ internal object AppBackPolicy {
     fun returnsToInput(screen: AppScreen): Boolean = when (screen) {
         is AppScreen.Main -> screen.errorMessage != null
         is AppScreen.Preparing, is AppScreen.Player -> true
-        AppScreen.Playlist, AppScreen.StoredFiles, AppScreen.OpenSourceLicenses -> false
+        AppScreen.Playlist, AppScreen.StoredFiles, AppScreen.OpenSourceLicenses, AppScreen.Settings -> false
     }
 }

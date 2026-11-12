@@ -20,7 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -67,7 +69,8 @@ internal fun MagnetLinkInputScreen(
     onOpenFiles: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
     onOpenLicenses: () -> Unit = {},
-    onPrivacyOptions: (() -> Unit)? = null
+    onPrivacyOptions: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {}
 ) {
     var magnetLink by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -103,7 +106,11 @@ internal fun MagnetLinkInputScreen(
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                BrandHeader()
+                // 톱니 줄은 로고를 아래로 너무 밀지 않게 lg 대신 xs만큼 띄운다(settings-wifi.md 1절).
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    SettingsEntry(onOpenSettings)
+                    BrandHeader()
+                }
                 SectionCard {
                     LinkTextField(magnetLink, { magnetLink = it }, errorMessage)
                     SecondaryButton(
@@ -138,6 +145,17 @@ internal fun MagnetLinkInputScreen(
             }
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
+    }
+}
+
+/** 메인 오른쪽 위 톱니: 설정으로 간다. 화면 모서리에 떠 있지 않고 본문과 함께 스크롤된다. */
+@Composable
+private fun SettingsEntry(onOpenSettings: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        IconButton(onClick = onOpenSettings) {
+            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.title_settings),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Sizes.icon))
+        }
     }
 }
 
