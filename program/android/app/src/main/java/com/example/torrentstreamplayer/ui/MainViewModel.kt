@@ -26,6 +26,9 @@ import com.example.torrentstreamplayer.engine.MetadataDetails
 import com.example.torrentstreamplayer.engine.PieceMapSnapshot
 import com.example.torrentstreamplayer.engine.SavedMagnet
 import com.example.torrentstreamplayer.engine.StoredTorrentFile
+import com.example.torrentstreamplayer.engine.SubtitleFile
+import com.example.torrentstreamplayer.engine.SubtitleSelectionPolicy
+import kotlinx.coroutines.flow.map
 import com.example.torrentstreamplayer.ui.navigation.AppNavigator
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import com.example.torrentstreamplayer.ui.navigation.PlaybackOrigin
@@ -108,6 +111,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val metadataDetails: StateFlow<MetadataDetails> = playbackSource
         .flatMapLatest { it?.metadataDetails ?: flowOf(MetadataDetails()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), MetadataDetails())
+
+    /** 재생 중인 영상과 함께 받은(해시 검증된) 자막 파일. 재생에 빌린 엔진이 없으면 비어 있다. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    internal val subtitleFiles: StateFlow<List<SubtitleFile>> = playbackSource
+        .flatMapLatest { it?.subtitleFiles ?: flowOf(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), emptyList())
+
+    /** 자동으로 켤 자막: 영상 이름과 맞는 것 중 한국어 → 영어 → 첫 번째([SubtitleSelectionPolicy]). */
+    internal val preferredSubtitle: StateFlow<SubtitleFile?> = subtitleFiles
+        .map(SubtitleSelectionPolicy::preferred)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), null)
 
     private var continueDownloading = false
     private val _activeKey = MutableStateFlow<String?>(null)
