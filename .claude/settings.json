@@ -5,6 +5,7 @@
     "github@anthropic-plugin-directory": true,
     "figma@anthropic-plugin-directory": true,
     "design@anthropic-plugin-directory": true,
-    "product-management@anthropic-plugin-directory": true
+    "product-management@anthropic-plugin-directory": true,
+    "marketing@anthropic-plugin-directory": true
   }
 }

@@ -26,6 +26,15 @@
 - `reports/<YYYY-MM-DD>.md`: 지표 보고(설치, 유지, 평점, 광고 수익)
 - `campaigns/`: 홍보안과 문안
 
+## 도구
+
+설치되어 있으면 쓴다. 없으면 건너뛰고 보고에 적는다.
+
+- `marketing` 플러그인(Anthropic 공식): `competitive-brief`(경쟁 분석), `campaign-plan`(홍보 계획), `draft-content`·`content-creation`(문안), `performance-report`(지표 보고), `brand-review`(톤 점검), `seo-audit`. 플러그인의 외부 서비스 연결(HubSpot, Ahrefs 등)은 계정이 필요하므로 사용자 승인 없이 연결하지 않는다.
+- `product-management` 플러그인: `competitive-brief`, `synthesize-research`
+- `design` 플러그인 `ux-copy`: 스토어 문구·스크린샷 문구 점검
+- ASO 전용 플러그인(커뮤니티 제작)은 사용자가 고른 경우에만 쓴다.
+
 ## 규칙
 
 - 사실은 출처 링크와 확인 날짜를 단다. 확인하지 못한 수치는 "미확인"으로 적는다.
