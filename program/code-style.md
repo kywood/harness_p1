@@ -102,22 +102,47 @@ enum class PlaylistSort(@StringRes val label: Int, val key: (SavedMagnet) -> Lon
 
 `engine/`의 한 파일·10줄 규칙은 기존 파일 수정에 적용한다. 분리로 생기는 새 파일은 새 파일 하나 단위로 추가하고, 기존 파일에서 위임으로 바꾸는 변경을 10줄 이내로 나눈다.
 
+### 공통 기능 추출 (중복 줄이기)
+
+같은 일을 하는 코드가 두 곳 이상에 생기면 공통 기능으로 뽑아 한 곳에서 관리한다.
+
+- **새로 쓰기 전에 먼저 찾는다**: 비슷한 기능(형식 변환, 경로 검사, 시간·용량 표시, 입력 검증 등)이 이미 있는지 검색하고, 있으면 그것을 쓰거나 넓힌다. 이미 있는 공통 기능을 두고 같은 로직을 새로 쓰는 것은 규칙 위반이다.
+- **두 번째 중복이 생길 때 뽑는다**: 이번 변경에서 같은 로직이 두 번째로 필요해지면 공통 기능으로 뽑아 쓴다. 세 번째를 기다리지 않는다.
+- **뽑는 순서(`engine/` 10줄 규칙과 함께)**: ① 공통 기능을 새 파일 하나로 추가하고 테스트를 붙인다 → ② 쓰던 곳을 한 파일씩(엔진은 10줄 이내로) 옮긴다 → ③ 단계마다 기존 테스트가 통과해야 다음으로 간다. 이번 변경과 관계없는 기존 중복은 바로 고치지 않고 이슈로 만든다(문서 첫머리 "일괄 수정 금지").
+- **합치지 않는 경우**
+  - 모양만 같고 바뀌는 이유가 다른 코드
+  - 합치려면 불리언·모드 인자를 새로 넣어야 하는 경우(전략 패턴을 검토한다)
+  - 표준 라이브러리 호출 2~3줄 조합처럼 뽑아도 읽기가 나아지지 않는 짧은 코드
+  - 계층을 거슬러야 하는 경우(엔진 코드가 UI 쪽 공통 기능을 부르게 되는 등)
+- **이름은 하는 일로 짓는다**: `Utils`, `Helper`, `Common`처럼 아무거나 담기는 이름을 쓰지 않는다. 위 "이름" 표를 따라 책임이 드러나는 작은 `internal object`나 확장 함수로 만든다. 예: 표시 문자열은 `ByteSizeLabel`, `PlaybackTimeLabel`(`…Label`), 검사·판단은 `DownloadPathGuard`, `…Policy`.
+- **두는 곳은 새 패키지를 만들지 않고 지금 계층을 따른다**
+  - 엔진 안에서만 쓰는 검사·계산(경로 검사 등) → `engine/`
+  - 화면 표시 문자열 계산(`…Label`) → `ui/`(Compose 없이 순수 Kotlin, JVM 테스트)
+  - 여러 화면이 쓰는 컴포저블 → `ui/components/`
+  - Android API를 감싸는 공통 코드(네트워크 상태, Intent 열기 등) → 어댑터로 감싸 그 기능의 패키지에 둔다
+- **테스트를 붙인다**: 뽑아낸 공통 기능에는 단위 테스트를 붙이고, 원래 쓰던 곳의 테스트도 그대로 통과해야 한다. 공통 기능도 위 "순수 로직" 규칙(상태 없음)을 따른다.
+
 ## 디자인 패턴
 
 패턴은 이름을 붙이기 위해서가 아니라 아래 문제를 풀 때 쓴다. 새 코드와 리팩터링에 적용하고, 기존 코드는 "적용 순서"대로 이슈 단위로 옮긴다.
 
 ### 이 코드에서 쓰는 패턴
 
+★ 표시된 여섯 패턴(어댑터, 프록시, 전략, 팩토리, 코디네이터, 관찰자)은 새 클래스나 기능을 설계할 때 **먼저** 검토하고, 맞는 것이 있으면 쓴다. 맞지 않으면 쓰지 않는다(아래 "패턴 과용"). 새 클래스를 추가하거나 리팩터링하는 PR은 본문에 "적용한 패턴: ○○ / 없음(이유)"을 한 줄 적는다. "(계획)"은 아직 코드에 없고 "적용 순서"나 다음 업데이트에서 만들 것이다.
+
 | 패턴 | 언제 | 이 코드에서 |
 |---|---|---|
-| 퍼사드 + 어댑터(포트) | 외부 시스템(libtorrent, LibVLC, AdMob/UMP, 파일, 시계)을 쓸 때 | 작은 `interface`(포트)를 도메인 쪽에 두고, 실제 구현(`Libtorrent…`, `Vlc…`)은 어댑터로 감싼다. 테스트는 가짜 구현을 넣는다. 예: `TorrentSession`, `VideoPlayer`, `AdsGateway`, `Clock` |
-| 저장소(Repository) | 디스크·암호화 저장 데이터를 읽고 쓸 때 | ViewModel은 `MagnetHistory`·`TorrentCache`·`TorrentDiskStore`를 직접 만들지 않고 `PlaylistRepository`, `StorageRepository` 같은 저장소에 의존한다 |
-| 상태(State) | 화면·재생·다운로드처럼 상태가 바뀌는 흐름 | `sealed` 타입으로 상태를 정의하고 상태 전환은 한 객체가 맡는다. 불리언 플래그 조합으로 화면을 고르지 않는다(`showFiles`·`showHistory` → `sealed AppScreen`) |
-| 전략(Strategy) | 같은 일을 모드에 따라 다르게 할 때 | 불리언 인자로 분기하지 않고 전략 객체를 주입한다. 예: `prioritizePlayback: Boolean` → `PiecePriorityStrategy`(재생 / 다운로드 전용) |
-| 명령(Command) | 블로킹 엔진 호출, 순서가 중요한 작업 | `EngineCommandQueue`에 명령으로 넣는다(이미 적용) |
-| 관찰자(Observer) | 상태를 화면에 알릴 때 | `StateFlow` 한 방향. 화면은 구독만 하고 상태를 바꾸려면 ViewModel 메서드를 부른다 |
-| 레지스트리 | 종류별 값·동작 | `meta/`의 enum·메타 객체(이미 적용) |
-| 팩토리 + 생성자 주입 | 객체 생성 | 앱 단위 의존 객체는 `AppContainer`(직접 작성, 외부 DI 라이브러리 없음) 하나가 만든다. ViewModel은 `ViewModelProvider.Factory`로 의존 객체를 받는다. 반복 생성이 필요하면 팩토리 함수를 주입한다(`DownloadManager`의 `createController` 방식) |
+| ★ 어댑터(Adapter) + 퍼사드 | 외부 시스템(libtorrent, LibVLC, AdMob/UMP, 파일, 시계, Android API)을 쓸 때 | 작은 `interface`(포트)를 도메인 쪽에 두고, 실제 구현은 어댑터로 감싼다. 테스트는 가짜 구현을 넣는다. 예(계획): `TorrentSession`, `VideoPlayer`, `AdsGateway`, `Clock` |
+| ★ 프록시(Proxy) | 비싼 객체·위험한 접근 앞에 지연 생성, 캐시, 접근 제어, 대기를 넣을 때 | `VerifiedTorrentInputStream`: 조각 해시 검증이 끝나기 전에는 파일 읽기를 막는 보호 역할(넓은 의미의 보호 프록시). 지연 생성은 Kotlin `lazy` 대리로 충분하면 그것을 쓴다(`DownloadController.lazyEngine`) |
+| ★ 전략(Strategy) | 같은 일을 모드·설정에 따라 다르게 할 때 | 불리언 인자로 분기하지 않고 전략 객체를 주입한다. 예(계획): `prioritizePlayback: Boolean` → `PiecePriorityStrategy`, 자막 고르기 규칙, Wi-Fi 전용 다운로드 정책 |
+| ★ 팩토리(Factory) + 생성자 주입 | 생성 과정이 복잡하거나 반복 생성이 필요할 때 | 반복 생성은 팩토리 함수를 주입한다(`DownloadManager`의 `createController`). 앱 단위 의존 객체는 `AppContainer`(계획, 직접 작성, 외부 DI 라이브러리 없음) 하나가 만들고, ViewModel은 `ViewModelProvider.Factory`로 받는다 |
+| ★ 코디네이터(Coordinator) | 여러 객체·화면에 걸친 흐름(순서·분기)을 한 곳에서 이끌 때. 참여 객체끼리 서로 직접 부르지 않게 한다 | 지금은 `MainViewModel`이 다운로드·재생·화면 이동을 엮는다(`sharedPlayback`). `AppNavigator`는 이동 상태만 계산하는 상태 객체다. 예(계획): 들어온 링크 → 확인 → 재생/받기 흐름은 `MainViewModel`이 커지지 않게 별도 코디네이터로 둔다 |
+| ★ 관찰자(Observer) | 상태 변화를 화면·여러 곳에 알릴 때 | `StateFlow` 한 방향. 화면은 구독만 하고 상태를 바꾸려면 ViewModel 메서드를 부른다 |
+| 저장소(Repository) | 디스크·암호화 저장 데이터를 읽고 쓸 때 | ViewModel은 `MagnetHistory`·`TorrentCache`·`TorrentDiskStore`를 직접 만들지 않고 `PlaylistRepository` 같은 저장소에 의존한다 |
+| 상태(State) | 화면·재생·다운로드처럼 상태가 바뀌는 흐름 | `sealed` 타입으로 상태를 정의하고 상태 전환은 한 객체가 맡는다(`sealed AppScreen`) |
+| 명령(Command) | 블로킹 엔진 호출, 순서가 중요한 작업 | `EngineCommandQueue`에 명령으로 넣는다 |
+| 레지스트리 | 종류별 값·동작 | `meta/`의 enum·메타 객체 |
+| 공유 임대(참조 카운팅) | 무거운 네이티브 자원 하나를 여러 객체가 나눠 쓸 때 | `NativeSessionLease`(libtorrent 세션 하나를 공유) |
 
 ### 피할 것
 
