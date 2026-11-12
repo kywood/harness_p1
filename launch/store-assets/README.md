@@ -22,7 +22,7 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 규격 출처: [Play Console 고객센터 "미리보기 애셋 추가"](https://support.google.com/googleplay/android-developer/answer/9866151?hl=ko) (2026-11-12 확인). 그 밖의 요구: 실제 앱 화면을 보여 줄 것, "지금 다운로드" 같은 행동 유도 문구 금지, 문구가 이미지의 20%를 넘지 않을 것, 각 애셋에 140자 이하 대체 텍스트 권장.
 
 - Chromebook은 비워 둔다. 태블릿 이미지를 그대로 올려도 규격에는 맞지만, Chromebook에서 앱을 확인하지 않았다.
-- 예전 휴대전화 스크린샷(`4_Play_Store_Screenshots/01~06`, #49 캡션)은 지웠다. 이미 Console에 올라가 있으면 `ko-KR/`로 바꾼다.
+- 예전 휴대전화 스크린샷(#49 캡션)은 `4_Play_Store_Screenshots/_archive-49/`로 옮겼다. 올리지 않는다.
 
 ## 캡션
 
