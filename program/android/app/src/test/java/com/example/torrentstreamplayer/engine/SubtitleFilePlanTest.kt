@@ -38,8 +38,15 @@ class SubtitleFilePlanTest {
 
     @Test fun skipsUnrelatedFoldersTooDeepFoldersAndNamesWithoutMarkers() {
         val torrent = files("Show/E01.mkv" to 500_000_000, "Other/E01.srt" to 1_000,
-            "Show/Subs/E01/Extra/E01.srt" to 1_000, "Show/Extras/E01.srt" to 1_000, "Show/commentary.srt" to 1_000)
+            "Show/Subs/E01/Extra/E01.srt" to 1_000, "Show/Extras/E01.srt" to 1_000, "Show/commentary.srt" to 1_000, "Show/trivia.srt" to 1_000)
         assertEquals(emptyList<String>(), chosen(torrent))
+    }
+
+    @Test fun aLoneVideosOnlySubtitleIsTakenWithoutALanguageMarker() {
+        val lone = files("M/Movie.mkv" to 500_000_000, "M/Subs/subtitle.srt" to 1_000)
+        assertEquals(listOf("M/Subs/subtitle.srt"), chosen(lone))
+        val pack = files("S/Show E1.mkv" to 500_000_000, "S/Show E2.mkv" to 500_000_000, "S/subtitle.srt" to 1_000)
+        assertEquals("not in a season pack", emptyList<String>(), chosen(pack))
     }
 
     @Test fun searchesTwoFoldersDownAndMatchesTheEpisodeFolderName() {

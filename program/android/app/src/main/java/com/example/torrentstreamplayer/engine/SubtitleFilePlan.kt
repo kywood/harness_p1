@@ -49,12 +49,15 @@ internal object SubtitleFilePlan {
         val otherEpisodes = others.mapNotNull { episode(nameWords(SubtitleLanguage.baseName(it.path))) }
         val singleVideo = otherEpisodes.none { it != episode(videoWords) } &&
             others.count { it.size >= packMinBytes } < SubtitleSpec.PACK_MIN_BIG_VIDEOS
-        val ordered = files.asSequence()
+        val found = files.asSequence()
             .filter { it.index != videoIndex && SubtitleFormat.of(it.path) != null }
             .filter { it.size in 1..SubtitleSpec.MAX_FILE_BYTES && it.offset >= 0 }
             .mapNotNull { file -> subtitleFolder(folder(file.path), videoFolder)?.let { file to it } }
             .map { (file, episodeFolder) -> candidate(file, episodeFolder, videoWords, singleVideo, pieceLength) }
-            .filter { it.matchesVideoName || (it.fallbackAllowed && it.language != null) }
+            .toList()
+        // A lone video's only subtitle is taken even without a language marker (PM decision, PR #131).
+        val lone = found.size == 1
+        val ordered = found.filter { it.matchesVideoName || (it.fallbackAllowed && (it.language != null || lone)) }
             .sortedWith(compareBy({ !it.matchesVideoName }, { it.language?.ordinal ?: Int.MAX_VALUE }, { it.index }))
         val chosen = mutableListOf<SubtitleCandidate>()
         var totalBytes = 0L
