@@ -2,10 +2,12 @@ package com.example.torrentstreamplayer.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,8 +22,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,12 +40,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
 import com.example.torrentstreamplayer.R
+import com.example.torrentstreamplayer.ui.LegalFooterPolicy
+import com.example.torrentstreamplayer.ui.LegalLink
 import com.example.torrentstreamplayer.ui.components.LinkTextField
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
 import com.example.torrentstreamplayer.ui.components.SecondaryButton
 import com.example.torrentstreamplayer.ui.components.SectionCard
+import com.example.torrentstreamplayer.ui.components.TextAction
+import com.example.torrentstreamplayer.ui.components.TextActionTone
+import com.example.torrentstreamplayer.ui.components.rememberExternalLinkOpener
+import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
@@ -55,6 +65,7 @@ internal fun MagnetLinkInputScreen(
     errorMessage: String?,
     onOpenFiles: () -> Unit = {},
     onOpenHistory: () -> Unit = {},
+    onOpenLicenses: () -> Unit = {},
     onPrivacyOptions: (() -> Unit)? = null
 ) {
     var magnetLink by remember { mutableStateOf("") }
@@ -62,56 +73,67 @@ internal fun MagnetLinkInputScreen(
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     val versionName = remember(context) {
-        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
+    val snackbar = remember { SnackbarHostState() }
+    val openExternal = rememberExternalLinkOpener()
+    val browserUnavailable = stringResource(R.string.error_browser_unavailable)
+    val footerActions = FooterActions(
+        openExternal = { url -> if (!openExternal(url)) scope.launch { snackbar.showSnackbar(browserUnavailable) } },
+        openLicenses = onOpenLicenses,
+        privacyOptions = onPrivacyOptions
+    )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = Spacing.screenGutter, vertical = Spacing.xl),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Box(Modifier.fillMaxSize()) {
         Column(
-            Modifier.widthIn(max = Sizes.contentMaxWidth).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Spacing.screenGutter, vertical = Spacing.xl),
+            verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            BrandHeader()
-            SectionCard {
-                LinkTextField(magnetLink, { magnetLink = it }, errorMessage)
-                SecondaryButton(
-                    text = stringResource(R.string.action_paste),
-                    icon = ImageVector.vectorResource(R.drawable.ic_content_paste),
-                    onClick = {
-                        scope.launch {
-                            val clip = clipboard.getClipEntry()?.clipData
-                            val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)
-                            if (!text.isNullOrBlank()) magnetLink = text.toString().trim()
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.End)
-                )
-            }
-            PrimaryButton(
-                text = stringResource(R.string.action_stream_play),
-                onClick = { onStartStream(magnetLink) },
-                modifier = Modifier.fillMaxWidth()
-            )
-            Row(
-                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+            Column(
+                Modifier.widthIn(max = Sizes.contentMaxWidth).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ShortcutCard(Icons.AutoMirrored.Filled.List, stringResource(R.string.action_open_playlist),
-                    stringResource(R.string.main_playlist_hint), onOpenHistory, Modifier.weight(1f))
-                ShortcutCard(ImageVector.vectorResource(R.drawable.ic_folder),
-                    stringResource(R.string.action_open_stored_files), stringResource(R.string.main_files_hint),
-                    onOpenFiles, Modifier.weight(1f))
+                BrandHeader()
+                SectionCard {
+                    LinkTextField(magnetLink, { magnetLink = it }, errorMessage)
+                    SecondaryButton(
+                        text = stringResource(R.string.action_paste),
+                        icon = ImageVector.vectorResource(R.drawable.ic_content_paste),
+                        onClick = {
+                            scope.launch {
+                                val clip = clipboard.getClipEntry()?.clipData
+                                val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)
+                                if (!text.isNullOrBlank()) magnetLink = text.toString().trim()
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.End)
+                    )
+                }
+                PrimaryButton(
+                    text = stringResource(R.string.action_stream_play),
+                    onClick = { onStartStream(magnetLink) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md)
+                ) {
+                    ShortcutCard(Icons.AutoMirrored.Filled.List, stringResource(R.string.action_open_playlist),
+                        stringResource(R.string.main_playlist_hint), onOpenHistory, Modifier.weight(1f))
+                    ShortcutCard(ImageVector.vectorResource(R.drawable.ic_folder),
+                        stringResource(R.string.action_open_stored_files), stringResource(R.string.main_files_hint),
+                        onOpenFiles, Modifier.weight(1f))
+                }
+                Footer(versionName, footerActions)
             }
-            Footer(versionName, onPrivacyOptions)
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -148,18 +170,60 @@ private fun ShortcutCard(icon: ImageVector, title: String, hint: String, onClick
     }
 }
 
+/** 하단 링크가 부르는 동작. [privacyOptions]는 동의 필요 지역에서만 있다. */
+private class FooterActions(
+    val openExternal: (String) -> Unit,
+    val openLicenses: () -> Unit,
+    val privacyOptions: (() -> Unit)?
+)
+
+/**
+ * 메인 하단 법적 진입점(`design/specs/main-legal-footer.md`): 저작권 안내 한 줄, 링크 묶음, 버전.
+ * 아래 여백은 바깥 스크롤의 `Spacing.xl`이 맡는다(배너와 24dp 이상, 잘못 누르기 방지).
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Footer(versionName: String, onPrivacyOptions: (() -> Unit)?) {
+private fun Footer(versionName: String?, actions: FooterActions) {
+    // 바깥 Column의 spacedBy(lg)에 더해 바로가기 카드와 Spacing.xl만큼 띄운다.
     Column(
-        Modifier.fillMaxWidth().padding(top = Spacing.sm),
-        horizontalAlignment = Alignment.CenterHorizontally
+        Modifier.fillMaxWidth().padding(top = Spacing.xl - Spacing.lg),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs)
     ) {
-        Text(versionName, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelSmall)
-        if (onPrivacyOptions != null) TextButton(onClick = onPrivacyOptions) {
-            Text(stringResource(R.string.action_ad_privacy), style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.main_rights_notice), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
+        val links = LegalFooterPolicy.links(consentOptionsAvailable = actions.privacyOptions != null)
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            itemVerticalAlignment = Alignment.CenterVertically
+        ) {
+            links.forEachIndexed { index, link ->
+                if (index > 0) Text(stringResource(R.string.separator_dot), style = MaterialTheme.typography.labelLarge,
+                    color = BrandColors.Separator, modifier = Modifier.clearAndSetSemantics {})
+                FooterLink(link, actions)
+            }
         }
-        Spacer(Modifier.height(Spacing.xs))
+        LegalFooterPolicy.versionLabel(versionName)?.let { version ->
+            Text(stringResource(R.string.main_version, version), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall)
+        }
     }
+}
+
+@Composable
+private fun FooterLink(link: LegalLink, actions: FooterActions) {
+    val url = link.url?.let { stringResource(it) }
+    val onClick: () -> Unit = when (link) {
+        LegalLink.PRIVACY_POLICY -> { { url?.let(actions.openExternal) } }
+        LegalLink.OPEN_SOURCE_LICENSES -> actions.openLicenses
+        LegalLink.AD_PRIVACY -> actions.privacyOptions ?: return
+    }
+    TextAction(
+        text = stringResource(link.label),
+        onClick = onClick,
+        tone = TextActionTone.MUTED,
+        trailingIcon = if (link.external) ImageVector.vectorResource(R.drawable.ic_open_in_new) else null,
+        trailingIconDescription = if (link.external) stringResource(R.string.cd_opens_in_browser) else null
+    )
 }

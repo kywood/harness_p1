@@ -73,6 +73,7 @@ internal fun AppRoot(
                     errorMessage = current.errorMessage,
                     onOpenFiles = viewModel::openStoredFiles,
                     onOpenHistory = viewModel::openPlaylist,
+                    onOpenLicenses = viewModel::openOpenSourceLicenses,
                     onPrivacyOptions = onPrivacyOptions
                 )
                 is AppScreen.Preparing -> {

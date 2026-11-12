@@ -166,4 +166,13 @@
     <string name="licenses_others_body">Google 모바일 광고 SDK와 사용자 메시지 플랫폼(UMP)은 오픈소스가 아니며 Google 약관을 따릅니다.</string>
     <string name="licenses_load_error">라이선스 문서를 열지 못했습니다. 앱을 다시 열어 주세요.</string>
     <string name="error_browser_unavailable">웹 브라우저를 열지 못했습니다. 브라우저 앱이 켜져 있는지 확인해 주세요.</string>
+
+    <!-- Main legal footer (design/specs/main-legal-footer.md 4절) -->
+    <string name="main_rights_notice">이용할 권리가 있는 콘텐츠만 재생하세요.</string>
+    <string name="action_privacy_policy">개인정보처리방침</string>
+    <string name="main_version">버전 %1$s</string>
+    <string name="cd_opens_in_browser">브라우저에서 열림</string>
+    <string name="separator_dot" translatable="false">·</string>
+    <!-- Play Console 등록정보의 개인정보처리방침 URL과 같아야 한다. -->
+    <string name="url_privacy_policy" translatable="false">https://shine-antler-dd8.notion.site/PiecePlay-Torrent-Player-403c3f3da78780ec88cbdce8e89d314d</string>
 </resources>
