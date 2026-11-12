@@ -10,7 +10,7 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 |---|---|---|---|---|
 | 앱 아이콘 | `1_Play_Store_Assets/app_icon_512x512.png` | 같은 파일 | 512x512 PNG | 512x512, 32비트 PNG, 1MB 이하, 필수. 지금 Console 아이콘과 같아 그대로 둔다 |
 | 그래픽 이미지 | `1_Play_Store_Assets/feature_graphic_1024x500_ko-KR.png` | `1_Play_Store_Assets/feature_graphic_1024x500_en-US.png` | 1024x500 PNG, 알파 없음 | 1024x500, JPEG 또는 24비트 PNG(알파 없음), 필수 |
-| 동영상 | 비움 | 비움 | | YouTube URL만 받음 |
+| 동영상 | `7_Promo_Video/PiecePlay_promo_ko-KR.mp4`를 YouTube에 올린 URL | `7_Promo_Video/PiecePlay_promo_en-US.mp4`를 올린 URL | 1920x1080, 30초 | YouTube 동영상 URL만, 공개 또는 일부공개, 광고 끔. 업로드 방법은 `7_Promo_Video/README.md` |
 | 휴대전화 스크린샷 | `4_Play_Store_Screenshots/ko-KR/01~06` | `4_Play_Store_Screenshots/en-US/01~06` | 1080x1920, `03`만 1920x1080 | 2~8장, 변 320~3840px, 긴 변 ≤ 짧은 변 x2, 추천 노출은 1080px 이상 4장 이상 |
 | 7인치 태블릿 | `5_Tablet_7in/ko-KR/01~06` | `5_Tablet_7in/en-US/01~06` | 1080x1920, `03`만 1920x1080 | 대화면: 변 1080~7680px, 9:16 또는 16:9, 4장 이상, 선택 |
 | 10인치 태블릿 | `6_Tablet_10in/ko-KR/01~06` | `6_Tablet_10in/en-US/01~06` | 2560x1440 | 위와 같음 |
