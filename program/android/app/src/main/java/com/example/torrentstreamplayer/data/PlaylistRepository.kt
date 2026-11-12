@@ -20,6 +20,9 @@ internal class PlaylistRepository(
 ) {
     fun savedMagnets(): List<SavedMagnet> = history.list().map(lookup)
 
+    /** 재생 목록에 있는 링크의 마그넷 키. 다운로드 정보는 읽지 않는다. */
+    fun keys(): Set<String> = history.list().map { MagnetIdentity.key(it.magnet) }.toSet()
+
     fun add(magnet: String) = history.add(magnet)
 
     /** 재생할 [magnet]을 목록에 넣고, 이어볼 위치(ms)를 돌려준다. 처음이면 0이다. */

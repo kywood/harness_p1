@@ -98,4 +98,11 @@ class TorrentInputResolverTest {
             }
         } finally { server.stop(0) }
     }
+    @Test fun webAddressAcceptsOnlyHttpOrHttpsWithAHost() {
+        assertEquals("example.com", TorrentInputResolver.webAddress("https://example.com/a.torrent")?.host)
+        assertNotNull(TorrentInputResolver.webAddress("http://example.com"))
+        assertNull(TorrentInputResolver.webAddress("ftp://example.com/a.torrent"))
+        assertNull(TorrentInputResolver.webAddress("http:///a.torrent"))
+        assertNull(TorrentInputResolver.webAddress("not a url"))
+    }
 }
