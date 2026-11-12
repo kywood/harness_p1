@@ -16,6 +16,12 @@ internal object NetworkSpec {
     /** HTTP requests made for one `.torrent` link, counting each redirect hop (so at most 5 redirects). */
     const val TORRENT_MAX_REQUESTS = 6
 
+    /**
+     * How long a new connection type must hold before Wi-Fi only rules act on it, so a connection that flips for a
+     * moment does not stop and restart downloads.
+     */
+    const val CONNECTION_SETTLE_MS = 3_000L
+
     /** Returns [url] with `http` replaced by `https` unless it points at a local cleartext host. */
     fun secure(url: URL): URL =
         if (!url.protocol.equals("http", ignoreCase = true) || url.host.lowercase() in CLEARTEXT_HOSTS) url

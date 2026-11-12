@@ -11,30 +11,32 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Watches the default network with the existing `ACCESS_NETWORK_STATE` permission. Call [start] once and [stop]
- * when the owner is cleared. Callbacks arrive on a system thread; [connection] is safe to read anywhere.
+ * Adapter from Android's default network callback to [ConnectionSource], with the existing `ACCESS_NETWORK_STATE`
+ * permission. [watch] creates and starts one; the owner calls [stop] when it is cleared. Callbacks arrive on a
+ * system thread; [connection] is safe to read anywhere.
  */
-internal class NetworkMonitor(context: Context) : ConnectionSource {
+internal class NetworkMonitor private constructor(context: Context) : ConnectionSource {
     private val manager = context.getSystemService(ConnectivityManager::class.java)
     private val mutableConnection = MutableStateFlow(current())
     override val connection: StateFlow<ConnectionType> = mutableConnection.asStateFlow()
+    private val defaultNetwork = DefaultNetworkState<Network>()
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-            mutableConnection.value = classify(capabilities)
+            mutableConnection.value = defaultNetwork.changed(network, classify(capabilities))
         }
 
         override fun onLost(network: Network) {
-            mutableConnection.value = ConnectionType.NONE
+            defaultNetwork.lost(network)?.let { mutableConnection.value = it }
         }
     }
 
-    fun start() {
+    private fun start() {
         runCatching { manager?.registerDefaultNetworkCallback(callback) }
             .onFailure { Log.w(TAG, "Unable to watch network: ${EngineFailureLog.describe(it)}") }
     }
 
-    fun stop() {
+    override fun stop() {
         runCatching { manager?.unregisterNetworkCallback(callback) }
     }
 
@@ -47,7 +49,10 @@ internal class NetworkMonitor(context: Context) : ConnectionSource {
         dataSaver = manager?.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED,
     )
 
-    private companion object {
-        const val TAG = "NetworkMonitor"
+    companion object {
+        private const val TAG = "NetworkMonitor"
+
+        /** Creates a monitor and starts watching. */
+        fun watch(context: Context): ConnectionSource = NetworkMonitor(context).also { it.start() }
     }
 }

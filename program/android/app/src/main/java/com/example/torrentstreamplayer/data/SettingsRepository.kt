@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /** Where [SettingsRepository] keeps its bytes. Tests pass an in-memory store. */
 internal interface SettingsStore {
@@ -53,14 +52,12 @@ internal class SettingsRepository(
     }
 
     companion object {
-        /** 설정 파일 폴더(noBackupFilesDir 아래)·캐시 키·항목 이름. 바꾸면 저장된 설정을 읽지 못한다. */
+        /** 설정 파일 폴더(noBackupFilesDir 아래)·항목 이름. 바꾸면 저장된 설정을 읽지 못한다. */
         private const val SETTINGS_DIR = "app_settings"
-        private val SETTINGS_KEY = "0".repeat(64)
         private const val SETTINGS_KIND = "settings"
 
         fun create(context: Context): SettingsRepository {
-            val cache = TorrentCache(File(context.noBackupFilesDir, SETTINGS_DIR), SETTINGS_KEY,
-                TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
+            val cache = AppStateCache.create(context, SETTINGS_DIR)
             return SettingsRepository(object : SettingsStore {
                 override fun read(): ByteArray? = cache.read(SETTINGS_KIND)
                 override fun write(bytes: ByteArray) = cache.write(SETTINGS_KIND, bytes)

@@ -33,4 +33,7 @@ internal enum class ConnectionType(val connected: Boolean, val metered: Boolean)
 /** Port for the connection watcher; the app uses [NetworkMonitor], tests pass a fixed flow. */
 internal interface ConnectionSource {
     val connection: StateFlow<ConnectionType>
+
+    /** Stops watching. Called once when the owner is cleared. */
+    fun stop()
 }

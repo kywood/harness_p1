@@ -31,14 +31,37 @@ class DownloadNetworkPolicyTest {
         assertEquals(NetworkDecision.PROCEED, decide(true, ConnectionType.WIFI, allowedOnce = true))
     }
 
-    @Test fun playbackAsksOnMeteredNetworksOnlyWhenNeeded() {
-        fun check(wifiOnly: Boolean, connection: ConnectionType, seen: Boolean) =
-            DownloadNetworkPolicy.playbackStart(NetworkConditions(wifiOnly, connection), seen)
-        assertEquals(PlaybackNetworkCheck.START, check(true, ConnectionType.WIFI, seen = false))
-        assertEquals(PlaybackNetworkCheck.START, check(false, ConnectionType.NONE, seen = false))
-        assertEquals(PlaybackNetworkCheck.CONFIRM_MOBILE, check(false, ConnectionType.MOBILE, seen = false))
-        assertEquals(PlaybackNetworkCheck.START, check(false, ConnectionType.MOBILE, seen = true))
-        assertEquals(PlaybackNetworkCheck.CONFIRM_MOBILE, check(true, ConnectionType.MOBILE, seen = true))
-        assertEquals(PlaybackNetworkCheck.CONFIRM_MOBILE, check(true, ConnectionType.DATA_SAVER, seen = true))
+    @Test fun playbackAsksOnlyWithWifiOnlyOnMeteredNetworks() {
+        fun check(wifiOnly: Boolean, connection: ConnectionType, allowedOnce: Boolean = false, complete: Boolean = false) =
+            DownloadNetworkPolicy.playbackStart(NetworkConditions(wifiOnly, connection), allowedOnce, complete)
+        ConnectionType.entries.forEach {
+            assertEquals("no first mobile-data notice without Wi-Fi only", PlaybackNetworkCheck.START, check(false, it))
+        }
+        assertEquals(PlaybackNetworkCheck.START, check(true, ConnectionType.WIFI))
+        assertEquals(PlaybackNetworkCheck.START, check(true, ConnectionType.NONE))
+        assertEquals(PlaybackNetworkCheck.CONFIRM_MOBILE, check(true, ConnectionType.MOBILE))
+        assertEquals(PlaybackNetworkCheck.CONFIRM_MOBILE, check(true, ConnectionType.DATA_SAVER))
+        assertEquals(PlaybackNetworkCheck.START, check(true, ConnectionType.MOBILE, allowedOnce = true))
+        assertEquals("a finished file uses no data", PlaybackNetworkCheck.START,
+            check(true, ConnectionType.MOBILE, complete = true))
+    }
+
+    @Test fun noConnectionKeepsTheLastConnectionButTakesNewSettings() {
+        val wifi = NetworkConditions(wifiOnly = true, connection = ConnectionType.WIFI)
+        assertEquals(wifi, DownloadNetworkPolicy.settle(wifi, NetworkConditions(true, ConnectionType.NONE)))
+        assertEquals(NetworkConditions(false, ConnectionType.WIFI),
+            DownloadNetworkPolicy.settle(wifi, NetworkConditions(false, ConnectionType.NONE)))
+        assertEquals(NetworkConditions(true, ConnectionType.MOBILE),
+            DownloadNetworkPolicy.settle(wifi, NetworkConditions(true, ConnectionType.MOBILE)))
+    }
+
+    @Test fun playbackOnMobileDataIsReportedOnlyWhenWifiOnlyWasNotWaived() {
+        fun plays(wifiOnly: Boolean, connection: ConnectionType, allowedOnce: Boolean = false) =
+            DownloadNetworkPolicy.playsOnMobileData(NetworkConditions(wifiOnly, connection), allowedOnce)
+        assertEquals(true, plays(true, ConnectionType.MOBILE))
+        assertEquals(true, plays(true, ConnectionType.DATA_SAVER))
+        assertEquals(false, plays(true, ConnectionType.WIFI))
+        assertEquals(false, plays(false, ConnectionType.MOBILE))
+        assertEquals(false, plays(true, ConnectionType.MOBILE, allowedOnce = true))
     }
 }
