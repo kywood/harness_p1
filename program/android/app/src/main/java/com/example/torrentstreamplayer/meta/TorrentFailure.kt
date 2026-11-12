@@ -19,7 +19,6 @@ internal enum class TorrentFailure(@StringRes val message: Int) {
     /** A link could not be opened, e.g. the `.torrent` download failed on the network. */
     LINK_GENERIC(R.string.error_link_generic);
 
-    fun text(context: Context, detail: String? = null): String =
-        if (this == ENGINE) context.getString(message, detail ?: context.getString(R.string.failure_unknown))
-        else context.getString(message)
+    /** 등록된 문구만 돌려준다. 예외 원문은 사용자에게 보이지 않게 받지 않는다. */
+    fun text(context: Context): String = context.getString(message)
 }

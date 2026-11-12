@@ -360,8 +360,10 @@ class TorrentEngine(private val context: Context) {
                 }
 
             } catch (t: Throwable) {
-                Log.e(TAG, "Unhandled error in torrent streaming thread", t)
-                if (run == activeRun) onError(TorrentFailure.ENGINE.text(context, t.localizedMessage))
+                // 예외 원문은 로그에도 사용자 문구에도 넣지 않는다(EngineFailureLog).
+                Log.e(TAG, "Unhandled error in torrent streaming thread: " +
+                    EngineFailureLog.describe(t, BuildConfig.DEBUG))
+                if (run == activeRun) onError(TorrentFailure.ENGINE.text(context))
             }
         }.also { it.start() }
     }
