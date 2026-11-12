@@ -28,7 +28,9 @@ import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.data.AppSettings
 import com.example.torrentstreamplayer.ui.LegalFooterPolicy
 import com.example.torrentstreamplayer.ui.LegalLinkActions
+import com.example.torrentstreamplayer.ui.WifiWaitPolicy
 import com.example.torrentstreamplayer.ui.components.AppTopBar
+import com.example.torrentstreamplayer.ui.components.InlineNotice
 import com.example.torrentstreamplayer.ui.components.SectionHeader
 import com.example.torrentstreamplayer.ui.components.SettingsLinkItem
 import com.example.torrentstreamplayer.ui.components.SettingsSwitchItem
@@ -41,6 +43,7 @@ import kotlinx.coroutines.launch
  * 설정 화면(`design/specs/settings-wifi.md` 2절): 다운로드(Wi-Fi 전용), 재생(자막 자동 표시), 정보(메인 하단 링크와
  * 같은 동작 + 버전). 광고는 넣지 않는다. 스위치 값은 [settings]가 정하고, 바꾸면 콜백으로 ViewModel에 저장을 맡긴다.
  *
+ * @param waitsForWifi Wi-Fi 전용 + 모바일 데이터라 다운로드가 멈춘 상태([WifiWaitPolicy]). 켜지면 안내 줄을 보인다.
  * @param saveFailed 저장 실패를 알리는 값. true이면 스낵바를 한 번 보이고 [onSaveFailedShown]을 부른다.
  * @param onPrivacyOptions 광고 개인정보 설정(동의 필요 지역에서만 넘긴다).
  */
@@ -52,6 +55,7 @@ internal fun SettingsScreen(
     onBack: () -> Unit,
     onOpenLicenses: () -> Unit,
     onPrivacyOptions: (() -> Unit)?,
+    waitsForWifi: Boolean = false,
     saveFailed: Boolean = false,
     onSaveFailedShown: () -> Unit = {}
 ) {
@@ -94,8 +98,8 @@ internal fun SettingsScreen(
                         checked = settings.wifiOnly,
                         onCheckedChange = onWifiOnlyChange
                     )
-                    // TODO(#128): InlineNotice(개발자 B의 공용 컴포넌트)가 main에 들어오면 여기에
-                    //  viewModel.waitsForWifi가 true일 때 settings_wifi_paused_notice를 붙인다.
+                    if (waitsForWifi) InlineNotice(stringResource(R.string.settings_wifi_paused_notice),
+                        Modifier.padding(horizontal = Spacing.screenGutter))
 
                     SectionHeader(stringResource(R.string.settings_section_playback))
                     SettingsSwitchItem(

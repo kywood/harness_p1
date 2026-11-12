@@ -62,10 +62,11 @@ internal fun AppRoot(
                 AppScreen.Settings -> {
                     val settings by viewModel.settings.collectAsState()
                     val saveFailed by viewModel.settingsSaveFailed.collectAsState()
+                    val waitsForWifi by viewModel.waitsForWifi.collectAsState()
                     SettingsScreen(settings, viewModel::setWifiOnly, viewModel::setAutoSubtitles,
                         onBack = viewModel::closeList, onOpenLicenses = viewModel::openOpenSourceLicenses,
                         onPrivacyOptions = onPrivacyOptions,
-                        saveFailed = saveFailed, onSaveFailedShown = viewModel::consumeSettingsSaveFailed)
+                        waitsForWifi = waitsForWifi, saveFailed = saveFailed, onSaveFailedShown = viewModel::consumeSettingsSaveFailed)
                 }
                 AppScreen.Playlist -> {
                     val waitsForWifi by viewModel.waitsForWifi.collectAsState()
