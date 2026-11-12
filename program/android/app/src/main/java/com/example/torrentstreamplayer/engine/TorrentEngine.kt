@@ -53,6 +53,9 @@ class TorrentEngine(private val context: Context) {
     val pieceMap = _pieceMap.asStateFlow()
     private val _metadataDetails = MutableStateFlow(MetadataDetails())
     internal val metadataDetails = _metadataDetails.asStateFlow()
+    private val subtitles = SubtitleDownloads()
+    /** Verified subtitle files downloaded with the selected video (path, guessed language). */
+    internal val subtitleFiles = subtitles.files
     private val _activeDownload = MutableStateFlow<DownloadSnapshot?>(null)
     internal val activeDownload = _activeDownload.asStateFlow()
     private val storage = TorrentStorage.of(context)
@@ -213,6 +216,7 @@ class TorrentEngine(private val context: Context) {
                 synchronized(this) {
                 if (run != activeRun) return@Thread
                 ActiveTorrentFiles.acquire(this, candidate)
+                subtitles.select(torrentInfo, bestFileIndex, downloadDir)
                 selectedFileStartOffset = startOffset
                 selectedFileLength = maxFileSize
                 selectedVideoFile = candidate
@@ -232,6 +236,7 @@ class TorrentEngine(private val context: Context) {
                     _activeDownload.value = DownloadSnapshot(maxFileSize, maxFileSize, candidate.path, _pieceMap.value)
                     _metadataDetails.value = _metadataDetails.value.copy(downloadedBytes = maxFileSize, videoSize = maxFileSize)
                     runCatching { cache.write("progress", _activeDownload.value!!.encode()) }
+                    subtitles.restore(cache.read("subtitles"))
                     onMetadataReceived(candidate.name, maxFileSize)
                     onProgress(100f, 0L)
                     return@Thread
@@ -274,6 +279,7 @@ class TorrentEngine(private val context: Context) {
                             handle.filePriority(i, Priority.IGNORE)
                         }
                     }
+                    subtitles.prioritize(handle)
 
                     val filePieceRange = getFilePieceRange(torrentInfo, bestFileIndex)
                     firstPieceIndex = filePieceRange.first
@@ -316,6 +322,8 @@ class TorrentEngine(private val context: Context) {
                         val speed = status.downloadPayloadRate().toLong()
                         val peers = status.numPeers()
                         if (run != activeRun) return@Thread
+                        if (subtitles.refresh(handle))
+                            runCatching { cache.write("subtitles", subtitles.encodeCompleted()) }
 
                         downloadProgress = progress
                         val snapshot = DownloadSnapshot(maxFileSize, verifiedBytes, candidate.path, _pieceMap.value)
@@ -336,7 +344,8 @@ class TorrentEngine(private val context: Context) {
 
                         onProgress(progress, speed)
 
-                        if (status.isFinished && (firstPieceIndex..lastPieceIndex).all(handle::havePiece)) {
+                        val finishing = status.isFinished || subtitles.hasPending
+                        if (finishing && (firstPieceIndex..lastPieceIndex).all(handle::havePiece)) {
                             checkpoint?.save(1500)
                             // A finished download must not stay announced as a seed; the paused handle still answers havePiece.
                             runCatching { handle.pause() }.onFailure { Log.w(TAG, "Unable to pause finished torrent: ${EngineFailureLog.describe(it)}") }
@@ -596,6 +605,7 @@ class TorrentEngine(private val context: Context) {
         _pieceMap.value = PieceMapSnapshot.EMPTY
         _metadataDetails.value = MetadataDetails()
         _activeDownload.value = null
+        subtitles.clear()
         priorityWindow = IntRange.EMPTY
         backgroundPiecePriority = -1
         playbackByteOffset = 0L
