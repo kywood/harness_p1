@@ -35,7 +35,13 @@ enum class TextActionTone(val color: Color) {
     MUTED(BrandColors.OnSurfaceVariant),
 }
 
-/** 어두운 표면 위 글자 버튼. 기본 `TextButton`의 `primary`(#2F66F0)는 표면 대비가 낮아 `primaryLight`를 쓴다. */
+/**
+ * 어두운 표면 위 글자 버튼. 기본 `TextButton`의 `primary`(#2F66F0)는 표면 대비가 낮아 `primaryLight`를 쓴다.
+ *
+ * @param icon 글자 앞 아이콘(장식).
+ * @param trailingIcon 글자 뒤 아이콘. 외부 브라우저로 나가는 링크의 `ic_open_in_new` 등.
+ * @param trailingIconDescription [trailingIcon]의 읽기 문구. 버튼 이름 뒤에 이어 읽힌다("개인정보처리방침, 브라우저에서 열림").
+ */
 @Composable
 fun TextAction(
     text: String,
@@ -43,7 +49,9 @@ fun TextAction(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     icon: ImageVector? = null,
-    tone: TextActionTone = TextActionTone.DEFAULT
+    tone: TextActionTone = TextActionTone.DEFAULT,
+    trailingIcon: ImageVector? = null,
+    trailingIconDescription: String? = null
 ) {
     TextButton(
         onClick = onClick,
@@ -57,6 +65,8 @@ fun TextAction(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(Sizes.iconSmall))
             Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            if (trailingIcon != null) Icon(trailingIcon, contentDescription = trailingIconDescription,
+                modifier = Modifier.size(Sizes.iconSmall))
         }
     }
 }

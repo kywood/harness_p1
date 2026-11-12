@@ -18,6 +18,9 @@ object BrandColors {
     val OnAccent = Color(0xFF00281C)
     val Error = Color(0xFFFF6B7A)
 
+    /** 글자 링크 사이 장식 구분점 "·"(`design/specs/main-legal-footer.md` 1절: onSurfaceVariant 50%). */
+    val Separator = OnSurfaceVariant.copy(alpha = 0.5f)
+
     /** 진행 막대의 받은 부분, 완료 조각에 쓴다. 가운데가 밝아 흰 글자를 올리지 않는다. */
     val brandGradient: Brush = Brush.horizontalGradient(listOf(Primary, Accent))
 
