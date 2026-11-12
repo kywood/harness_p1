@@ -217,6 +217,52 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         startStreaming(magnet)
     }
 
+    private val _incomingLink = MutableStateFlow<IncomingLinkState?>(null)
+    /** 다른 앱에서 들어와 사용자 확인(바로 재생 / 받아 두기 / 취소)을 기다리는 링크. 확인 시트가 구독한다. */
+    internal val incomingLink: StateFlow<IncomingLinkState?> = _incomingLink.asStateFlow()
+    private var incomingVersion = 0L
+
+    /** 다른 앱이 넘긴 링크를 확인 대기 상태로 둔다. 재생·다운로드는 사용자가 고르기 전에는 시작하지 않는다. */
+    internal fun receiveLink(link: IncomingLink) {
+        val version = ++incomingVersion
+        val playbackActive = _uiState.value !is StreamUiState.Idle && _uiState.value !is StreamUiState.Error
+        viewModelScope.launch {
+            val keys = try { withContext(Dispatchers.IO) { playlist.keys() } }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) {
+                Log.w("IncomingLink", "Unable to read playlist: ${EngineFailureLog.describe(failure)}")
+                emptySet()
+            }
+            if (version == incomingVersion) _incomingLink.value = IncomingLinkPolicy.state(link, keys, playbackActive)
+        }
+    }
+
+    /** 확인 시트의 "바로 재생": 메인에서 재생하듯 시작한다(지금 재생 중이면 그 재생은 멈춘다). */
+    fun playIncomingLink() {
+        val pending = takeIncomingLink() ?: return
+        playFromMain(pending.link.value)
+    }
+
+    /**
+     * 확인 시트의 "받아 두기": 재생을 끊지 않고 다운로드 작업으로 넣는다. 링크 처리에 실패하면 예외를 그대로 던지고
+     * 대기 상태를 남겨 두므로, 시트가 [InputFailureText]로 문구를 보이고 다시 고르게 할 수 있다.
+     */
+    suspend fun saveIncomingLink() {
+        val pending = _incomingLink.value ?: return
+        queueDownload(pending.link.value)
+        if (_incomingLink.value === pending) _incomingLink.value = null
+    }
+
+    /** 확인 시트의 "취소". */
+    fun dismissIncomingLink() {
+        takeIncomingLink()
+    }
+
+    private fun takeIncomingLink(): IncomingLinkState? {
+        incomingVersion++
+        return _incomingLink.value.also { _incomingLink.value = null }
+    }
+
     /** 오류가 남은 메인에서 열면 오류 상태를 정리한 뒤 연다. */
     fun openPlaylist() {
         if (_uiState.value is StreamUiState.Error) stopStream()
