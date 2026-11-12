@@ -6,7 +6,12 @@ package com.example.torrentstreamplayer
  */
 internal object SourceCallScanner {
     /** [start]는 여는 괄호 바로 뒤. 짝이 맞는 `)`까지의 최상위 인자를 리터럴 글자를 뺀 코드 텍스트로 돌려준다. */
-    fun arguments(source: String, start: Int): List<String> {
+    fun arguments(source: String, start: Int): List<String> = scan(source, start).first
+
+    /** [start]는 여는 `(`·`{`·`[` 바로 뒤. 짝이 맞는 닫는 괄호의 위치(없으면 소스 끝)를 돌려준다. 리터럴 안은 건너뛴다. */
+    fun closingIndex(source: String, start: Int): Int = scan(source, start).second
+
+    private fun scan(source: String, start: Int): Pair<List<String>, Int> {
         val args = mutableListOf(StringBuilder())
         var depth = 1
         var i = start
@@ -36,22 +41,25 @@ internal object SourceCallScanner {
             i++
         }
         // 끝의 쉼표(`f(a, b,)`)는 인자를 늘리지 않는다.
-        return args.map { it.toString().trim() }.let { if (it.size > 1 && it.last().isEmpty()) it.dropLast(1) else it }
+        val trimmed = args.map { it.toString().trim() }
+        return (if (trimmed.size > 1 && trimmed.last().isEmpty()) trimmed.dropLast(1) else trimmed) to i
     }
 
-    /** [code]에서 `describe(…)` 호출 구간을 지운다. 그 안의 예외 참조는 원문을 남기지 않는 정상 사용이다. */
+    private const val DESCRIBE = "EngineFailureLog.describe("
+
+    /** [code]에서 `EngineFailureLog.describe(…)` 호출 구간을 지운다. 그 안의 예외 참조는 원문을 남기지 않는 정상 사용이다. */
     fun withoutDescribeCalls(code: String): String {
         val out = StringBuilder()
         var i = 0
         while (i < code.length) {
-            val found = code.indexOf("describe(", i)
+            val found = code.indexOf(DESCRIBE, i)
             if (found < 0) {
                 out.append(code, i, code.length)
                 break
             }
             out.append(code, i, found)
             var depth = 1
-            var j = found + "describe(".length
+            var j = found + DESCRIBE.length
             while (j < code.length && depth > 0) {
                 when (code[j]) {
                     '(' -> depth++

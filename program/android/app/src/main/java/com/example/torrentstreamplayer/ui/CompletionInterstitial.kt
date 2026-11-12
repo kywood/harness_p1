@@ -24,7 +24,11 @@ internal class CompletionInterstitial(private val activity: Activity) {
                     loading = false
                     if (!disposed) { ad = loaded; loadedAt = SystemClock.elapsedRealtime() }
                 }
-                override fun onAdFailedToLoad(error: LoadAdError) { loading = false }
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    loading = false
+                    // AdMob 오류 코드만 남긴다. 코드에는 사용자 데이터가 없고 광고 미노출 원인을 가릴 수 있다.
+                    Log.w("CompletionAd", "Load failed: code ${error.code}")
+                }
             })
     }
     fun showIfReady(watchedMs: Long, canShow: Boolean = true) {
