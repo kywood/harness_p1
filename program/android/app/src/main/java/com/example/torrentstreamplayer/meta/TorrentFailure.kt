@@ -14,7 +14,10 @@ internal enum class TorrentFailure(@StringRes val message: Int) {
     METADATA_DECODE(R.string.failure_metadata_decode),
     NO_VIDEO(R.string.failure_no_video),
     DOWNLOAD_SETUP(R.string.failure_download_setup),
-    ENGINE(R.string.failure_engine);
+    ENGINE(R.string.failure_engine),
+
+    /** A link could not be opened, e.g. the `.torrent` download failed on the network. */
+    LINK_GENERIC(R.string.error_link_generic);
 
     fun text(context: Context, detail: String? = null): String =
         if (this == ENGINE) context.getString(message, detail ?: context.getString(R.string.failure_unknown))
