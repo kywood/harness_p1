@@ -4,6 +4,8 @@
     <!-- Main screen -->
     <string name="action_stream_play">바로 재생</string>
     <string name="error_empty_link">마그넷 또는 토렌트 파일 링크를 입력하세요.</string>
+    <!-- design/specs/error-recovery.md 2-1 -->
+    <string name="error_link_generic">링크를 열지 못했습니다. 주소를 확인하고 다시 시도해 주세요.</string>
     <string name="error_invalid_magnet">올바른 마그넷 링크가 아닙니다. 링크를 다시 확인해 주세요.</string>
     <string name="label_buffering">버퍼링</string>
     <string name="label_downloading">다운로드</string>

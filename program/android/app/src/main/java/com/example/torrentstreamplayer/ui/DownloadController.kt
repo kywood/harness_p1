@@ -11,7 +11,9 @@ internal class DownloadController(private val scope: CoroutineScope,
     private val createEngine: () -> TorrentEngine,
     private val save: suspend (String) -> Unit,
     private val title: suspend (String, String) -> Unit,
-    private val commands: EngineCommandQueue = EngineCommandQueue.shared) {
+    private val commands: EngineCommandQueue = EngineCommandQueue.shared,
+    /** Text for a failed start; null falls back to the generic message. Never show raw library messages. */
+    private val describeFailure: (Throwable) -> String? = InputFailureText::ownMessage) {
     private val lazyEngine = lazy(createEngine)
     val engine get() = lazyEngine.value
     private val mutableState = MutableStateFlow(DownloadTaskState())
@@ -57,7 +59,7 @@ internal class DownloadController(private val scope: CoroutineScope,
             catch (error: Exception) {
                 if (request == generation) {
                     stopEngine()
-                    mutableState.value = DownloadTaskState(error = error.localizedMessage ?: "다운로드를 시작하지 못했습니다.")
+                    mutableState.value = DownloadTaskState(error = describeFailure(error) ?: "다운로드를 시작하지 못했습니다.")
                 }
             }
         }
