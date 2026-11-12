@@ -62,6 +62,29 @@ class DownloadManagerTest {
         scope.cancel()
     }
 
+    @Test fun borrowedPlaybackAndShortDropsAreLeftAlone() {
+        val scope = CoroutineScope(SupervisorJob() + held)
+        val manager = manager(scope)
+        manager.applyNetwork(NetworkConditions(wifiOnly = true, connection = ConnectionType.WIFI))
+        manager.start(magnet('1')) { true }
+        manager.start(magnet('2')) { true }
+        val (playing, other) = manager.tasks.value.keys.toList()
+        runCatching { manager.borrow(playing) }
+
+        manager.applyNetwork(NetworkConditions(wifiOnly = true, connection = ConnectionType.NONE))
+        assertEquals("no connection changes nothing", listOf(DownloadPhase.RUNNING, DownloadPhase.RUNNING),
+            phases(manager).values.toList())
+        manager.applyNetwork(NetworkConditions(wifiOnly = true, connection = ConnectionType.MOBILE))
+        assertEquals("playback keeps going on mobile data", DownloadPhase.RUNNING, phases(manager)[playing])
+        assertEquals(DownloadPhase.WAITING_FOR_WIFI, phases(manager)[other])
+        manager.applyNetwork(NetworkConditions(wifiOnly = true, connection = ConnectionType.NONE))
+        assertEquals("a drop after mobile keeps waiting", DownloadPhase.WAITING_FOR_WIFI, phases(manager)[other])
+        manager.start(magnet('2')) { true }
+        assertEquals("starting a waiting task again does not replace it", DownloadPhase.WAITING_FOR_WIFI,
+            phases(manager)[other])
+        scope.cancel()
+    }
+
     @Test fun allowOnceAndBorrowedPlaybackKeepRunningOnMobileData() {
         val scope = CoroutineScope(SupervisorJob() + held)
         val manager = manager(scope)

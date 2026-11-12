@@ -26,6 +26,13 @@ internal data class NetworkConditions(val wifiOnly: Boolean = false, val connect
 
 /** Wi-Fi only rules. Pure: settings, connection and the user's one-time permission come in as values. */
 internal object DownloadNetworkPolicy {
+    /**
+     * Conditions to act on after [next] arrives. No connection decides nothing (libtorrent idles by itself), so it
+     * keeps [previous]'s connection while still taking the new Wi-Fi only setting.
+     */
+    fun settle(previous: NetworkConditions, next: NetworkConditions): NetworkConditions =
+        if (next.connection.connected) next else next.copy(connection = previous.connection)
+
     fun decide(conditions: NetworkConditions, allowedOnce: Boolean): NetworkDecision = when {
         !conditions.wifiOnly -> NetworkDecision.PROCEED
         conditions.connection.connected && !conditions.connection.metered -> NetworkDecision.PROCEED

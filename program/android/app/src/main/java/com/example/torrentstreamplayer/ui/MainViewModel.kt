@@ -83,7 +83,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Stopped downloads may still be writing their files; waits for them on [Dispatchers.IO] before deleting. */
     suspend fun deleteStoredFile(path: String): Boolean {
         val writers = withContext(Dispatchers.Main.immediate) {
-            check(downloads.tasks.value.values.none { it.phase == DownloadPhase.RUNNING || it.phase == DownloadPhase.QUEUED }) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
+            check(downloads.tasks.value.values.none { it.phase.stoppable }) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
             downloads.stoppedWriters()
         }
         return withContext(Dispatchers.IO) {

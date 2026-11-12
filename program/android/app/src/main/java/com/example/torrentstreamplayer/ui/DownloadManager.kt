@@ -2,8 +2,24 @@ package com.example.torrentstreamplayer.ui
 import com.example.torrentstreamplayer.engine.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-/** [WAITING_FOR_WIFI]: stopped by the Wi-Fi only rule ([DownloadNetworkPolicy]); queued again when it allows. */
-internal enum class DownloadPhase { QUEUED, RUNNING, COMPLETE, FAILED, WAITING_FOR_WIFI }
+/**
+ * Download task phases. Register what each phase means here; the playlist, file deletion and the network rules
+ * read these properties instead of listing phases.
+ */
+internal enum class DownloadPhase(
+    /** The task is alive: it can be stopped, and its files must not be deleted under it. */
+    val stoppable: Boolean,
+    /** The Wi-Fi only rule may move the task to [WAITING_FOR_WIFI]. */
+    val networkGated: Boolean,
+) {
+    QUEUED(stoppable = true, networkGated = true),
+    RUNNING(stoppable = true, networkGated = true),
+    COMPLETE(stoppable = false, networkGated = false),
+    FAILED(stoppable = false, networkGated = false),
+
+    /** "Wi-Fi 대기": stopped by the Wi-Fi only rule ([DownloadNetworkPolicy]); queued again when it allows. */
+    WAITING_FOR_WIFI(stoppable = true, networkGated = false),
+}
 internal data class DownloadEntry(val key: String, val phase: DownloadPhase = DownloadPhase.QUEUED,
     val snapshot: DownloadSnapshot? = null, val speed: Long = 0, val error: String? = null)
 internal object DownloadQueuePlan {
@@ -44,7 +60,7 @@ internal class DownloadManager(private val scope: CoroutineScope,
             mutableError.value = "유효한 마그넷 주소가 필요합니다."; return
         }
         if (!canStart(key)) { mutableError.value = "재생 중인 영상은 이미 다운로드 중입니다."; return }
-        if (tasks.value[key]?.phase in listOf(DownloadPhase.RUNNING, DownloadPhase.QUEUED)) return
+        if (tasks.value[key]?.phase?.stoppable == true) return
         nodes.remove(key)?.let { retire(it) }
         mutableError.value = null
         nodes[key] = Node(magnet, createController())
@@ -71,12 +87,13 @@ internal class DownloadManager(private val scope: CoroutineScope,
         }
     }
     /**
-     * Lends [key]'s engine to playback. A borrowed task is never stopped for Wi-Fi only (stopping it would end
-     * playback with an error); the caller asks before starting playback on mobile data ([DownloadNetworkPolicy]).
+     * Lends [key]'s engine to playback. A borrowed task is left out of the Wi-Fi only rule: playback keeps going on
+     * mobile data (stopping the engine would end playback with an error). The ViewModel asks before starting
+     * playback on mobile data ([DownloadNetworkPolicy.playbackStart]).
      */
     fun borrow(key: String): TorrentEngine? {
         val phase = tasks.value[key]?.phase ?: return null
-        if (phase !in listOf(DownloadPhase.RUNNING, DownloadPhase.QUEUED, DownloadPhase.WAITING_FOR_WIFI)) return null
+        if (!phase.stoppable) return null
         borrowed.add(key)
         if (phase != DownloadPhase.RUNNING) {
             if (tasks.value.values.count { it.phase == DownloadPhase.RUNNING } >= limit) {
@@ -92,18 +109,18 @@ internal class DownloadManager(private val scope: CoroutineScope,
         node.watcher?.cancel(); node.controller.stop()
         update((tasks.value[key] ?: return).copy(phase = phase, speed = 0))
     }
-    private fun mayRun(key: String) =
-        DownloadNetworkPolicy.decide(network, allowedOnce = key in allowedOnce || key in borrowed).mayRun
+    private fun mayRun(key: String) = DownloadNetworkPolicy.decide(network, allowedOnce = key in allowedOnce).mayRun
 
     /**
-     * Applies new Wi-Fi only settings or a new connection: running and queued tasks that may not run wait for Wi-Fi
-     * (their engines stop through the engine queue, like any stop), waiting tasks that may run are queued again.
+     * Applies new Wi-Fi only settings or a new connection. Tasks lent to playback are skipped. Running and queued
+     * tasks that may not run wait for Wi-Fi (their engines stop through the engine queue, like any stop); waiting
+     * tasks that may run are queued again. No connection keeps the last known one ([DownloadNetworkPolicy.settle]),
+     * so a short drop changes nothing.
      */
     fun applyNetwork(conditions: NetworkConditions) {
-        network = conditions
-        tasks.value.values.toList().forEach { entry ->
-            val active = entry.phase == DownloadPhase.RUNNING || entry.phase == DownloadPhase.QUEUED
-            if (active && !mayRun(entry.key)) pause(entry.key, DownloadPhase.WAITING_FOR_WIFI)
+        network = DownloadNetworkPolicy.settle(network, conditions)
+        tasks.value.values.toList().filter { it.key !in borrowed }.forEach { entry ->
+            if (entry.phase.networkGated && !mayRun(entry.key)) pause(entry.key, DownloadPhase.WAITING_FOR_WIFI)
             if (entry.phase == DownloadPhase.WAITING_FOR_WIFI && mayRun(entry.key))
                 update(entry.copy(phase = DownloadPhase.QUEUED))
         }
@@ -123,7 +140,7 @@ internal class DownloadManager(private val scope: CoroutineScope,
         if (!borrowed.remove(key)) return
         val phase = tasks.value[key]?.phase
         if (phase == DownloadPhase.COMPLETE) nodes[key]?.controller?.stop()
-        if ((phase == DownloadPhase.RUNNING || phase == DownloadPhase.QUEUED) && !mayRun(key)) {
+        if (phase?.networkGated == true && !mayRun(key)) {
             pause(key, DownloadPhase.WAITING_FOR_WIFI)
             pump()
         }
