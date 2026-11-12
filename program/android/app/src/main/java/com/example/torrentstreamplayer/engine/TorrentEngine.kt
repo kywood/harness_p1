@@ -360,7 +360,7 @@ class TorrentEngine(private val context: Context) {
                 }
 
             } catch (t: Throwable) {
-                // 원문은 디버그 빌드에서만, 경로를 가려 남긴다. 사용자 문구에는 넣지 않는다.
+                // 예외 원문은 로그에도 사용자 문구에도 넣지 않는다(EngineFailureLog).
                 Log.e(TAG, "Unhandled error in torrent streaming thread: " +
                     EngineFailureLog.describe(t, BuildConfig.DEBUG))
                 if (run == activeRun) onError(TorrentFailure.ENGINE.text(context))
