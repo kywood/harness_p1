@@ -56,6 +56,7 @@ internal fun AppRoot(
             when (val current = screen) {
                 AppScreen.StoredFiles -> StoredFilesScreen(viewModel::storedFiles, viewModel::deleteStoredFile,
                     onBack = viewModel::closeList)
+                AppScreen.OpenSourceLicenses -> OpenSourceLicensesScreen(onBack = viewModel::closeList)
                 AppScreen.Playlist -> MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
                     onPlay = viewModel::playFromPlaylist,
                     onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },

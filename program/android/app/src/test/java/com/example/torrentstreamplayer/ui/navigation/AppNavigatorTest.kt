@@ -34,6 +34,10 @@ class AppNavigatorTest {
         assertEquals(AppScreen.StoredFiles, navigator.screen.value)
         navigator.closeList()
         assertEquals(AppScreen.Main("실패"), navigator.screen.value)
+        navigator.openOpenSourceLicenses()
+        assertEquals(AppScreen.OpenSourceLicenses, navigator.screen.value)
+        navigator.closeList()
+        assertEquals(AppScreen.Main("실패"), navigator.screen.value)
     }
 
     @Test fun playbackFromPlaylistReturnsToPlaylistWhenClosed() {

@@ -149,4 +149,16 @@
     <string name="piece_legend_low" formatted="false" translatable="false">1–33%</string>
     <string name="piece_legend_medium" formatted="false" translatable="false">34–66%</string>
     <string name="piece_legend_high" formatted="false" translatable="false">67–99%</string>
+
+    <!-- Open source licenses (design/specs/open-source-licenses.md 4절, main-legal-footer.md) -->
+    <string name="action_open_source_licenses">오픈소스 라이선스</string>
+    <string name="licenses_intro">PiecePlay는 아래 오픈소스 소프트웨어를 사용합니다. 항목을 누르면 라이선스 전문을 볼 수 있습니다.</string>
+    <string name="licenses_item_meta" translatable="false">%1$s · %2$s</string>
+    <string name="licenses_source_available">소스 코드를 받을 수 있습니다.</string>
+    <string name="licenses_lgpl_notice">LibVLC는 GNU LGPL 2.1 이상으로 배포됩니다. 소스 코드는 아래 주소에서 받을 수 있으며, 라이선스에 따라 이 라이브러리를 수정하거나 다른 버전으로 바꿔 쓸 수 있습니다.</string>
+    <string name="licenses_source_code">소스 코드</string>
+    <string name="licenses_others_title">그 밖의 구성요소</string>
+    <string name="licenses_others_body">Google 모바일 광고 SDK와 사용자 메시지 플랫폼(UMP)은 오픈소스가 아니며 Google 약관을 따릅니다.</string>
+    <string name="licenses_load_error">라이선스 문서를 열지 못했습니다. 앱을 다시 열어 주세요.</string>
+    <string name="error_browser_unavailable">웹 브라우저를 열지 못했습니다. 브라우저 앱이 켜져 있는지 확인해 주세요.</string>
 </resources>
