@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** 사용자가 고른 목적지. [MAIN]이면 메인·준비·재생 중 무엇을 보일지는 스트림 상태가 정한다. */
-internal enum class Destination { MAIN, PLAYLIST, STORED_FILES }
+internal enum class Destination { MAIN, PLAYLIST, STORED_FILES, OPEN_SOURCE_LICENSES }
 
 /** 재생을 시작한 곳. 재생·준비를 닫으면 [closeTo]로 돌아간다. */
 internal enum class PlaybackOrigin(val closeTo: Destination) {
@@ -40,7 +40,9 @@ internal class AppNavigator(stream: StreamUiState = StreamUiState.Idle) {
 
     fun openStoredFiles() = moveTo(navigation.copy(destination = Destination.STORED_FILES))
 
-    /** 재생 목록·저장 파일 관리에서 뒤로 가면 메인 흐름으로 돌아간다. */
+    fun openOpenSourceLicenses() = moveTo(navigation.copy(destination = Destination.OPEN_SOURCE_LICENSES))
+
+    /** 재생 목록·저장 파일 관리·오픈소스 라이선스에서 뒤로 가면 메인 흐름으로 돌아간다. */
     fun closeList() = moveTo(navigation.copy(destination = Destination.MAIN))
 
     fun startPlayback(origin: PlaybackOrigin) = moveTo(NavigationState(Destination.MAIN, origin))
@@ -71,6 +73,7 @@ internal class AppNavigator(stream: StreamUiState = StreamUiState.Idle) {
         fun screenOf(navigation: NavigationState, stream: StreamUiState): AppScreen = when (navigation.destination) {
             Destination.PLAYLIST -> AppScreen.Playlist
             Destination.STORED_FILES -> AppScreen.StoredFiles
+            Destination.OPEN_SOURCE_LICENSES -> AppScreen.OpenSourceLicenses
             Destination.MAIN -> when (stream) {
                 is StreamUiState.Idle -> AppScreen.Main()
                 is StreamUiState.Error -> AppScreen.Main(stream.message)

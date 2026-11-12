@@ -17,6 +17,7 @@ class TestAdPolicyTest {
         assertTrue(TestAdPolicy.visible(AppScreen.Main("오류")))
         assertTrue(TestAdPolicy.visible(AppScreen.Playlist))
         assertFalse(TestAdPolicy.visible(AppScreen.StoredFiles))
+        assertFalse(TestAdPolicy.visible(AppScreen.OpenSourceLicenses))
     }
     @Test fun preparationBufferingAndPlaybackHaveNoBanner() {
         listOf(AppScreen.Preparing.FetchingMetadata,

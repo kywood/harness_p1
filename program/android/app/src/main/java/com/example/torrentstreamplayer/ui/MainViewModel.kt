@@ -225,7 +225,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         navigator.openStoredFiles()
     }
 
-    /** 재생 목록·저장 파일 관리에서 뒤로 간다. */
+    /** 오픈소스 라이선스를 연다. 진입점(메인 하단 링크, design 시안 A)은 개인정보처리방침 주소가 정해진 뒤 연결한다. */
+    fun openOpenSourceLicenses() = navigator.openOpenSourceLicenses()
+
+    /** 재생 목록·저장 파일 관리·오픈소스 라이선스에서 뒤로 간다. */
     fun closeList() = navigator.closeList()
 
     /**

@@ -39,6 +39,7 @@ class PreparationUiTest {
     @Test fun idleAndListsKeepTheirOwnBackBehavior() {
         assertFalse(AppBackPolicy.returnsToInput(AppScreen.Main()))
         assertFalse(AppBackPolicy.returnsToInput(AppScreen.StoredFiles))
+        assertFalse(AppBackPolicy.returnsToInput(AppScreen.OpenSourceLicenses))
         assertFalse(AppBackPolicy.returnsToInput(AppScreen.Playlist))
     }
 }
