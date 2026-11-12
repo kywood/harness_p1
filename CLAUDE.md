@@ -78,6 +78,11 @@ $env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
 
 AdMob. `BuildConfig.DEBUG`이면 Google 테스트 단위 ID, 릴리스면 실제 단위 ID를 쓴다(`TestAdPolicy`, `CompletionAdPolicy` — 이름의 `Test`는 과거 흔적). 배너는 메인·재생 목록에만, 전면 광고는 재생 종료/완료 시 `CompletionAdPolicy.eligible`(5분 이상 시청 또는 5회 완료, 10분 쿨다운)을 통과할 때만 띄운다. 재생·준비·버퍼링 화면에는 광고를 넣지 않는다.
 
+## 사용자와의 대화
+
+- 사용자에게 하는 말(답변, 보고, 질문, 버튼 문구)은 모두 한국어로 쓴다. 생각이나 초안은 영어로 해도 되지만, 사용자에게 보이는 문장은 한국어로 옮겨서 낸다.
+- 코드 식별자, 파일 경로, 명령어, 화면에 영어로 표시되는 문구는 그대로 둔다.
+
 ## 팀과 컨벤션
 
 공통 규칙은 `CONVENTIONS.md`다. 세션을 연 위치와 맡은 역할에 따라 아래 지침을 먼저 읽는다.
