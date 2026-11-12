@@ -2,6 +2,7 @@
 
 작성: program, 2026-11-12. 범위: 조사와 계획까지. 앱 의존성(`libvlc-all 3.7.5`)은 이번에 바꾸지 않았다.
 법률 판단은 하지 않는다. 법적 해석이 필요한 곳은 **[확인 필요]**로 표시했다.
+1단계(패치 + arm64 시험 빌드) 결과는 `program/libvlc-lgpl-phase1.md`에 있다.
 
 ## 0. 요약
 
@@ -130,10 +131,10 @@ VLC 3.0 모듈 중 `#define VLC_MODULE_LICENSE VLC_LICENSE_GPL_2_PLUS`를 선언
 ### 5.1 GPL 흔적 자동 검사: `program/tools/libvlc_gpl_scan.py`
 
 - 입력: AAR·APK·AAB(안의 `libvlc.so`), `.so` 파일, 또는 빌드 디렉터리(`lib*_plugin.a`). GPL 흔적이나 64비트 정렬 위반이 있으면 종료 코드 1로 끝난다.
-- 표식: x264(`x264 - core`, `x264_encoder_open`), x265, postproc(`pp_postprocess`, `postproc_version`), `dvdnav_open`, `DVDOpen`, realrtsp(`access_realrtsp`, `Real RTSP`), Lua(`luaL_newstate`). 여기에 VLC GPL 모듈 라이선스 문자열 `"Licensed under the terms of the GNU General Public License, version 2 or later."`을 더한다.
+- 표식: x264(`x264_encoder_open`, 인코더 배너 `H.264/MPEG-4 AVC codec - Copy`. `x264 - core`는 LGPL FFmpeg의 H.264 SEI 해석기에도 있어 1단계에서 뺐다), x265, postproc(`pp_postprocess`, `postproc_version`), `dvdnav_open`, `DVDOpen`, realrtsp(`access_realrtsp`, `Real RTSP`), Lua(`luaL_newstate`). 여기에 VLC GPL 모듈 라이선스 문자열 `"Licensed under the terms of the GNU General Public License, version 2 or later."`을 더한다.
 - 링크 전 `.a` 단계 검사가 핵심이다. 링크된 `.so`에서는 같은 문자열이 합쳐지고, 64비트 산출물에서는 라이선스 문자열이 보이지 않았다. 그래서 `.so` 단계 검사는 보조로 쓴다. 빌드 스크립트의 정적 모듈 목록을 만든 직후 `python3 -I libvlc_gpl_scan.py $VLC_BUILD_DIR/install/lib/vlc/plugins`를 돌려 실패하면 빌드를 멈춘다.
 - 추가 검사: `contrib/<triplet>/lib`에 `libx264.a`, `libpostproc.a`, `libdvdnav.a`, `libdvdread.a`, `liblua*.a`, `libgnutls.a`가 없는지 확인한다. AAR `assets/`에 `lua/`가 없는지도 확인한다.
-- **기준선(현재 libvlc-all 3.7.5, 실행 결과):** 4 ABI 모두 FAIL이다. arm64는 `x264=3, libpostproc=1, libdvdnav=4, libdvdread=10, realrtsp=2, lua=1`이고, 32비트 두 ABI는 GPL 모듈 라이선스 문자열도 1개씩 나왔다. LOAD 정렬은 모두 16384다.
+- **기준선(현재 libvlc-all 3.7.5, 실행 결과):** 4 ABI 모두 FAIL이다. arm64는 `x264=1`(1단계 표식 수정 전에는 3), `libpostproc=1, libdvdnav=4, libdvdread=10, realrtsp=2, lua=1`이고, 32비트 두 ABI는 GPL 모듈 라이선스 문자열도 1개씩 나왔다. LOAD 정렬은 모두 16384다.
 
 ### 5.2 기능 회귀
 
