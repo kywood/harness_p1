@@ -15,6 +15,7 @@ internal enum class LegalLink(
     @StringRes val url: Int? = null,
     val needsConsentRegion: Boolean = false,
 ) {
+    USAGE_GUIDE(R.string.action_usage_guide),
     PRIVACY_POLICY(R.string.action_privacy_policy, url = R.string.url_privacy_policy),
     OPEN_SOURCE_LICENSES(R.string.action_open_source_licenses),
     AD_PRIVACY(R.string.action_ad_privacy, needsConsentRegion = true);

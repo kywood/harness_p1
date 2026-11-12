@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -18,13 +17,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +40,7 @@ import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.PieceMapSnapshot
 import com.example.torrentstreamplayer.ui.PieceMap
 import com.example.torrentstreamplayer.ui.VideoOrientationButton
+import com.example.torrentstreamplayer.ui.components.AppBottomSheet
 import com.example.torrentstreamplayer.ui.components.SecondaryButton
 import com.example.torrentstreamplayer.ui.theme.PlaybackColors
 import com.example.torrentstreamplayer.ui.theme.Shapes
@@ -152,14 +150,11 @@ internal fun PlayerTimePill(timeLabel: String, modifier: Modifier = Modifier) {
 }
 
 /** 더보기 하단 시트: 링크 추가, 처음부터 재생. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun PlayerMoreSheet(onDismiss: () -> Unit, onAddLink: (() -> Unit)?, onRestart: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = Spacing.lg)) {
-            if (onAddLink != null) SheetItem(Icons.Filled.Add, stringResource(R.string.action_add_link), onAddLink)
-            SheetItem(Icons.Filled.Refresh, stringResource(R.string.player_restart), onRestart)
-        }
+    AppBottomSheet(onDismiss = onDismiss) {
+        if (onAddLink != null) SheetItem(Icons.Filled.Add, stringResource(R.string.action_add_link), onAddLink)
+        SheetItem(Icons.Filled.Refresh, stringResource(R.string.player_restart), onRestart)
     }
 }
 
