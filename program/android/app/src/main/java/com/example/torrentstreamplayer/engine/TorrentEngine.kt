@@ -339,7 +339,7 @@ class TorrentEngine(private val context: Context) {
                         if (status.isFinished && (firstPieceIndex..lastPieceIndex).all(handle::havePiece)) {
                             checkpoint?.save(1500)
                             // A finished download must not stay announced as a seed; the paused handle still answers havePiece.
-                            runCatching { handle.pause() }.onFailure { Log.w(TAG, "Unable to pause finished torrent", it) }
+                            runCatching { handle.pause() }.onFailure { Log.w(TAG, "Unable to pause finished torrent: ${EngineFailureLog.describe(it)}") }
                             runCatching { cache.recordComplete(candidate, maxFileSize) }
                             if (cache.isComplete(candidate, maxFileSize)) localVideo = candidate
                             downloadProgress = 100f
@@ -353,7 +353,7 @@ class TorrentEngine(private val context: Context) {
                             break
                         }
                     } catch (t: Throwable) {
-                        Log.e(TAG, "Error in progress loop", t)
+                        Log.e(TAG, "Error in progress loop: ${EngineFailureLog.describe(t)}")
                     }
 
                     Thread.sleep(1000)
@@ -428,7 +428,7 @@ class TorrentEngine(private val context: Context) {
                 handle.setPieceDeadline(request.piece, request.deadlineMs)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error prioritizing pieces starting at $startPieceIndex", e)
+            Log.e(TAG, "Error prioritizing pieces starting at $startPieceIndex: ${EngineFailureLog.describe(e)}")
         }
     }
 
@@ -474,7 +474,7 @@ class TorrentEngine(private val context: Context) {
         if (localVideo == null) SeekDownloadHint.offset(targetMs, durationMs, selectedFileLength)?.let {
             priorityPins = emptySet()
             playbackByteOffset = it
-            runCatching { prioritizeOffset(it) }.onFailure { error -> Log.w(TAG, "Seek prefetch failed", error) }
+            runCatching { prioritizeOffset(it) }.onFailure { error -> Log.w(TAG, "Seek prefetch failed: ${EngineFailureLog.describe(error)}") }
         }
     }
 
