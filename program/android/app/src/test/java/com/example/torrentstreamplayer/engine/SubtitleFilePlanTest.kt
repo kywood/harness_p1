@@ -95,6 +95,33 @@ class SubtitleFilePlanTest {
         assertEquals(1..2, SubtitleFilePlan.select(torrent, 0, pieceLength).single().pieces)
     }
 
+    @Test fun aSmallerEpisodeNextToALargeSpecialStillMakesASeasonPack() {
+        val torrent = files("S/Show.S01E00.Special.mkv" to 4_000_000_000, "S/Show.S01E01.mkv" to 900_000_000,
+            "S/Show.S01E01.ko.srt" to 10)
+        assertFalse(SubtitleFilePlan.select(torrent, 0, pieceLength).any { it.fallbackAllowed })
+        assertEquals(emptyList<String>(), chosen(torrent))
+    }
+
+    @Test fun oneLargeExtraNextToAMovieIsNotASeasonPack() {
+        val torrent = files("M/Movie.mkv" to 4_000_000_000, "M/Behind.The.Scenes.mkv" to 1_200_000_000,
+            "M/Subs/Korean.srt" to 10)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("M/Subs/Korean.srt"), plan.map { it.path })
+        assertTrue(plan.single().fallbackAllowed)
+    }
+
+    @Test fun aSampleOfTheSameEpisodeIsNotAnotherEpisode() {
+        val torrent = files("S/Show.S01E01.mkv" to 900_000_000, "S/Show.S01E01.sample.mkv" to 30_000_000,
+            "S/Korean.srt" to 10)
+        assertEquals(listOf("S/Korean.srt"), chosen(torrent))
+    }
+
+    @Test fun threeLargeVideosWithoutMarkersAreASeasonPack() {
+        val torrent = files("S/Show 01.mkv" to 500_000_000, "S/Show 02.mkv" to 500_000_000,
+            "S/Show 03.mkv" to 500_000_000, "S/Korean.srt" to 10)
+        assertEquals(emptyList<String>(), chosen(torrent))
+    }
+
     @Test fun releaseWordsAreLeftOutOfTheNameComparison() {
         val torrent = files("S/Show.S01E01.1080p.WEB.H264-GRP.mkv" to 500_000_000, "S/Show.S01E01.ko.srt" to 10,
             "S/Show.S01E02.ko.srt" to 10)

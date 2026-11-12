@@ -18,10 +18,14 @@ internal object SubtitleSpec {
     val FOLDER_NAMES: Set<String> = setOf("subs", "sub", "subtitles", "subtitle")
 
     /**
-     * A folder is a season pack when it holds another video at least this many percent of the selected video's size.
-     * Smaller videos (samples, trailers) do not count.
+     * A folder is a season pack when another video in it has a different episode marker ([EPISODE_WORD]), or when it
+     * holds [PACK_MIN_BIG_VIDEOS] other videos of at least this many percent of the selected video's size.
+     * Smaller videos (samples, trailers) do not count; one large extra next to a movie does not make a pack.
      */
     const val PACK_VIDEO_MIN_PERCENT = 25L
+
+    /** Other large videos (see [PACK_VIDEO_MIN_PERCENT]) that make a folder without episode markers a season pack. */
+    const val PACK_MIN_BIG_VIDEOS = 2
 
     /** Folders searched below the video's folder: the subtitle folder and one episode folder inside it. */
     const val MAX_FOLDER_DEPTH = 2

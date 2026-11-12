@@ -29,7 +29,7 @@ internal data class SubtitleCandidate(
  * A file qualifies when its extension is a [SubtitleFormat] and its size is 1..[SubtitleSpec.MAX_FILE_BYTES], and it
  * sits in the video's folder, in a [SubtitleSpec.FOLDER_NAMES] folder below it, or one folder deeper
  * (`Subs/Episode/…`). In a folder with one video it also needs a name match or a [SubtitleLanguage] marker; in a
- * season pack (another video of at least [SubtitleSpec.PACK_VIDEO_MIN_PERCENT] % of its size in the same folder)
+ * season pack (other episodes in the same folder, see [SubtitleSpec.PACK_VIDEO_MIN_PERCENT])
  * it needs a name match, so other episodes' subtitles stay out.
  *
  * A name match compares whole words: one name's words must start the other's, so `Show E1` matches `Show E1 ko`
@@ -43,10 +43,12 @@ internal object SubtitleFilePlan {
         val videoFolder = folder(video.path)
         val videoWords = nameWords(SubtitleLanguage.baseName(video.path))
         val packMinBytes = video.size * SubtitleSpec.PACK_VIDEO_MIN_PERCENT / 100
-        val singleVideo = files.none { other ->
-            other.index != videoIndex && folder(other.path) == videoFolder &&
-                TorrentPlayback.isVideo(other.path, other.size) && other.size >= packMinBytes
+        val others = files.filter { other ->
+            other.index != videoIndex && folder(other.path) == videoFolder && TorrentPlayback.isVideo(other.path, other.size)
         }
+        val otherEpisodes = others.mapNotNull { episode(nameWords(SubtitleLanguage.baseName(it.path))) }
+        val singleVideo = otherEpisodes.none { it != episode(videoWords) } &&
+            others.count { it.size >= packMinBytes } < SubtitleSpec.PACK_MIN_BIG_VIDEOS
         val ordered = files.asSequence()
             .filter { it.index != videoIndex && SubtitleFormat.of(it.path) != null }
             .filter { it.size in 1..SubtitleSpec.MAX_FILE_BYTES && it.offset >= 0 }
@@ -103,6 +105,8 @@ internal object SubtitleFilePlan {
     /** Words of [name] up to the first release word ([SubtitleSpec.QUALITY_WORD]). */
     private fun nameWords(name: String) =
         SubtitleLanguage.words(name).takeWhile { !SubtitleSpec.QUALITY_WORD.matches(it) }
+
+    private fun episode(words: List<String>) = words.firstOrNull(SubtitleSpec.EPISODE_WORD::matches)
 
     private fun folder(path: String): String = path.replace('\\', '/').substringBeforeLast('/', "")
 }
