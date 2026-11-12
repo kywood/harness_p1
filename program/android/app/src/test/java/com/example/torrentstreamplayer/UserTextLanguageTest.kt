@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer
 import com.example.torrentstreamplayer.engine.InvalidMagnetException
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -26,7 +27,16 @@ class UserTextLanguageTest {
         val expected = setOf("failure_invalid_magnet", "failure_metadata_timeout", "failure_metadata_decode",
             "failure_no_video", "failure_download_setup", "failure_engine", "failure_unknown")
         assertEquals(expected, failureKeys)
-        assertTrue(strings.getValue("failure_engine").contains("%1\$s"))
+        assertFalse("엔진 오류 문구는 예외 원문을 받지 않는다", strings.getValue("failure_engine").contains("%"))
+    }
+
+    @Test fun engineNeverPassesExceptionTextToTheUserCallback() {
+        val leaking = File("src/main/java/com/example/torrentstreamplayer/engine").walkTopDown()
+            .filter { it.extension == "kt" }
+            .flatMap { file -> file.readLines().mapIndexed { i, line -> "${file.name}:${i + 1}" to line } }
+            .filter { (_, line) -> line.contains("onError(") && Regex("""\.(localizedMessage|message)\b""").containsMatchIn(line) }
+            .map { it.first }.toList()
+        assertEquals("onError로 예외 원문을 넘기는 줄", emptyList<String>(), leaking)
     }
 
     @Test fun invalidMagnetIsReportedWithItsOwnTypeSoTheUiCanLocalizeIt() {
