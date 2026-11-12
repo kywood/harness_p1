@@ -20,7 +20,9 @@ GPL_MODULE_LICENSE = b"Licensed under the terms of the GNU General Public Licens
 
 # 3.7.5 libvlc-all 에서 실제로 보인 GPL 구성요소의 흔적. 값은 그 구성요소 고유의 심볼·문자열이다.
 MARKERS = {
-    "x264": [b"x264 - core", b"x264_encoder_open"],
+    # "x264 - core" 는 표식으로 쓰지 않는다. LGPL FFmpeg의 H.264 SEI 해석기(h2645_sei.c)가
+    # x264로 인코딩된 스트림을 알아보려고 같은 문자열을 갖고 있어 GPL이 없어도 걸린다.
+    "x264": [b"x264_encoder_open", b"H.264/MPEG-4 AVC codec - Copy"],
     "x265": [b"x265_encoder_open"],
     "libpostproc": [b"pp_postprocess", b"postproc_version"],
     "libdvdnav": [b"dvdnav_open"],
