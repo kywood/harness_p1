@@ -18,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import com.example.torrentstreamplayer.data.PlaylistRepository
 import com.example.torrentstreamplayer.engine.EngineFailureLog
@@ -28,7 +29,6 @@ import com.example.torrentstreamplayer.engine.SavedMagnet
 import com.example.torrentstreamplayer.engine.StoredTorrentFile
 import com.example.torrentstreamplayer.engine.SubtitleFile
 import com.example.torrentstreamplayer.engine.SubtitleSelectionPolicy
-import kotlinx.coroutines.flow.map
 import com.example.torrentstreamplayer.ui.navigation.AppNavigator
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import com.example.torrentstreamplayer.ui.navigation.PlaybackOrigin
