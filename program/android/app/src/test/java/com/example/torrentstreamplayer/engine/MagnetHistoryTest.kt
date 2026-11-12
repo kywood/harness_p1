@@ -39,6 +39,17 @@ class MagnetHistoryTest {
         assertEquals(42000L, history().list().single().lastPositionMs)
         assertEquals(10L, history().list().single().addedAt)
     }
+    @Test fun aBrokenEntrySkipsOnlyItself() {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { out ->
+            out.writeInt(-3); out.writeInt(2)
+            listOf(magnet(1), "magnet:?xt=urn:btih:broken").forEachIndexed { index, link ->
+                out.writeUTF(link); out.writeUTF("T$index"); out.writeLong(10L + index); out.writeLong(0); out.writeLong(0)
+            }
+        }
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).write("links", bytes.toByteArray())
+        assertEquals(listOf(magnet(1)), history().list().map { it.magnet })
+    }
     @Test fun versionOneHistoryMigratesWithoutInventingPlaybackDate() {
         val buffer = java.io.ByteArrayOutputStream()
         java.io.DataOutputStream(buffer).use { it.writeInt(-1); it.writeInt(1); it.writeUTF(magnet(1)); it.writeUTF("Old"); it.writeLong(12) }
