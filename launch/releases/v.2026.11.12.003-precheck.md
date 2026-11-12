@@ -5,7 +5,7 @@
 - 다음 버전: 오늘 `:app:nextVersion`을 실행하면 v.2026.11.12.003 / 28이 된다. 날짜가 바뀌면 이름도 바뀌므로 실제 실행 후 이 파일 이름을 맞춘다.
 - 이번 점검에서는 버전 올리기, 릴리스 빌드, Play Console 제출을 하지 않았다. 코드는 읽기만 했다. 디버그 APK는 #49 스크린샷 작업 때 같은 main 기준으로 만든 것을 썼다.
 
-- 갱신 2026-11-12 (#104, 아래 "전 세계 출시" 절): 사용자가 출시 국가를 **전 세계**로 정했다. Play Console 기준 프로덕션 액세스는 열린 것으로 보이고, 비공개 테스트 Alpha에 versionCode 2(1.0.1)가 국가 1개로 올라가 있다. 기준 커밋은 `main` b561339.
+- 갱신 2026-11-12 (#104, 아래 "대한민국 단독 출시" 절): 첫 프로덕션 출시 국가는 **대한민국만**이다(전 세계는 후속). Play Console 기준 프로덕션 액세스는 열린 것으로 보이고, 비공개 테스트 Alpha에 versionCode 2(1.0.1)가 국가 1개로 올라가 있다. 기준 커밋은 `main` b561339.
 - d92a8ab 이후 바뀐 점(b561339 기준 확인): 오픈소스 라이선스 화면(`AppScreen.OpenSourceLicenses`)이 생겼고, 파일 이름·요청 URI 로그(`TorrentEngine.kt`, `TorrentStreamServer.kt`)가 빠졌다. 아래 해당 행은 그대로 두되 이 줄이 우선한다.
 
 판정: **통과** / **확인 필요**(사용자·Play Console에서 확인) / **막힘**(자료나 결정이 없어 진행 불가) / **수정 필요**(코드·디자인 변경 필요)
@@ -20,9 +20,9 @@
 | 4 | 테스트 | 확인 필요 | PATCH_NOTES 기준 v.2026.11.12.001에서 단위 260개, 에뮬레이터 31개, 디버그 빌드, lint 통과. v.2026.11.12.002(디자인 리뉴얼)에는 검증 기록이 없다. 출시 빌드 전에 program이 단위·에뮬레이터 테스트를 다시 돌려야 한다 |
 | 5 | 광고 | 통과(코드 기준) | `meta/AdSpec.kt` `AdUnit`: 디버그는 Google 테스트 단위, 릴리스는 `ca-app-pub-2418522550325553/…` 실제 단위. 배너는 `TestAdPolicy.visible`에서 메인·재생 목록만 true이고 저장 파일·준비·재생은 false. 전면 광고는 재생 종료·완료 시 `CompletionAdPolicy.eligible`(5분 시청 또는 5회 완료, 10분 간격)일 때만. SDK 초기화와 광고 요청은 UMP `canRequestAds` 뒤에만 한다. 릴리스 빌드 실기기 확인은 하지 않음 |
 | 6 | 정책·데이터 보안 | 막힘 | 양식 답변 기록(`launch/forms/`)이 저장소에 없다. 개인정보처리방침 URL도 저장소·앱 어디에도 없다. 실제 동작은 아래 "데이터 보안" 절에 정리했다 |
-| 7 | 등록정보 | 확인 필요 | 영어(en-US) 초안은 `launch/listing/en-US.md`. 한국어 원문은 저장소에 없어 Console 현재 문구와 대조해야 한다. 새 스크린샷·그래픽은 PR #64 |
-| 8 | 출시 노트 | 초안 | 한국어는 아래 "출시 노트 초안", 영어는 `launch/listing/en-US.md`. Alpha의 versionCode 2(1.0.1)는 이 저장소 버전 체계(v.YYYY.MM.DD.NNN) 이전 빌드이므로 프로덕션은 첫 출시로 보고 쓴다 |
-| 9 | 트랙 | 확인 필요 | Alpha(비공개 테스트)에 versionCode 2, 국가 1개. 프로덕션 국가는 전 세계로 결정됨. 새 빌드(28 예정)를 Alpha에서 먼저 확인한 뒤 프로덕션으로 올리고 단계적 출시 비율은 PM이 정한다 |
+| 7 | 등록정보 | 확인 필요 | 한국어 초안은 `launch/listing/ko-KR.md`. Console 현재 문구와 대조해야 한다. 새 스크린샷·그래픽은 PR #64 |
+| 8 | 출시 노트 | 초안 | 한국어 출시 노트는 `launch/listing/ko-KR.md`(아래 초안과 같음). Alpha의 versionCode 2(1.0.1)는 이 저장소 버전 체계(v.YYYY.MM.DD.NNN) 이전 빌드이므로 프로덕션은 첫 출시로 보고 쓴다 |
+| 9 | 트랙 | 확인 필요 | Alpha(비공개 테스트)에 versionCode 2, 국가 1개. 프로덕션 국가는 대한민국만(전 세계는 후속). 새 빌드(28 예정)를 Alpha에서 먼저 확인한 뒤 프로덕션으로 올리고 단계적 출시 비율은 PM이 정한다 |
 
 ## 데이터 보안 (6번 상세)
 
@@ -145,70 +145,81 @@ PiecePlay 첫 정식 출시입니다.
 
 이전 트랙에 이미 나간 내용이 있으면 v.2026.11.12.001~002 항목(30초 버퍼, 다크 테마 리뉴얼)만 남긴다.
 
-## 전 세계 출시 (2026-11-12 추가)
+## 대한민국 단독 출시 (2026-11-12 갱신)
 
-### 1. 스토어 등록정보 언어
+사용자 결정: 첫 프로덕션은 **대한민국만**. 전 세계는 다음 단계다(문서 끝 "후속: 전 세계 확대").
 
-- 영어(en-US) 앱 이름·간단한 설명·자세한 설명·출시 노트 초안: `launch/listing/en-US.md`.
-- 기본 언어는 **한국어 유지**. 앱 화면이 한국어뿐이다(`res/values/`만 있고 `values-en` 없음). 영어는 번역으로 추가한다. 영어는 Play 무료 기계 번역 대상이 아니어서 직접 넣는다. 근거: [스토어 등록정보 번역](https://support.google.com/googleplay/android-developer/answer/9844778)
-- 영어 설명에 "앱 화면은 현재 한국어만 지원"을 **숨기지 않고 적는다**. 영어권 사용자의 기대와 실제 앱이 달라지는 것을 막는다.
-- 영어 UI(문자열 번역)는 출시 후 리뷰·설치 국가를 보고 정할 일로 planning에 넘긴다.
+### 1. 한국어 스토어 등록정보
 
-### 2. EEA·UK·미국 주 동의 처리
+- 초안: `launch/listing/ko-KR.md` (앱 이름, 간단한 설명, 자세한 설명, 출시 노트). Play Console의 현재 문구가 저장소에 없어서 앱 화면과 #49 그래픽 문구를 기준으로 썼다. 입력 전에 Console 현재 문구와 대조한다.
+- 기본 언어는 한국어(ko-KR) 그대로. 영어 번역은 이번 출시에 넣지 않는다.
+- 피하는 표현: 영화·드라마 제목, 토렌트 사이트 이름, "무료 영화", "최신 개봉작", "무제한 다운로드". 설명 끝에 저작권 안내 한 줄과 스크린샷 영상 출처(Blender Foundation, CC BY) 한 줄을 둔다.
+- 스크린샷·그래픽: PR #64 자료(`launch/store-assets/4_Play_Store_Screenshots/`, `feature_graphic_1024x500.png`).
 
-| 항목 | 현재 앱 | 판단 | 근거 |
-|---|---|---|---|
-| UMP SDK | 4.0.0, 실행마다 `requestConsentInfoUpdate` → `loadAndShowConsentFormIfRequired`, `canRequestAds` 뒤에만 광고 | 통과 | [UMP Android](https://developers.google.com/admob/android/privacy) |
-| 개인정보 옵션 진입점 | 메인 하단 "광고 개인정보 설정", `PrivacyOptionsRequirementStatus.REQUIRED`일 때만 표시 | 통과 | 같은 문서: REQUIRED이면 보이는 UI 요소를 둬야 함 |
-| EEA·UK·스위스(GDPR) 메시지 | 앱 코드는 준비됨. 메시지는 AdMob에서 게시해야 뜬다 | **사용자가 AdMob에서 게시해야 함** | Google [EU 사용자 동의 정책](https://www.google.com/about/company/user-consent-policy/)은 EEA·UK·스위스 사용자에게 공개·동의를 받도록 요구하고, 어기면 제품 사용 제한·중지가 될 수 있다. 메시지 만들기: [European regulations message](https://support.google.com/admob/answer/10113207) |
-| 미국 주 규정 메시지 | 앱 코드는 준비됨(UMP 2.1.0 이상, 진입점 있음). 메시지는 앱 시작이 아니라 개인정보 옵션 진입점에서만 뜬다 | **게시 권장** | AdMob 문서는 필수라고 적지 않는다. 대상 20개 주(캘리포니아, 텍사스 등)에서 맞춤 광고 거부를 제공하는 수단이다. [US state regulations message](https://support.google.com/admob/answer/10860309), [메시지 유형](https://support.google.com/admob/answer/10114020), [UMP 미국 주 지원](https://developers.google.com/admob/android/privacy/us-iab-support) |
-| 메시지 언어 | European regulations 메시지는 32개 언어(영어 포함), US state는 영어·스페인어 | 기본 언어 영어, 필요하면 주요 EU 언어 추가 | [About Privacy & messaging](https://support.google.com/admob/answer/10107561) |
-| 테스트 | 디버그 지역(`setDebugGeography` EEA / regulated US state)으로 메시지가 뜨는지 | **program 확인 필요**(에뮬레이터, 디버그 빌드) | UMP Android 문서 |
+### 2. 개인정보처리방침 (개인정보 보호법 기준)
 
-### 3. 국가별 위험
+앱은 회원가입·서버가 없고 앱 데이터는 기기 안에만 있다. 개인정보로 볼 수 있는 처리는 사실상 **광고(Google AdMob)가 자동 수집하는 정보**와 **P2P 통신에서 IP가 다른 사용자에게 보이는 것**이다. 방침은 이 사실에 맞춰 짧게 쓰되, 개인정보 보호법 제30조(개인정보 처리방침의 수립 및 공개)가 요구하는 항목을 빠짐없이 둔다. 근거: [개인정보 보호법](https://www.law.go.kr/법령/개인정보보호법) 제30조, 세부 서식은 개인정보보호위원회 「개인정보 처리방침 작성지침」(최신판 원문과 대조 권장).
 
-- **토렌트 앱을 국가 단위로 금지·제한한다는 공식 근거는 찾지 못했다.** 확인되지 않은 국가를 미리 빼지 않는다. 국가별 문제는 아래 두 경로로 생긴다.
-  - 권리자 신고·현지 법에 따른 삭제: Play는 해당 국가에서만 앱을 내릴 수 있다. 등록정보·앱에서 저작물 유도 표현을 빼는 것(위 "토렌트 앱 정책 위험")이 주된 대응이다.
-  - 등급 거부: 등급 기관이 분류를 거부하면 그 지역에만 "Refused classification"이 뜨고 그 지역에서 내려간다. 근거: [콘텐츠 등급 요건](https://support.google.com/googleplay/android-developer/answer/9859655)
-- 국가 타기팅은 사용자의 Play 계정 등록 국가 기준이다(실제 위치 아님). 근거: [국가·지역 설정](https://support.google.com/googleplay/android-developer/answer/7550024)
-- **콘텐츠 등급(IARC)은 설문 한 번으로 전 세계에 적용된다.** 지역별로 ESRB(미주), PEGI(유럽·중동), USK(독일), ClassInd(브라질)가 붙고, 참여 기관이 없는 지역은 IARC Generic 등급이 붙는다. **한국의 앱(게임 아님)은 GRAC가 아니라 "Google Play 등급"**이 적용된다. 근거: [콘텐츠 등급](https://support.google.com/googleplay/android-developer/answer/9898843), [콘텐츠 등급 요건](https://support.google.com/googleplay/android-developer/answer/9859655)
+| 항목 | PiecePlay 내용 |
+|---|---|
+| 처리 목적 | 광고 제공·광고 성과 측정·부정 이용 방지(AdMob). 앱 기능(재생 목록, 이어보기)은 기기 안에서만 처리 |
+| 처리 항목 | 자동 수집: 광고 ID, 기기 정보, IP 주소에서 추정한 대략적 위치, 광고 노출·클릭 기록, 오류 진단 정보(AdMob). 개발자가 직접 수집하는 항목 없음 |
+| 보유·이용 기간, 파기 | 개발자 보유 없음. 기기 안 재생 목록·영상은 앱 안 삭제 또는 앱 삭제 시 즉시 파기. AdMob 정보는 Google 정책에 따름 |
+| 제3자 제공·처리 위탁 | Google LLC(AdMob)에 광고 목적 처리. 제공인지 위탁인지 표기 방식은 작성지침 기준으로 정한다 |
+| 국외 이전 | Google(미국 등)로 전송됨: 이전 항목, 국가, 시기·방법(앱 사용 시 네트워크로 전송), 받는 자, 목적, 보유 기간, 거부 방법(광고 ID 재설정·맞춤 광고 끄기)과 거부 시 영향 |
+| 자동 수집 장치 설치·운영·거부 | 광고 ID 등 식별자 사용, Android 설정에서 광고 ID 재설정·삭제로 거부 가능 |
+| 정보주체 권리와 행사 방법 | 열람·정정·삭제·처리정지 요구 방법. 개발자가 보유한 정보가 없다는 점과 문의처 |
+| 안전성 확보 조치 | 기기 안 재생 목록·상태는 Android Keystore 기반 AES-GCM 암호화, 앱 전용 저장 공간 사용 |
+| P2P 안내 | 토렌트 특성상 받는 동안 IP 주소가 같은 토렌트의 다른 사용자에게 보임. 업로드는 하지 않음 |
+| 개인정보 보호책임자·문의처 | 이름·연락처는 방침 본문에만 적고 이 저장소에는 적지 않는다(Play Console 개발자 연락처와 일치시킴) |
+| 만 14세 미만 | 대상으로 하지 않음(타겟층 18세 이상과 일치) |
+| 시행일·변경 이력 | 게시일 표기 |
 
-### 4. 데이터 보안·개인정보처리방침
+- 게시 위치: 5번 개발자 웹사이트와 같은 도메인에 두면 app-ads.txt와 함께 해결된다. Play Console > App content > Privacy policy에 URL 입력.
+- 앱 안 링크: 지금 앱에는 방침 링크가 없다(메인 하단은 버전·"광고 개인정보 설정"·"오픈소스 라이선스"). 메인 하단 링크 추가를 program·design에 권장(필수는 아님, Play Console URL은 필수).
 
-- **데이터 보안 양식은 패키지 하나에 하나이고 국가별로 다르지 않다.** 위 "데이터 보안" 절의 권장 답변을 그대로 쓴다. 전 세계 출시로 바뀌는 답은 없다. 근거: [데이터 보안 섹션](https://support.google.com/googleplay/android-developer/answer/10787469)(전역 적용 부분은 요약 확인, 원문 재확인 권장)
-- **개인정보처리방침은 전 세계 기준으로 내용을 넓혀야 한다.** 영어본을 함께 둔다. 넣을 것:
-  - 개발자 서버 없음, 재생 목록·영상은 기기 안에 암호화 저장, 앱 삭제로 지워짐
-  - AdMob이 처리하는 데이터(대략적 위치, 앱 상호작용, 진단, 기기 ID)와 Google 개인정보처리방침 링크
-  - EEA·UK·스위스: 동의 기반 처리, 동의 철회 방법(메인 "광고 개인정보 설정"), 정보주체 권리, 문의 수단
-  - 미국 주: 광고 목적 데이터 공유와 맞춤 광고 거부 방법
-  - 한국(개인정보 보호법): 처리 항목·목적·보유 기간·위탁(Google) 표기
-  - P2P 특성상 IP 주소가 다른 피어에 보인다는 점
-  - 연락처는 문서에 개인 이메일 대신 Play Console 개발자 연락처를 적는다(이 저장소에는 적지 않는다)
-- 호스팅 위치는 5번의 개발자 웹사이트와 같은 도메인으로 두면 함께 해결된다.
+### 3. 콘텐츠 등급
 
-### 5. app-ads.txt와 개발자 웹사이트
+- 등급 설문은 한 번 작성하면 모든 지역에 적용된다. **한국에서 앱(게임 아님)에는 GRAC가 아니라 "Google Play 등급"**이 표시된다. 근거: [콘텐츠 등급](https://support.google.com/googleplay/android-developer/answer/9898843), [콘텐츠 등급 요건](https://support.google.com/googleplay/android-developer/answer/9859655)
+- 앱이 콘텐츠를 직접 제공하지 않지만 사용자가 고른 인터넷 영상을 재생한다는 점을 설문에서 숨기지 않는다. 등급 기관이 분류를 거부하면 그 지역에서만 내려간다(같은 문서).
 
-- AdMob의 app-ads.txt 확인은 **Play 등록정보에 개발자 웹사이트가 있어야** 한다. 지금 계정의 웹사이트 칸이 비어 있다. 근거: [app-ads.txt 설정](https://support.google.com/admob/answer/9363762)
-- app-ads.txt가 없어도 광고가 나가지 않는다고 적혀 있지는 않지만, Google은 "큰 광고 수익 손실을 막으려면" 구현하라고 한다. 근거: [About app-ads.txt](https://support.google.com/admob/answer/9787936)
-- 할 일:
-  1. 도메인 정하기. 자기 도메인이 없으면 GitHub Pages 사용자 사이트(`<계정>.github.io`)처럼 **도메인 루트에 파일을 둘 수 있는 곳**이어야 한다. 프로젝트 하위 경로(`<계정>.github.io/<저장소>/`)는 루트가 아니어서 안 된다. 크롤러는 하위 도메인 한 단계까지 보고 `www.`, `m.`은 뺀다.
-  2. AdMob > Apps > app-ads.txt > "How to set up app-ads.txt"에서 게시자 한 줄을 복사해 `https://<도메인>/app-ads.txt`에 올린다.
-  3. 같은 사이트에 개인정보처리방침(한·영)을 올린다.
-  4. Play Console > Grow users > Store presence > Store settings > Store listing contact details에 웹사이트 URL을 넣는다.
-  5. 최대 24시간 뒤 AdMob > Apps > View all apps > app-ads.txt에서 앱 행을 펼쳐 "Check for updates".
+### 4. 데이터 보안
+
+- 양식은 패키지당 하나이고 국가별로 다르지 않다. 위 "데이터 보안" 절의 권장 답변을 그대로 쓴다. 한국 단독 출시로 바뀌는 답은 없다. 근거: [데이터 보안 섹션](https://support.google.com/googleplay/android-developer/answer/10787469)
+- 방침(2번)의 처리 항목과 양식의 AdMob 항목(대략적 위치, 앱 상호작용, 진단, 기기 ID)이 서로 맞아야 한다.
+- 광고 동의(UMP): 한국은 AdMob 유럽·미국 주 메시지 대상 지역이 아니다. 앱의 UMP 흐름은 그대로 두면 되고 한국 출시를 위해 AdMob에서 메시지를 게시할 필요는 없다.
+
+### 5. app-ads.txt (광고 수익)
+
+Google은 app-ads.txt가 없으면 "큰 광고 수익 손실"이 생길 수 있다고 안내한다. AdMob이 파일을 확인하려면 Play 등록정보에 개발자 웹사이트가 있어야 하는데 지금 비어 있다. 근거: [About app-ads.txt](https://support.google.com/admob/answer/9787936), [app-ads.txt 설정](https://support.google.com/admob/answer/9363762)
+
+1. 파일을 **도메인 루트**에 둘 수 있는 웹사이트를 정한다. 자기 도메인이 없으면 GitHub Pages 사용자 사이트(`<계정>.github.io`)처럼 루트에 둘 수 있는 곳. 저장소 하위 경로(`<계정>.github.io/<저장소>/`)는 안 된다.
+2. AdMob > Apps > app-ads.txt > "How to set up app-ads.txt"에서 게시자 한 줄을 복사해 `https://<도메인>/app-ads.txt`로 올린다.
+3. Play Console > Grow users > Store presence > Store settings > Store listing contact details에 웹사이트 URL 입력.
+4. 최대 24시간 뒤 AdMob > Apps > View all apps > app-ads.txt에서 앱 행을 펼쳐 "Check for updates".
 
 ### 6. 사용자가 Play Console·AdMob에서 할 일 (순서대로)
 
-1. [ ] 개발자 웹사이트 도메인 결정, `app-ads.txt`와 개인정보처리방침(한·영) 게시 (5번)
-2. [ ] Play Console > Store settings > Store listing contact details: 웹사이트 URL 입력
-3. [ ] Play Console > App content > Privacy policy: 방침 URL 입력·저장
-4. [ ] AdMob > Privacy & messaging > European regulations: 메시지 만들기(앱 선택, 대상 "Countries subject to GDPR (EEA, UK, and Switzerland)", 개인정보처리방침 URL, 언어) → **Publish**
-5. [ ] AdMob > Privacy & messaging > US state regulations: 메시지 만들기(대상 "All current and future supported US states") → **Publish**
-6. [ ] (program) 디버그 빌드에서 EEA·미국 주 디버그 지역으로 동의 창과 "광고 개인정보 설정"이 뜨는지 확인
-7. [ ] Play Console > App content: 데이터 보안·광고 ID·광고·타겟층 답변을 위 권장 답변과 대조
-8. [ ] Play Console > App content > Content ratings: 설문 확인(전 세계 공통), 받은 등급 확인
-9. [ ] Store listing > Manage translations > English (United States) – en-US 추가, `launch/listing/en-US.md` 내용 입력. 스크린샷·그래픽은 PR #64 자료를 기본 등록정보에 올림(영어에도 그대로 씀)
-10. [ ] 새 빌드(versionCode 28 예정)를 Alpha에 올려 확인
-11. [ ] Production > Countries / regions > Add countries / regions: 전 세계 선택 후 저장
-12. [ ] 프로덕션 출시 만들기, 출시 노트(ko-KR, en-US) 입력, 단계적 출시 비율(PM 결정) → 검토 제출
-13. [ ] 24시간 뒤 AdMob app-ads.txt 상태와 Play 정책 상태 확인
+1. [ ] 웹사이트 정하기, `app-ads.txt`와 개인정보처리방침(한국어) 게시 (2번, 5번)
+2. [ ] Play Console > Store settings > Store listing contact details: 웹사이트 URL
+3. [ ] Play Console > App content > Privacy policy: 방침 URL
+4. [ ] App content > Data safety: 위 권장 답변과 대조(앱 자체 수집 없음, AdMob 항목만)
+5. [ ] App content > Ads: 광고 포함 / Advertising ID: 사용함
+6. [ ] App content > Target audience: 18세 이상
+7. [ ] App content > Content ratings: 설문 확인, 한국 "Google Play 등급" 확인
+8. [ ] Main store listing(ko-KR): `launch/listing/ko-KR.md` 문구, PR #64 스크린샷 6장·그래픽 이미지
+9. [ ] 새 빌드(versionCode 28 예정)를 Alpha(비공개 테스트)에 올려 확인
+10. [ ] Production > Countries / regions: **대한민국만** 선택 후 저장
+11. [ ] 프로덕션 출시 만들기, 출시 노트(ko-KR) 입력, 단계적 출시 비율(PM 결정) → 검토 제출
+12. [ ] 24시간 뒤 AdMob app-ads.txt 상태, Play 정책 상태 확인
+
+## 후속: 전 세계 확대
+
+한국 출시 뒤 진행한다. 이번에는 깊게 조사하지 않았다.
+
+- 영어 등록정보: 초안 `launch/listing/en-US.md`(기본 언어 한국어 유지, 영어 설명에 "앱 화면은 한국어만" 명시). 영어 UI 번역 여부는 planning 판단.
+- EEA·UK·스위스: AdMob > Privacy & messaging > European regulations 메시지를 게시해야 한다(Google [EU 사용자 동의 정책](https://www.google.com/about/company/user-consent-policy/)). 앱의 UMP 흐름과 "광고 개인정보 설정" 진입점은 이미 있다.
+- 미국 주 개인정보법: AdMob US state regulations 메시지(대상 20개 주) 게시 권장. 문서상 필수라고는 적혀 있지 않다([설정](https://support.google.com/admob/answer/10860309)).
+- 국가별 토렌트 제한: 공식 근거가 있는 국가 단위 금지는 아직 찾지 못했다. 확대 전에 다시 본다.
+- 개인정보처리방침: 영어본과 GDPR·미국 주 항목 추가.
+- 확대 시 program이 디버그 지역(EEA, 미국 주)으로 동의 창이 뜨는지 확인.
