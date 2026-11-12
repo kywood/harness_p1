@@ -41,7 +41,7 @@ internal object SubtitleFilePlan {
         require(pieceLength > 0)
         val video = files.firstOrNull { it.index == videoIndex } ?: return emptyList()
         val videoFolder = folder(video.path)
-        val videoWords = SubtitleLanguage.words(SubtitleLanguage.baseName(video.path))
+        val videoWords = nameWords(SubtitleLanguage.baseName(video.path))
         val packMinBytes = video.size * SubtitleSpec.PACK_VIDEO_MIN_PERCENT / 100
         val singleVideo = files.none { other ->
             other.index != videoIndex && folder(other.path) == videoFolder &&
@@ -78,8 +78,8 @@ internal object SubtitleFilePlan {
         singleVideo: Boolean,
         pieceLength: Long,
     ): SubtitleCandidate {
-        val nameMatches = namesMatch(SubtitleLanguage.words(SubtitleLanguage.baseName(file.path)), videoWords)
-        val folderMatches = episodeFolder != null && namesMatch(SubtitleLanguage.words(episodeFolder), videoWords)
+        val nameMatches = namesMatch(nameWords(SubtitleLanguage.baseName(file.path)), videoWords)
+        val folderMatches = episodeFolder != null && namesMatch(nameWords(episodeFolder), videoWords)
         val first = (file.offset / pieceLength).toInt()
         val last = ((file.offset + file.size - 1) / pieceLength).toInt()
         return SubtitleCandidate(file.index, file.path, file.size, SubtitleLanguage.of(file.path),
@@ -99,6 +99,10 @@ internal object SubtitleFilePlan {
         if (below.first().lowercase(Locale.ROOT) !in SubtitleSpec.FOLDER_NAMES) return null
         return below.getOrNull(1).orEmpty()
     }
+
+    /** Words of [name] up to the first release word ([SubtitleSpec.QUALITY_WORD]). */
+    private fun nameWords(name: String) =
+        SubtitleLanguage.words(name).takeWhile { !SubtitleSpec.QUALITY_WORD.matches(it) }
 
     private fun folder(path: String): String = path.replace('\\', '/').substringBeforeLast('/', "")
 }

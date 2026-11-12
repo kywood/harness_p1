@@ -25,4 +25,16 @@ internal object SubtitleSpec {
 
     /** Folders searched below the video's folder: the subtitle folder and one episode folder inside it. */
     const val MAX_FOLDER_DEPTH = 2
+
+    /**
+     * Release words (resolution, source, codec) where a name comparison stops: `Show.S01E01.1080p.WEB.mkv` compares
+     * as `Show S01E01`, so it matches `Show.S01E01.ko.srt`. Matched against one lowercase word.
+     */
+    val QUALITY_WORD = Regex(
+        "\\d{3,4}p|4k|uhd|hdr\\d*|web|webrip|webdl|hdtv|bluray|bdrip|brrip|dvdrip|remux|x26[45]|h26[45]|hevc|avc|" +
+            "aac\\d*|ac3|dts|ddp?\\d*|10bit|amzn|nf",
+    )
+
+    /** Episode marker word (lowercase): `s01e02`, `e02`, `ep02`, `1x02`. */
+    val EPISODE_WORD = Regex("s\\d{1,2}e\\d{1,3}|ep?\\d{1,3}|\\d{1,2}x\\d{2,3}")
 }

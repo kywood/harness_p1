@@ -95,6 +95,15 @@ class SubtitleFilePlanTest {
         assertEquals(1..2, SubtitleFilePlan.select(torrent, 0, pieceLength).single().pieces)
     }
 
+    @Test fun releaseWordsAreLeftOutOfTheNameComparison() {
+        val torrent = files("S/Show.S01E01.1080p.WEB.H264-GRP.mkv" to 500_000_000, "S/Show.S01E01.ko.srt" to 10,
+            "S/Show.S01E02.ko.srt" to 10)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("S/Show.S01E01.ko.srt"), plan.filter { it.matchesVideoName }.map { it.path })
+        assertTrue(SubtitleSpec.QUALITY_WORD.matches("2160p"))
+        assertFalse(SubtitleSpec.QUALITY_WORD.matches("show"))
+    }
+
     @Test fun languageNeedsAWholeTokenForLatinMarkers() {
         assertEquals(SubtitleLanguage.KOREAN, SubtitleLanguage.of("Movie.ko.srt"))
         assertEquals(SubtitleLanguage.KOREAN, SubtitleLanguage.of("Subs/영화 한글자막.srt"))
