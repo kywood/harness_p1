@@ -154,6 +154,11 @@
     <string name="action_open_source_licenses">오픈소스 라이선스</string>
     <string name="licenses_intro">PiecePlay는 아래 오픈소스 소프트웨어를 사용합니다. 항목을 누르면 라이선스 전문을 볼 수 있습니다.</string>
     <string name="licenses_item_meta" translatable="false">%1$s · %2$s</string>
+    <string name="licenses_license_or_later">%1$s 이상</string>
+    <string name="licenses_version_bundled">%1$s 포함</string>
+    <string name="licenses_version_and_more">%1$s 등</string>
+    <string name="licenses_name_kotlin">Kotlin 표준 라이브러리, kotlinx.coroutines</string>
+    <string name="licenses_name_material_icons">Material 아이콘</string>
     <string name="licenses_source_available">소스 코드를 받을 수 있습니다.</string>
     <string name="licenses_lgpl_notice">LibVLC는 GNU LGPL 2.1 이상으로 배포됩니다. 소스 코드는 아래 주소에서 받을 수 있으며, 라이선스에 따라 이 라이브러리를 수정하거나 다른 버전으로 바꿔 쓸 수 있습니다.</string>
     <string name="licenses_source_code">소스 코드</string>

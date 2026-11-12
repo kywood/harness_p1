@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.meta.LicenseDocument
+import com.example.torrentstreamplayer.meta.LicenseText
 import com.example.torrentstreamplayer.meta.OpenSourceComponent
 import com.example.torrentstreamplayer.ui.LicenseParagraphs
 import com.example.torrentstreamplayer.ui.components.AppTopBar
@@ -65,6 +66,13 @@ private sealed interface LicenseTextState {
     data object Failed : LicenseTextState
 }
 
+/** 목록 값을 화면 문구로: 고유명사는 그대로, 한국어가 붙는 값은 strings.xml 문구로. */
+@Composable
+private fun LicenseText.resolve(): String = when (this) {
+    is LicenseText.Literal -> value
+    is LicenseText.Localized -> if (arg == null) stringResource(format) else stringResource(format, arg)
+}
+
 /**
  * 오픈소스 라이선스 화면(`design/specs/open-source-licenses.md`): 목록 → 항목을 누르면 전문 보기.
  * 뒤로(상단 바·시스템)는 전문 → 목록 → [onBack]. 광고는 넣지 않는다.
@@ -79,7 +87,7 @@ internal fun OpenSourceLicensesScreen(onBack: () -> Unit) {
         Column(Modifier.fillMaxSize()) {
             val current = selected
             val text = current?.let { rememberLicenseText(it.document) }
-            AppTopBar(current?.displayName ?: stringResource(R.string.action_open_source_licenses), onBack = back)
+            AppTopBar(current?.displayName?.resolve() ?: stringResource(R.string.action_open_source_licenses), onBack = back)
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 // 목록과 전문은 스크롤 위치를 따로 둔다. 전문은 항목마다 새로 만들어 처음 열면 맨 위다.
                 val listState = rememberLazyListState()
@@ -108,9 +116,10 @@ private fun LazyListScope.licenseList(onOpen: (OpenSourceComponent) -> Unit) {
         SectionCard(onClick = { onOpen(component) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    Text(component.displayName, style = MaterialTheme.typography.titleMedium, maxLines = 2,
+                    Text(component.displayName.resolve(), style = MaterialTheme.typography.titleMedium, maxLines = 2,
                         overflow = TextOverflow.Ellipsis)
-                    Text(stringResource(R.string.licenses_item_meta, component.version, component.licenseName),
+                    Text(stringResource(R.string.licenses_item_meta, component.version.resolve(),
+                        component.licenseName.resolve()),
                         style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (component.sourceOffer) Text(stringResource(R.string.licenses_source_available),
