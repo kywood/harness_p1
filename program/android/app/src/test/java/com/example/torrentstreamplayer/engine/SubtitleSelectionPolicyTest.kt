@@ -37,4 +37,9 @@ class SubtitleSelectionPolicyTest {
         val otherEpisode = sub("Show E02.ko.srt", SubtitleLanguage.KOREAN, matches = false, fallback = false)
         assertNull(SubtitleSelectionPolicy.preferred(listOf(otherEpisode)))
     }
+
+    @Test fun fallbackIsOffUnlessTheEnginePlanAllowsIt() {
+        val unplanned = SubtitleFile(File("Subs/Korean.srt"), SubtitleLanguage.KOREAN, matchesVideoName = false)
+        assertNull(SubtitleSelectionPolicy.preferred(listOf(unplanned)))
+    }
 }

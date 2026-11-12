@@ -10,7 +10,7 @@ internal data class SubtitleFile(
     /** True when the name (or its episode folder's name) matches the video's name word for word. */
     val matchesVideoName: Boolean,
     /** True when the video is alone in its folder, so a subtitle with another name may stand in for it. */
-    val fallbackAllowed: Boolean = true,
+    val fallbackAllowed: Boolean = false,
 )
 
 /**
