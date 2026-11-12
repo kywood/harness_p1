@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.data
 
 import com.example.torrentstreamplayer.engine.MagnetHistory
+import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentCache
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -41,6 +42,14 @@ class PlaylistRepositoryTest {
         repository().resetPosition(magnet(1))
         val positions = repository().savedMagnets().associate { it.magnet to it.lastPositionMs }
         assertEquals(mapOf(magnet(1) to 0L, magnet(2) to 50_000L), positions)
+    }
+
+    @Test fun keysListThePlaylistWithoutTheLookup() {
+        val repository = PlaylistRepository(MagnetHistory(TorrentCache(folder.root, "0".repeat(64), { it }, { it }))) {
+            error("keys must not read download details")
+        }
+        repository.add(magnet(1))
+        assertEquals(setOf(MagnetIdentity.key(magnet(1))), repository.keys())
     }
 
     @Test fun titleMarkPlayedAndDeleteGoThroughToHistory() {

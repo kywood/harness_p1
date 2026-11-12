@@ -18,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import com.example.torrentstreamplayer.data.AppSettings
 import com.example.torrentstreamplayer.data.ConnectionSource
@@ -35,6 +36,8 @@ import com.example.torrentstreamplayer.engine.MetadataDetails
 import com.example.torrentstreamplayer.engine.PieceMapSnapshot
 import com.example.torrentstreamplayer.engine.SavedMagnet
 import com.example.torrentstreamplayer.engine.StoredTorrentFile
+import com.example.torrentstreamplayer.engine.SubtitleFile
+import com.example.torrentstreamplayer.engine.SubtitleSelectionPolicy
 import com.example.torrentstreamplayer.ui.navigation.AppNavigator
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import com.example.torrentstreamplayer.ui.navigation.PlaybackOrigin
@@ -121,6 +124,17 @@ class MainViewModel @JvmOverloads internal constructor(
     internal val metadataDetails: StateFlow<MetadataDetails> = playbackSource
         .flatMapLatest { it?.metadataDetails ?: flowOf(MetadataDetails()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), MetadataDetails())
+
+    /** 재생 중인 영상과 함께 받은(해시 검증된) 자막 파일. 재생에 빌린 엔진이 없으면 비어 있다. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    internal val subtitleFiles: StateFlow<List<SubtitleFile>> = playbackSource
+        .flatMapLatest { it?.subtitleFiles ?: flowOf(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), emptyList())
+
+    /** 자동으로 켤 자막: 영상 이름과 맞는 것 중 한국어 → 영어 → 첫 번째([SubtitleSelectionPolicy]). */
+    internal val preferredSubtitle: StateFlow<SubtitleFile?> = subtitleFiles
+        .map(SubtitleSelectionPolicy::preferred)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), null)
 
     private var continueDownloading = false
     private val _activeKey = MutableStateFlow<String?>(null)
@@ -317,6 +331,37 @@ class MainViewModel @JvmOverloads internal constructor(
         startStreaming(magnet)
         if (allowMobileOnce) allowMobileForCurrentRequest()
     }
+
+    /** 다른 앱 링크 → 확인 → 재생/받기 흐름. ViewModel은 참여 함수만 넘긴다. */
+    private val incomingLinks = IncomingLinkCoordinator(
+        scope = viewModelScope,
+        playlistKeys = {
+            try { withContext(Dispatchers.IO) { playlist.keys() } }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) {
+                Log.w("IncomingLink", "Unable to read playlist: ${EngineFailureLog.describe(failure)}")
+                emptySet()
+            }
+        },
+        isPlaybackActive = { _uiState.value !is StreamUiState.Idle && _uiState.value !is StreamUiState.Error },
+        startPlayback = { link -> playFromMain(link) },
+        saveLink = { link -> queueDownload(link) },
+    )
+
+    /** 링크 시트가 보일 것: 확인(허용 동작 포함) 또는 열 수 없는 이유. 시트가 없으면 null. */
+    internal val incomingLink: StateFlow<IncomingLinkState?> get() = incomingLinks.state
+
+    /** 다른 앱이 넘긴 링크(또는 열 수 없는 이유)를 시트에 올린다. 사용자가 고르기 전에는 아무것도 시작하지 않는다. */
+    internal fun receiveLink(result: IncomingLinkResult) = incomingLinks.receive(result)
+
+    /** 시트의 "바로 재생". 재생·준비 중이면 허용되지 않아 무시하고 false를 돌려준다. */
+    fun playIncomingLink(): Boolean = incomingLinks.play()
+
+    /** 시트의 "받아 두기". `.torrent` 주소 처리에 실패하면 예외를 던지고 시트는 남는다([IncomingLinkCoordinator.save]). */
+    suspend fun saveIncomingLink() = incomingLinks.save()
+
+    /** 시트의 "취소"·오류 시트의 "확인". */
+    fun dismissIncomingLink() = incomingLinks.dismiss()
 
     /** 오류가 남은 메인에서 열면 오류 상태를 정리한 뒤 연다. */
     fun openPlaylist() {

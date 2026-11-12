@@ -1,8 +1,7 @@
 package com.example.torrentstreamplayer.engine
 
+import com.example.torrentstreamplayer.meta.NetworkSpec
 import java.io.*
-import java.net.URI
-import java.net.URLDecoder
 
 data class SavedMagnet(val magnet: String, val title: String, val addedAt: Long,
     val fileSize: Long? = null, val downloadedBytes: Long? = null, val pieces: PieceMapSnapshot? = null,
@@ -25,7 +24,7 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         }
     } catch (_: Exception) { emptyList() }
     @Synchronized fun add(magnet: String, now: Long = System.currentTimeMillis()) {
-        require(magnet.length <= 8192)
+        require(magnet.length <= NetworkSpec.MAX_LINK_CHARS)
         val key = MagnetIdentity.key(magnet)
         val previous = list()
         val saved = previous.firstOrNull { MagnetIdentity.key(it.magnet) == key }
@@ -64,10 +63,6 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         }
         cache.write("links", buffer.toByteArray())
     }
-    private fun title(magnet: String): String {
-        val query = URI(magnet).rawSchemeSpecificPart.removePrefix("?")
-        return query.split('&').firstOrNull { it.startsWith("dn=") }?.substringAfter('=')
-            ?.let { URLDecoder.decode(it, "UTF-8") }?.take(160)
-            ?.takeIf { it.isNotBlank() } ?: "토렌트 " + MagnetIdentity.key(magnet).take(8)
-    }
+    private fun title(magnet: String): String =
+        MagnetDisplayName.of(magnet) ?: "토렌트 " + MagnetIdentity.key(magnet).take(8)
 }
