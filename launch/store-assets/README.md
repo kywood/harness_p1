@@ -1,19 +1,55 @@
 # 스토어 자료
 
-디자인 리뉴얼 5단계(#49)에서 새 다크 브랜드 테마(배경 `#0A0F1E`, 그라데이션 `#2F66F0 → #2EE6B0`)로 교체했다.
+디자인 리뉴얼 5단계(#49)에서 다크 브랜드 테마(배경 `#0A0F1E`, 그라데이션 `#2F66F0 → #2EE6B0`)로 바꿨고, 한국 등록정보(#119)에서 캡션을 마케팅 안(`marketing/aso/ko-KR.md` 6절)으로 바꾸고 태블릿 스크린샷을 더했다.
 
-## Play Console에 올리는 파일
+## Play Console 슬롯별 업로드 파일
 
-| Play Console 항목 | 파일 | 크기 |
-|---|---|---|
-| 앱 아이콘 | `1_Play_Store_Assets/app_icon_512x512.png` | 512x512 |
-| 그래픽 이미지 | `1_Play_Store_Assets/feature_graphic_1024x500.png` | 1024x500, 알파 없음 |
-| 휴대전화 스크린샷 | `4_Play_Store_Screenshots/01_main.png` ~ `06_stored_files.png` (6장, 번호 순서) | 1080x1920, `03`만 1920x1080 |
+Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-KR 번역) > 그래픽.
 
-- 스크린샷은 Play 규칙(긴 변이 짧은 변의 2배 이하)에 맞춰 1080x1920 틀 안에 실제 화면을 넣은 이미지다. 기기 원본 캡처(1080x2400)는 비율이 2.22:1이라 그대로는 올릴 수 없다.
-- 원본 캡처는 `4_Play_Store_Screenshots/raw/`에 있다. 2026-11-12 main 빌드(v.2026.11.12.002 디버그)를 에뮬레이터(1080x2400, 420dpi)에서 상태 표시줄 데모 모드로 찍었다.
-- 메인·재생 목록·저장 파일 관리는 네트워크를 끈 상태로 앱을 다시 열어 찍었다. 디버그 빌드의 테스트 광고 배너가 들어가지 않게 하려는 것이다(릴리스 빌드에서는 이 두 화면 하단에 배너가 나온다).
-- 준비 화면 캡처(`raw/preparing.png`)는 상태 표시줄 영역(위 63px)만 같은 세션의 다른 캡처로 바꿨다. 앱 화면은 손대지 않았다.
+| Play 슬롯 | 올릴 파일 (번호 순서대로) | 크기 | 규격(공식) | 상태 |
+|---|---|---|---|---|
+| 앱 아이콘 | `1_Play_Store_Assets/app_icon_512x512.png` | 512x512 PNG | 512x512, 32비트 PNG, 1MB 이하, 필수 | 기존 그대로 |
+| 그래픽 이미지 | `1_Play_Store_Assets/feature_graphic_1024x500.png` | 1024x500 PNG, 알파 없음 | 1024x500, JPEG 또는 24비트 PNG(알파 없음), 필수 | 보조 문구 수정 |
+| 휴대전화 스크린샷 | `4_Play_Store_Screenshots/ko-KR/01_main.png` ~ `06_stored_files.png` (6장) | 1080x1920, `03`만 1920x1080 | 2~8장, 변 320~3840px, 긴 변 ≤ 짧은 변 x2, 추천 노출은 1080px 이상 4장 이상 | 캡션 새로 |
+| 7인치 태블릿 스크린샷 | `5_Tablet_7in/01_main.png` ~ `06_stored_files.png` (6장) | 1080x1920, `03`만 1920x1080 | 대화면: 변 1080~7680px, 9:16 또는 16:9, 4장 이상, 선택 | 새로 |
+| 10인치 태블릿 스크린샷 | `6_Tablet_10in/01_main.png` ~ `06_stored_files.png` (6장) | 2560x1440 | 위와 같음 | 새로 |
+| Chromebook 스크린샷 | 없음 | | 위와 같음, 선택 | 비워 둠 |
+
+규격 출처: [Play Console 고객센터 "미리보기 애셋 추가"](https://support.google.com/googleplay/android-developer/answer/9866151?hl=ko) (2026-11-12 확인). 그 밖의 요구: 실제 앱 화면을 보여 줄 것, "지금 다운로드" 같은 행동 유도 문구 금지, 문구가 이미지의 20%를 넘지 않을 것, 각 애셋에 140자 이하 대체 텍스트 권장.
+
+- 출시 국가가 대한민국 하나이고 기본 언어 등록정보를 한국어로 쓰면 기본 등록정보에 올린다. 영어 등 다른 기본 언어 아래 ko-KR 번역을 두는 경우에는 ko-KR 번역의 그래픽에 올린다.
+- Chromebook은 비워 둔다. 태블릿 이미지를 그대로 올려도 규격에는 맞지만, Chromebook에서 앱을 확인하지 않았다.
+- 예전 휴대전화 스크린샷(`4_Play_Store_Screenshots/01~06`, #49 캡션)은 지웠다. 이미 Console에 올라가 있으면 `ko-KR/`로 바꾼다.
+
+## 캡션
+
+`marketing/aso/ko-KR.md` 6절 안을 따랐다. 보조 문구는 `marketing:content-creation`으로 쓰고 `marketing:brand-review`, `design:ux-copy`로 점검했다(금지 표현 없음, 앱에 없는 기능 없음).
+
+| 순서 | 화면 | 제목 | 보조 |
+|---|---|---|---|
+| 1 | 메인 | 링크를 넣으면 바로 재생 | 마그넷 링크나 토렌트 파일 주소만 붙여넣으세요 |
+| 2 | 준비 | 앞부분부터 먼저 받아요 | 다 받을 때까지 기다리지 않아도 돼요 |
+| 3 | 재생(가로) | 재생 중에는 광고 없이 | 받은 조각과 재생 위치를 한눈에 |
+| 4 | 재생(세로, 10인치는 이동 직후) | 이동하면 그 위치부터 받아요 | 10초 이동 · 확대 · 축소 |
+| 5 | 재생 목록 | 보던 곳부터 이어보기 | 최근 50개를 기기 안에 암호화해 보관 |
+| 6 | 저장 파일 관리 | 업로드 없이, 기록은 기기 안에 | 받은 파일은 형식별로 보고 바로 삭제 |
+
+- 예전 4번 보조 문구 "10초 이동 · 확대 · 배속 조절"의 배속 조절은 앱에 없는 기능이라 뺐다.
+- 3번 "재생 중에는 광고 없이"는 사실이다(배너는 메인·재생 목록, 전면 광고는 재생 종료·완료 때만). 광고 정책이 바뀌면 이 캡션도 바꿔야 한다. 이 표현을 쓸지는 `marketing/aso/ko-KR.md` "결정 필요" 2번으로 PM이 정한다.
+- 그래픽 이미지: "받으면서 바로 재생" / "다 받기 전에 재생하는 토렌트 플레이어". 앱 이름 `PiecePlay - 토렌트 플레이어`와 같은 키워드를 쓰고, "바로"가 두 줄에 겹치던 것을 고쳤다.
+
+## 원본 캡처
+
+| 폴더 | 기기 | 빌드 | 비고 |
+|---|---|---|---|
+| `4_Play_Store_Screenshots/raw/` | emulator-5554, 1080x2400 420dpi | v.2026.11.12.002 디버그 (#49) | 이번에 다시 찍지 않았다 |
+| `5_Tablet_7in/raw/` | AVD `Tablet_7in`(Nexus 7 2013 규격), 1200x1920 320dpi, Android 37 | v.2026.11.12.003 디버그 (main 5c8c305) | 세로, 재생만 가로 하나 |
+| `6_Tablet_10in/raw/` | AVD `Tablet_10in`(Nexus 10 규격), 2560x1600(가로) 320dpi, Android 37 | 같음 | 모두 가로 |
+
+- 상태 표시줄은 데모 모드(12:00, 와이파이·배터리 가득, 알림 숨김)로 찍었다.
+- 메인·재생 목록·저장 파일 관리는 와이파이·데이터를 끄고 앱을 다시 열어 찍었다. 디버그 빌드의 테스트 광고 배너가 들어가지 않게 하려는 것이다(릴리스 빌드에서는 메인·재생 목록 하단에 배너가 나온다).
+- 저장 파일 관리는 `.mp4` 필터를 고른 상태다.
+- 휴대전화 원본의 메인 화면은 #49 때 빌드라 지금 메인 하단의 "이용 안내 · 개인정보처리방침 · 오픈소스 라이선스" 줄이 없다. 저장 파일 관리의 `Sintel.2010.720p.mp4`는 그때 에뮬레이터에 남아 있던 테스트 파일이다.
 
 ## 아이콘
 
@@ -21,11 +57,11 @@
 
 ## 화면 속 영상
 
-재생·목록 화면의 영상은 Blender Foundation의 오픈 무비다(Sintel, Big Buck Bunny, Tears of Steel, Cosmos Laundromat). 모두 CC BY 라이선스(© Blender Foundation, blender.org)이며, 스토어 설명에 출처 문구를 넣을지는 등록정보 작업 때 정한다.
+재생·목록 화면의 영상은 Blender Foundation의 오픈 무비다(Sintel, Big Buck Bunny, Tears of Steel, Cosmos Laundromat). 모두 CC BY 라이선스(© Blender Foundation, blender.org)다. 자세한 설명 끝에 출처 문구를 넣는다(`marketing/aso/ko-KR.md` 5절 안 A).
 
 ## 다시 만들기
 
-`tools/`의 스크립트(Python + Pillow, Windows의 Noto Sans KR 가변 글꼴 `NotoSansKR-VF.ttf`. 맑은 고딕은 작은 크기에서 "받"이 깨져 쓰지 않는다)로 만들었다.
+`tools/`의 스크립트(Python + Pillow, Windows의 Noto Sans KR 가변 글꼴 `NotoSansKR-VF.ttf`. 맑은 고딕은 작은 크기에서 "받"이 깨져 쓰지 않는다)로 만든다. Pillow가 없으면 `uv run --no-project --with pillow python ...`로 실행한다.
 
-- `feature.py <적응형 아이콘 전경 png> <출력>`: 그래픽 이미지
-- `compose.py <작업 폴더> <출력 폴더>`: 작업 폴더의 `final/` 아래 원본 캡처(`01_main.png`, `02_preparing.png`, `player_landscape.png`, `player_portrait.png`, `02_playlist.png`, `03_stored_files.png`)로 스크린샷 6장을 만든다. 문구는 스크립트 안에 있다.
+- `screens.py <store-assets 폴더> [phone|tab7|tab10]`: 각 `raw/` 원본으로 휴대전화·7인치·10인치 스크린샷을 만든다. 캡션과 파일 대응은 스크립트 위쪽 `CAPTIONS`, `TARGETS`에 있다. 원본은 비율을 유지한 채 틀 안에 맞춘다.
+- `feature.py <적응형 아이콘 전경 png> <출력>`: 그래픽 이미지(`2_Android_Adaptive_Icon/ic_launcher_foreground.png` 사용)

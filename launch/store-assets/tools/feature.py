@@ -30,5 +30,5 @@ for i in range(tw):
     ImageDraw.Draw(grad).line([(i,0),(i,th+30)],fill=col)
 ty=150; img.paste(grad,(x,ty),mask)
 d.text((x,ty+th+34),'받으면서 바로 재생',font=fr,fill=(0xE8,0xEE,0xFF))
-d.text((x,ty+th+96),'다 받기 전에 바로 보는 플레이어',font=fs,fill=(0xA7,0xB3,0xD1))
+d.text((x,ty+th+96),'다 받기 전에 재생하는 토렌트 플레이어',font=fs,fill=(0xA7,0xB3,0xD1))
 img.save(out)
