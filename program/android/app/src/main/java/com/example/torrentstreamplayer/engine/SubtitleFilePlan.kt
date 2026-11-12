@@ -80,12 +80,13 @@ internal object SubtitleFilePlan {
         singleVideo: Boolean,
         pieceLength: Long,
     ): SubtitleCandidate {
-        val nameMatches = namesMatch(nameWords(SubtitleLanguage.baseName(file.path)), videoWords)
-        val folderMatches = episodeFolder != null && namesMatch(nameWords(episodeFolder), videoWords)
+        // In a season pack a name without an episode marker (`Show.srt`) matches every episode: not a match.
+        val names = listOf(nameWords(SubtitleLanguage.baseName(file.path)), episodeFolder?.let(::nameWords).orEmpty())
+        val matches = names.any { namesMatch(it, videoWords) && (singleVideo || episode(it) != null) }
         val first = (file.offset / pieceLength).toInt()
         val last = ((file.offset + file.size - 1) / pieceLength).toInt()
         return SubtitleCandidate(file.index, file.path, file.size, SubtitleLanguage.of(file.path),
-            nameMatches || folderMatches, singleVideo, first..last)
+            matches, singleVideo, first..last)
     }
 
     /**

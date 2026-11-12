@@ -122,6 +122,14 @@ class SubtitleFilePlanTest {
         assertEquals(emptyList<String>(), chosen(torrent))
     }
 
+    @Test fun aSeasonPackIgnoresNamesWithoutAnEpisodeMarker() {
+        val torrent = files("S/Show.S01E01.mkv" to 500_000_000, "S/Show.S01E02.mkv" to 500_000_000,
+            "S/Show.srt" to 10, "S/Subs/Show.S01E01/English.srt" to 10)
+        assertEquals(listOf("S/Subs/Show.S01E01/English.srt"), chosen(torrent))
+        val single = files("M/Show.2020.mkv" to 500_000_000, "M/Show.srt" to 10)
+        assertEquals("a lone video still matches a short name", listOf("M/Show.srt"), chosen(single))
+    }
+
     @Test fun releaseWordsAreLeftOutOfTheNameComparison() {
         val torrent = files("S/Show.S01E01.1080p.WEB.H264-GRP.mkv" to 500_000_000, "S/Show.S01E01.ko.srt" to 10,
             "S/Show.S01E02.ko.srt" to 10)
