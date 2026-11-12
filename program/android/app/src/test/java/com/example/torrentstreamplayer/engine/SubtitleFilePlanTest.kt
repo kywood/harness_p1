@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer.engine
 import com.example.torrentstreamplayer.meta.SubtitleFormat
 import com.example.torrentstreamplayer.meta.SubtitleSpec
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,9 +23,11 @@ class SubtitleFilePlanTest {
         SubtitleFilePlan.select(files, videoIndex, pieceLength).map { it.path }
 
     @Test fun registeredFormatsMatchTheRequest() {
-        assertEquals(setOf("srt", "ass", "ssa", "vtt", "sub"), SubtitleFormat.entries.map { it.extension }.toSet())
+        val extensions = SubtitleFormat.entries.map { it.extension }.toSet()
+        assertEquals(setOf("srt", "ass", "ssa", "vtt", "sub", "smi"), extensions)
         assertEquals(SubtitleFormat.SRT, SubtitleFormat.of("A/B.SRT"))
-        assertNull(SubtitleFormat.of("movie.smi"))
+        assertEquals(SubtitleFormat.SMI, SubtitleFormat.of("영화.SMI"))
+        assertNull(SubtitleFormat.of("movie.txt"))
     }
 
     @Test fun takesSameNameAndLanguageMarkedSubtitlesNextToTheVideo() {
@@ -33,10 +36,42 @@ class SubtitleFilePlanTest {
         assertEquals(listOf("Movie/Movie.2020.srt", "Movie/Subs/Korean.srt"), chosen(torrent))
     }
 
-    @Test fun skipsUnrelatedFoldersDeepFoldersAndNamesWithoutMarkers() {
+    @Test fun skipsUnrelatedFoldersTooDeepFoldersAndNamesWithoutMarkers() {
         val torrent = files("Show/E01.mkv" to 500_000_000, "Other/E01.srt" to 1_000,
-            "Show/Subs/E01/ko.srt" to 1_000, "Show/Extras/E01.srt" to 1_000, "Show/commentary.srt" to 1_000)
+            "Show/Subs/E01/Extra/E01.srt" to 1_000, "Show/Extras/E01.srt" to 1_000, "Show/commentary.srt" to 1_000)
         assertEquals(emptyList<String>(), chosen(torrent))
+    }
+
+    @Test fun searchesTwoFoldersDownAndMatchesTheEpisodeFolderName() {
+        val torrent = files("Show/Show.S01E01.mkv" to 500_000_000, "Show/Subs/Show.S01E01/2_English.srt" to 1_000,
+            "Show/Subs/Show.S01E01/3_Korean.smi" to 1_000, "Show/Subs/Other/Notes.srt" to 1_000)
+        assertEquals(listOf("Show/Subs/Show.S01E01/3_Korean.smi", "Show/Subs/Show.S01E01/2_English.srt"),
+            chosen(torrent))
+    }
+
+    @Test fun nameMatchesNeedWholeWordsSoE1IsNotE10() {
+        assertTrue(SubtitleFilePlan.namesMatch(listOf("show", "e1"), listOf("show", "e1", "ko")))
+        assertTrue(SubtitleFilePlan.namesMatch(listOf("show", "e1", "1080p"), listOf("show", "e1")))
+        assertFalse(SubtitleFilePlan.namesMatch(listOf("show", "e1"), listOf("show", "e10")))
+        assertFalse(SubtitleFilePlan.namesMatch(emptyList(), listOf("show")))
+    }
+
+    @Test fun seasonPackTakesOnlyThisEpisodesSubtitles() {
+        val torrent = files("S/Show E1.mkv" to 500_000_000, "S/Show E2.mkv" to 500_000_000,
+            "S/Show E10.srt" to 1_000, "S/Show E2.ko.srt" to 1_000, "S/Subs/Korean.srt" to 1_000,
+            "S/Show E1.ko.srt" to 1_000)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("S/Show E1.ko.srt"), plan.map { it.path })
+        assertFalse(plan.single().fallbackAllowed)
+        val noOwnSubtitle = torrent.filterNot { it.path == "S/Show E1.ko.srt" }
+        assertEquals("no other episode stands in", emptyList<String>(), chosen(noOwnSubtitle))
+    }
+
+    @Test fun samplesDoNotMakeASeasonPack() {
+        val torrent = files("M/Movie.mkv" to 1_000_000_000, "M/Sample.mkv" to 20_000_000, "M/Korean.srt" to 1_000)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("M/Korean.srt"), plan.map { it.path })
+        assertTrue(plan.single().fallbackAllowed)
     }
 
     @Test fun enforcesPerFileAndTotalSizeLimits() {

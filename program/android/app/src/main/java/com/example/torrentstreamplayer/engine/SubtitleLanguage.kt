@@ -24,9 +24,13 @@ internal enum class SubtitleLanguage(private val tokens: Set<String>, private va
         /** The language marked in [fileName] (with or without folders and extension), or null. */
         fun of(fileName: String): SubtitleLanguage? {
             val name = baseName(fileName).lowercase(Locale.ROOT)
-            val nameTokens = name.split(SEPARATORS).filter { it.isNotEmpty() }.toSet()
+            val nameTokens = words(name).toSet()
             return entries.firstOrNull { it.matches(nameTokens, name) }
         }
+
+        /** Lowercase words of [name], split at anything that is not a letter or digit. */
+        internal fun words(name: String): List<String> =
+            name.lowercase(Locale.ROOT).split(SEPARATORS).filter { it.isNotEmpty() }
 
         /** [path] without folders and without its last extension. */
         internal fun baseName(path: String): String =

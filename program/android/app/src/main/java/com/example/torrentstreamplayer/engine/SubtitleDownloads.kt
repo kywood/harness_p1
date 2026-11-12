@@ -121,7 +121,7 @@ internal class SubtitleDownloads {
 
     private fun publish() {
         mutableFiles.value = planned.filter { it.first.index in completed }.map { (candidate, file) ->
-            SubtitleFile(file, candidate.language, candidate.matchesVideoName)
+            SubtitleFile(file, candidate.language, candidate.matchesVideoName, candidate.fallbackAllowed)
         }
     }
 }

@@ -6,8 +6,8 @@ import org.junit.Test
 import java.io.File
 
 class SubtitleSelectionPolicyTest {
-    private fun sub(name: String, language: SubtitleLanguage?, matches: Boolean = true) =
-        SubtitleFile(File(name), language, matches)
+    private fun sub(name: String, language: SubtitleLanguage?, matches: Boolean = true, fallback: Boolean = true) =
+        SubtitleFile(File(name), language, matches, fallback)
 
     @Test fun noFilesMeansNoSubtitle() {
         assertNull(SubtitleSelectionPolicy.preferred(emptyList()))
@@ -22,10 +22,19 @@ class SubtitleSelectionPolicyTest {
         assertEquals(unmarked, SubtitleSelectionPolicy.preferred(listOf(unmarked, sub("b.srt", null))))
     }
 
-    @Test fun filesNamedLikeTheVideoWinOverOtherEpisodes() {
-        val otherEpisode = sub("E02.ko.srt", SubtitleLanguage.KOREAN, matches = false)
-        val sameEpisode = sub("E01.en.srt", SubtitleLanguage.ENGLISH)
-        assertEquals(sameEpisode, SubtitleSelectionPolicy.preferred(listOf(otherEpisode, sameEpisode)))
-        assertEquals(otherEpisode, SubtitleSelectionPolicy.preferred(listOf(otherEpisode)))
+    @Test fun nameMatchesWinOverLanguageOnlyFiles() {
+        val korean = sub("Subs/Korean.srt", SubtitleLanguage.KOREAN, matches = false)
+        val sameName = sub("Movie.en.srt", SubtitleLanguage.ENGLISH)
+        assertEquals(sameName, SubtitleSelectionPolicy.preferred(listOf(korean, sameName)))
+    }
+
+    @Test fun aLoneVideoMayUseALanguageOnlySubtitle() {
+        val korean = sub("Subs/Korean.srt", SubtitleLanguage.KOREAN, matches = false)
+        assertEquals(korean, SubtitleSelectionPolicy.preferred(listOf(korean)))
+    }
+
+    @Test fun aSeasonPackNeverFallsBackToAnotherEpisode() {
+        val otherEpisode = sub("Show E02.ko.srt", SubtitleLanguage.KOREAN, matches = false, fallback = false)
+        assertNull(SubtitleSelectionPolicy.preferred(listOf(otherEpisode)))
     }
 }
