@@ -322,7 +322,8 @@ class TorrentEngine(private val context: Context) {
                         val speed = status.downloadPayloadRate().toLong()
                         val peers = status.numPeers()
                         if (run != activeRun) return@Thread
-                        if (subtitles.refresh(handle)) runCatching { cache.write("subtitles", subtitles.encodeCompleted()) }
+                        if (subtitles.refresh(handle))
+                            runCatching { cache.write("subtitles", subtitles.encodeCompleted()) }
 
                         downloadProgress = progress
                         val snapshot = DownloadSnapshot(maxFileSize, verifiedBytes, candidate.path, _pieceMap.value)
@@ -343,7 +344,8 @@ class TorrentEngine(private val context: Context) {
 
                         onProgress(progress, speed)
 
-                        if ((status.isFinished || subtitles.hasPending) && (firstPieceIndex..lastPieceIndex).all(handle::havePiece)) {
+                        val finishing = status.isFinished || subtitles.hasPending
+                        if (finishing && (firstPieceIndex..lastPieceIndex).all(handle::havePiece)) {
                             checkpoint?.save(1500)
                             // A finished download must not stay announced as a seed; the paused handle still answers havePiece.
                             runCatching { handle.pause() }.onFailure { Log.w(TAG, "Unable to pause finished torrent: ${EngineFailureLog.describe(it)}") }
