@@ -75,11 +75,20 @@ class IncomingLinkParserTest {
         assertEquals("https://example.com/a.torrent", valid(shared("첫 줄\r\nhttps://example.com/a.torrent\r\n")).value)
     }
 
-    @Test fun linksRightAfterOrBeforeHangulAreFound() {
+    @Test fun linksRightAfterHangulAreFoundAndHttpsEndsAtHangul() {
         assertEquals(magnet, valid(shared("보세요$magnet")).value)
-        assertEquals(magnet, valid(shared("${magnet}입니다")).value)
+        assertEquals("https://example.com/a.torrent", valid(shared("https://example.com/a.torrent입니다")).value)
         assertEquals("letters before the scheme make it another word",
             IncomingLinkError.UNSUPPORTED, reason(shared("xmagnet:?xt=urn:btih:" + "a".repeat(40))))
+    }
+
+    @Test fun aMagnetEndsOnlyAtWhitespaceSoAnUnencodedHangulNameStaysWhole() {
+        val hangul = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=영화 제목"
+        val link = valid(shared("보세요 $hangul"))
+        assertEquals("magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=영화", link.value)
+        assertEquals("영화", link.displayName)
+        val joined = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=영화제목.mkv"
+        assertEquals("영화제목.mkv", valid(shared("링크　$joined 끝")).displayName)
     }
 
     @Test fun onlyTheFirstPartOfLongSharedTextIsSearched() {
@@ -90,15 +99,36 @@ class IncomingLinkParserTest {
         assertEquals(magnet, valid(shared("$magnet $beyond")).value)
     }
 
+    @Test fun aLinkCutAtTheEndOfTheSearchedPartIsDropped() {
+        val address = "https://example.com/" + "a".repeat(100)
+        val lead = "가".repeat(IncomingLinkParser.MAX_SHARED_CHARS - 50) + " "
+        assertEquals(IncomingLinkError.TOO_LONG, reason(shared(lead + address)))
+        val fits = "가".repeat(IncomingLinkParser.MAX_SHARED_CHARS - address.length - 1) + " "
+        assertEquals("ending exactly at the boundary is whole", address, valid(shared(fits + address + " 끝")).value)
+    }
+
+    @Test fun upperCaseSchemesAreAcceptedAndHandedOnInLowerCase() {
+        val link = valid(shared("HTTPS://Example.com/A.torrent"))
+        assertEquals(IncomingLinkKind.TORRENT_URL, link.kind)
+        assertEquals("https://Example.com/A.torrent", link.value)
+        assertEquals(magnet, valid(shared("MAGNET:" + magnet.removePrefix("magnet:"))).value)
+        assertEquals(IncomingLinkError.HTTPS_REQUIRED, reason(shared("HTTP://example.com/a.torrent")))
+    }
+
     @Test fun policyAllowsOnlySavingDuringPlaybackAndDetectsPlaylistLinks() {
         val link = valid(IncomingLinkParser.link(magnet))
-        val state = IncomingLinkPolicy.state(link, setOf(MagnetIdentity.key(magnet)), playbackActive = true)
+        val match = PlaylistMatch(magnet, "", 0, complete = false)
+        val state = IncomingLinkPolicy.state(link, match, playbackActive = true)
         assertEquals(PlaylistMembership.IN_PLAYLIST, state.membership)
         assertEquals(setOf(IncomingLinkAction.SAVE), state.allowed)
-        assertEquals(PlaylistMembership.NEW, IncomingLinkPolicy.membership(link, emptySet()))
+        assertEquals(PlaylistMembership.NEW, IncomingLinkPolicy.membership(link, null))
         assertEquals(IncomingLinkAction.entries.toSet(), IncomingLinkPolicy.allowed(playbackActive = false))
         val url = valid(IncomingLinkParser.link("https://example.com/a.torrent"))
-        assertEquals(PlaylistMembership.UNKNOWN, IncomingLinkPolicy.membership(url, setOf("x")))
+        assertEquals(PlaylistMembership.UNKNOWN, IncomingLinkPolicy.membership(url, match))
+    }
+
+    @Test fun errorReasonsRegisterTheirSheetTexts() {
+        assertEquals(IncomingLinkError.entries.size, IncomingLinkError.entries.map { it.message }.toSet().size)
     }
 
     @Test fun recreatedOrHistoryLaunchesDoNotHandleTheIntentAgain() {

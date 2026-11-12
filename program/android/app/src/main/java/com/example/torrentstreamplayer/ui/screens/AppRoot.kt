@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.example.torrentstreamplayer.ui.AppBackPolicy
 import com.example.torrentstreamplayer.ui.DownloadPhase
@@ -70,6 +71,7 @@ internal fun AppRoot(
                     onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition)
                 is AppScreen.Main -> MagnetLinkInputScreen(
                     onStartStream = viewModel::playFromMain,
+                    inputFill = viewModel.mainInputFill.collectAsState().value,
                     errorMessage = current.errorMessage,
                     onOpenFiles = viewModel::openStoredFiles,
                     onOpenHistory = viewModel::openPlaylist,
@@ -105,6 +107,8 @@ internal fun AppRoot(
                     )
                 }
             }
+            // 다른 앱에서 받은 링크의 확인 시트. 어느 화면 위에서든 뜬다(#127).
+            OpenLinkHost(viewModel, downloadJobs, Modifier.align(Alignment.BottomCenter))
         }
     }
 }

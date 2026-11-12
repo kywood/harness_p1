@@ -40,7 +40,7 @@ class MobilePlaybackGateTest {
             gate.clear() // stopStream() at the start of every playback
             started += link
         }
-        val links = IncomingLinkCoordinator(scope, { emptySet() }, { false }, playFromMain, { })
+        val links = IncomingLinkCoordinator(scope, { null },{ false }, playFromMain, { })
         gate.ask(MobilePlaybackRequest(first, PlaybackOrigin.MAIN))
 
         links.receive(IncomingLinkParser.link(second))
