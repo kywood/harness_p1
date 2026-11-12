@@ -9,17 +9,23 @@ internal enum class PlaylistMembership {
     UNKNOWN,
 }
 
-/** What the confirmation sheet offers first. The user always confirms; nothing starts on its own. */
+/** Choices the confirmation sheet may offer besides "취소", which is always there. */
 internal enum class IncomingLinkAction { PLAY_NOW, SAVE }
 
-/** A link waiting for the user's choice (play now / save / cancel). */
-internal data class IncomingLinkState(
-    val link: IncomingLink,
-    val membership: PlaylistMembership,
-    val recommended: IncomingLinkAction,
-)
+/** What the link sheet shows. The user always confirms; nothing starts on its own. */
+internal sealed interface IncomingLinkState {
+    /** A valid link waiting for the user's choice among [allowed] (or cancel). */
+    data class Confirm(
+        val link: IncomingLink,
+        val membership: PlaylistMembership,
+        val allowed: Set<IncomingLinkAction>,
+    ) : IncomingLinkState
 
-/** Decisions for links handed over by other apps. Pure; the activity and ViewModel pass the facts in. */
+    /** A link that cannot be opened; the sheet shows [reason] and a single confirm button. */
+    data class Rejected(val reason: IncomingLinkError) : IncomingLinkState
+}
+
+/** Decisions for links handed over by other apps. Pure; the activity and coordinator pass the facts in. */
 internal object IncomingLinkPolicy {
     /**
      * An intent is a new hand-over only on a fresh launch or `onNewIntent`. A recreated activity
@@ -32,10 +38,10 @@ internal object IncomingLinkPolicy {
         return if (key in playlistKeys) PlaylistMembership.IN_PLAYLIST else PlaylistMembership.NEW
     }
 
-    /** While something plays or prepares, saving does not interrupt it, so the sheet recommends saving. */
-    fun recommended(playbackActive: Boolean): IncomingLinkAction =
-        if (playbackActive) IncomingLinkAction.SAVE else IncomingLinkAction.PLAY_NOW
+    /** While something plays or prepares, "바로 재생" would end it, so only saving is offered. */
+    fun allowed(playbackActive: Boolean): Set<IncomingLinkAction> =
+        if (playbackActive) setOf(IncomingLinkAction.SAVE) else IncomingLinkAction.entries.toSet()
 
     fun state(link: IncomingLink, playlistKeys: Set<String>, playbackActive: Boolean) =
-        IncomingLinkState(link, membership(link, playlistKeys), recommended(playbackActive))
+        IncomingLinkState.Confirm(link, membership(link, playlistKeys), allowed(playbackActive))
 }

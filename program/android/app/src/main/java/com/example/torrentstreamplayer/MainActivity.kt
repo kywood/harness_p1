@@ -83,7 +83,7 @@ class MainActivity : ComponentActivity() {
         receiveLink(intent)
     }
 
-    /** Passes a valid link to the ViewModel; the link text is never logged. */
+    /** Passes the link, or why it cannot be opened, to the ViewModel; the link text is never logged. */
     private fun receiveLink(intent: Intent) {
         IncomingLinkParser.parse(intent.action, intent.dataString, intent.getStringExtra(Intent.EXTRA_TEXT))
             ?.let(viewModel::receiveLink)
