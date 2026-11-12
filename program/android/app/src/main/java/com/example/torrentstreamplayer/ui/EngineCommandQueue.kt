@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.ui
 
 import android.util.Log
+import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.meta.EngineSpec
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -16,7 +17,7 @@ import java.util.concurrent.TimeoutException
  */
 internal class EngineCommandQueue(
     private val executor: ExecutorService = SHARED_EXECUTOR,
-    private val onError: (Throwable) -> Unit = { Log.e(TAG, "Engine command failed", it) },
+    private val onError: (Throwable) -> Unit = { Log.e(TAG, "Engine command failed: ${EngineFailureLog.describe(it)}") },
 ) {
     /** Use with `withContext` when the caller needs a result; shares ordering with [post]. */
     val dispatcher: CoroutineDispatcher = executor.asCoroutineDispatcher()

@@ -21,6 +21,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.engine.TorrentEngine
 import com.example.torrentstreamplayer.engine.TorrentStreamServer
 import com.example.torrentstreamplayer.ui.player.PlayerBottomPanel
@@ -45,9 +46,16 @@ private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
      * Views are detached on the main thread; the native teardown runs on a background thread.
      */
     fun releaseAsync(streamServer: TorrentStreamServer) {
-        try { mediaPlayer.detachViews() } catch (e: Exception) { Log.e("VlcPlayerScreen", "Error detaching VLC views", e) }
+        try {
+            mediaPlayer.detachViews()
+        } catch (e: Exception) {
+            Log.e("VlcPlayerScreen", "Error detaching VLC views: ${EngineFailureLog.describe(e)}")
+        }
         // Closing the stream first unblocks VLC's pending read so its stop() returns quickly.
-        RELEASER.execute { runCatching { streamServer.stop() }.onFailure { Log.e("VlcPlayerScreen", "Error stopping stream", it) } }
+        RELEASER.execute {
+            runCatching { streamServer.stop() }
+                .onFailure { Log.e("VlcPlayerScreen", "Error stopping stream: ${EngineFailureLog.describe(it)}") }
+        }
         // Seeks posted earlier still touch mediaPlayer; schedule the release only after they have run.
         EngineCommandQueue.shared.post { RELEASER.execute(::release) }
     }
@@ -58,7 +66,7 @@ private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
             mediaPlayer.release()
             libVlc.release()
         } catch (e: Exception) {
-            Log.e("VlcPlayerScreen", "Error releasing VLC player", e)
+            Log.e("VlcPlayerScreen", "Error releasing VLC player: ${EngineFailureLog.describe(e)}")
         }
     }
 
@@ -188,7 +196,7 @@ fun VlcPlayerScreen(
 
             PlayerHolder(vlc, mp)
         } catch (t: Throwable) {
-            Log.e("VlcPlayerScreen", "Error initializing VLC", t)
+            Log.e("VlcPlayerScreen", "Error initializing VLC: ${EngineFailureLog.describe(t)}")
             errorMessage = resources.getString(R.string.player_error_init, t.localizedMessage ?: resources.getString(R.string.failure_unknown))
             null
         }
@@ -321,7 +329,10 @@ fun VlcPlayerScreen(
                                 errorMessage = ctx.getString(R.string.player_error_file_missing)
                             }
                         } catch (t: Throwable) {
-                            Log.e("VlcPlayerScreen", "Error attaching video layout or starting media", t)
+                            Log.e(
+                                "VlcPlayerScreen",
+                                "Error attaching video layout or starting media: ${EngineFailureLog.describe(t)}",
+                            )
                             errorMessage = ctx.getString(R.string.player_error_start, t.localizedMessage ?: ctx.getString(R.string.failure_unknown))
                         }
                     }
@@ -391,7 +402,7 @@ fun VlcPlayerScreen(
                                     isPlaying = true
                                 }
                             } catch (e: Exception) {
-                                Log.e("VlcPlayerScreen", "Error toggling play/pause", e)
+                                Log.e("VlcPlayerScreen", "Error toggling play/pause: ${EngineFailureLog.describe(e)}")
                             }
                         },
                         onForward = {

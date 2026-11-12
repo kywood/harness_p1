@@ -2,6 +2,8 @@ package com.example.torrentstreamplayer.ui
 
 import android.app.Activity
 import android.os.SystemClock
+import android.util.Log
+import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.google.android.gms.ads.*
 import com.google.android.gms.ads.interstitial.*
 import com.example.torrentstreamplayer.BuildConfig
@@ -22,7 +24,11 @@ internal class CompletionInterstitial(private val activity: Activity) {
                     loading = false
                     if (!disposed) { ad = loaded; loadedAt = SystemClock.elapsedRealtime() }
                 }
-                override fun onAdFailedToLoad(error: LoadAdError) { loading = false }
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    loading = false
+                    // AdMob 오류 코드만 남긴다. 코드에는 사용자 데이터가 없고 광고 미노출 원인을 가릴 수 있다.
+                    Log.w("CompletionAd", "Load failed: code ${error.code}")
+                }
             })
     }
     fun showIfReady(watchedMs: Long, canShow: Boolean = true) {
@@ -42,7 +48,8 @@ internal class CompletionInterstitial(private val activity: Activity) {
                     .putInt("completions", 0).apply()
             }
         }
-        runCatching { ready.show(activity) }.onFailure { android.util.Log.w("CompletionAd", "Display failed", it) }
+        runCatching { ready.show(activity) }
+            .onFailure { Log.w("CompletionAd", "Display failed: ${EngineFailureLog.describe(it)}") }
     }
     fun dispose() { disposed = true; ad = null }
 }

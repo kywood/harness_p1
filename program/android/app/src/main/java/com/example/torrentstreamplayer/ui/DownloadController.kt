@@ -1,4 +1,6 @@
 package com.example.torrentstreamplayer.ui
+import android.util.Log
+import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentEngine
 import kotlinx.coroutines.*
@@ -40,7 +42,9 @@ internal class DownloadController(private val scope: CoroutineScope,
                         // Saving the title is best effort; a failed history write must not crash the app.
                         try { title(resolved, name) }
                         catch (cancelled: CancellationException) { throw cancelled }
-                        catch (failure: Exception) { android.util.Log.w("DownloadController", "Unable to save title", failure) }
+                        catch (failure: Exception) {
+                            Log.w("DownloadController", "Unable to save title: ${EngineFailureLog.describe(failure)}")
+                        }
                     }
                 }, onProgress = { progress, speed ->
                     scope.launch {
