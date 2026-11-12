@@ -86,6 +86,7 @@ AdMob. `BuildConfig.DEBUG`이면 Google 테스트 단위 ID, 릴리스면 실제
 |---|---|---|---|
 | PM | 루트에서 연 메인 세션 | `PM.md` | 우선순위, 에이전트에 일 배정, 결과 확인, 이슈, 출시 결정 |
 | launch | `launch/`에서 연 별도 세션 | `launch/CLAUDE.md` | 스토어 등록정보·자료, Play Console 양식, 출시 체크리스트, 심사·출시 후 대응 |
+| marketing | `marketing/`에서 연 별도 세션 | `marketing/CLAUDE.md` | ASO, 시장·경쟁 분석, 리뷰·평점, 지표 보고, 홍보안 |
 | planning | `planning/`에서 연 별도 세션 | `planning/CLAUDE.md` | 요구사항, 화면 정의, 사용자 흐름, 스펙 |
 | design | 서브에이전트 `design` | `design/CLAUDE.md` | 테마·토큰·문구·화면의 시각 표현 |
 | program | 서브에이전트 `program` | `program/CLAUDE.md` | 엔진·상태·정책·테스트·빌드 |
