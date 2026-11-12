@@ -25,6 +25,10 @@ internal class SubtitleDownloads {
     private val completed = linkedSetOf<Int>()
     private val mutableFiles = MutableStateFlow<List<SubtitleFile>>(emptyList())
     val files: StateFlow<List<SubtitleFile>> = mutableFiles.asStateFlow()
+    private val mutablePending = MutableStateFlow<List<File>>(emptyList())
+
+    /** Chosen subtitle files still missing pieces, so the player can list them as downloading. */
+    val pending: StateFlow<List<File>> = mutablePending.asStateFlow()
 
     /** True while a chosen subtitle is still missing pieces. */
     val hasPending: Boolean @Synchronized get() = planned.any { it.first.index !in completed }
@@ -120,6 +124,7 @@ internal class SubtitleDownloads {
     }
 
     private fun publish() {
+        mutablePending.value = planned.filter { it.first.index !in completed }.map { it.second }
         mutableFiles.value = planned.filter { it.first.index in completed }.map { (candidate, file) ->
             SubtitleFile(file, candidate.language, candidate.matchesVideoName, candidate.fallbackAllowed)
         }
