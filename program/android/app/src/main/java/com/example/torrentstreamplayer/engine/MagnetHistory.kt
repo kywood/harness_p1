@@ -64,10 +64,6 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         }
         cache.write("links", buffer.toByteArray())
     }
-    private fun title(magnet: String): String {
-        val query = URI(magnet).rawSchemeSpecificPart.removePrefix("?")
-        return query.split('&').firstOrNull { it.startsWith("dn=") }?.substringAfter('=')
-            ?.let { URLDecoder.decode(it, "UTF-8") }?.take(160)
-            ?.takeIf { it.isNotBlank() } ?: "토렌트 " + MagnetIdentity.key(magnet).take(8)
-    }
+    private fun title(magnet: String): String =
+        MagnetDisplayName.of(magnet) ?: "토렌트 " + MagnetIdentity.key(magnet).take(8)
 }
