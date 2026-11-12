@@ -12,6 +12,9 @@ internal enum class SubtitleFormat(val extension: String) {
     SSA("ssa"),
     VTT("vtt"),
     SUB("sub"),
+
+    /** SAMI, common for Korean subtitles. */
+    SMI("smi"),
     ;
 
     companion object {

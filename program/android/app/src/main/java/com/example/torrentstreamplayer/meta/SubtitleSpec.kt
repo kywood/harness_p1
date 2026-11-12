@@ -13,7 +13,16 @@ internal object SubtitleSpec {
 
     /**
      * Folder names (lowercase) directly under the video's folder that hold its subtitles, e.g. `Subs/`.
-     * Subtitles deeper than one folder are not downloaded.
+     * One more folder below it is searched too (`Subs/<episode>/`), see [MAX_FOLDER_DEPTH].
      */
     val FOLDER_NAMES: Set<String> = setOf("subs", "sub", "subtitles", "subtitle")
+
+    /**
+     * A folder is a season pack when it holds another video at least this many percent of the selected video's size.
+     * Smaller videos (samples, trailers) do not count.
+     */
+    const val PACK_VIDEO_MIN_PERCENT = 25L
+
+    /** Folders searched below the video's folder: the subtitle folder and one episode folder inside it. */
+    const val MAX_FOLDER_DEPTH = 2
 }
