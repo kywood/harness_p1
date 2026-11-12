@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,11 +49,17 @@ internal fun AppRoot(
     val downloadJobs by viewModel.downloads.tasks.collectAsState()
     val downloadError by viewModel.downloads.error.collectAsState()
     val mobileConfirm by viewModel.mobilePlaybackConfirm.collectAsState()
-    if (showDownloadDialog) QuickDownloadDialog(onDismiss = { showDownloadDialog = false }, submit = viewModel::queueDownload)
+    val snackbar = remember { SnackbarHostState() }
+    val waitsForWifi by viewModel.waitsForWifi.collectAsState()
+    val announceWifiWait = rememberWifiWaitAnnouncer(snackbar, waitsForWifi)
+    if (showDownloadDialog) QuickDownloadDialog(onDismiss = { showDownloadDialog = false }, submit = {
+        viewModel.queueDownload(it)
+        announceWifiWait()
+    })
     if (mobileConfirm != null) MobilePlaybackConfirmDialog(viewModel::confirmMobilePlayback, viewModel::dismissMobilePlayback)
     BackHandler(enabled = AppBackPolicy.returnsToInput(screen)) { viewModel.closePlayback() }
 
-    Scaffold(modifier = Modifier.fillMaxSize(), bottomBar = {
+    Scaffold(modifier = Modifier.fillMaxSize(), snackbarHost = { SnackbarHost(snackbar) }, bottomBar = {
         if (TestAdPolicy.visible(screen)) Box(Modifier.navigationBarsPadding()) { TestBannerAd() }
     }) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -62,14 +70,12 @@ internal fun AppRoot(
                 AppScreen.Settings -> {
                     val settings by viewModel.settings.collectAsState()
                     val saveFailed by viewModel.settingsSaveFailed.collectAsState()
-                    val waitsForWifi by viewModel.waitsForWifi.collectAsState()
                     SettingsScreen(settings, viewModel::setWifiOnly, viewModel::setAutoSubtitles,
                         onBack = viewModel::closeList, onOpenLicenses = viewModel::openOpenSourceLicenses,
                         onPrivacyOptions = onPrivacyOptions,
                         waitsForWifi = waitsForWifi, saveFailed = saveFailed, onSaveFailedShown = viewModel::consumeSettingsSaveFailed)
                 }
                 AppScreen.Playlist -> {
-                    val waitsForWifi by viewModel.waitsForWifi.collectAsState()
                     MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
                         onPlay = viewModel::playFromPlaylist,
                         onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
@@ -81,7 +87,7 @@ internal fun AppRoot(
                         sort = playlistSort, onSortChange = { playlistSort = it },
                         filter = playlistFilter, onFilterChange = { playlistFilter = it },
                         onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition,
-                        waitsForWifi = waitsForWifi)
+                        onDownloadsStarted = announceWifiWait)
                 }
                 is AppScreen.Main -> MagnetLinkInputScreen(
                     onStartStream = viewModel::playFromMain,

@@ -27,8 +27,6 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,7 +86,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     filter: PlaylistFilter = PlaylistFilter.ALL, onFilterChange: (PlaylistFilter) -> Unit = {},
     downloadJobs: Map<String, DownloadEntry> = emptyMap(), onStopItem: (String) -> Unit = {},
     onStopItems: ((Set<String>) -> Unit)? = null, onAddDownload: (() -> Unit)? = null,
-    onResetPosition: (suspend (String) -> Unit)? = null, waitsForWifi: Boolean = false) {
+    onResetPosition: (suspend (String) -> Unit)? = null, onDownloadsStarted: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
     var selected by remember { mutableStateOf(emptySet<String>()) }
@@ -114,12 +112,10 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     val refreshing = activeKey != null || summary.hasLiveJobs
     val jobIdentity = downloadJobs.values.joinToString { it.key + it.phase.name }
     val loadErrorText = stringResource(R.string.playlist_load_error)
-    val snackbar = remember { SnackbarHostState() }
-    val waitingForWifiText = stringResource(R.string.info_waiting_for_wifi)
-    // 다운로드 버튼: Wi-Fi 전용 + 모바일 데이터면 작업은 바로 Wi-Fi 대기로 들어가고 그 사실을 스낵바로 알린다.
+    // 다운로드 버튼: 받기를 시작한 뒤 [onDownloadsStarted]가 Wi-Fi 대기 안내를 맡는다(rememberWifiWaitAnnouncer).
     val startDownloads: (List<String>) -> Unit = { magnets ->
         magnets.forEach(onDownload)
-        if (magnets.isNotEmpty() && waitsForWifi) scope.launch { snackbar.showSnackbar(waitingForWifiText) }
+        if (magnets.isNotEmpty()) onDownloadsStarted()
     }
     BackHandler { if (!bulkBusy) onBack() }
     LaunchedEffect(visibleEntries) { selected = selected.intersect(visibleEntries.map { it.magnet }.toSet()) }
@@ -232,7 +228,6 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                     )
                 }
             }
-            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
         }
     }
     deleting?.let { entry ->
