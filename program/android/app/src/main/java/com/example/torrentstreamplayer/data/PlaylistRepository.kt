@@ -4,9 +4,6 @@ import android.content.Context
 import com.example.torrentstreamplayer.engine.MagnetHistory
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.SavedMagnet
-import com.example.torrentstreamplayer.engine.TorrentCache
-import com.example.torrentstreamplayer.engine.TorrentCacheCipher
-import java.io.File
 
 /**
  * 재생 목록 저장소. 암호화된 [MagnetHistory]를 읽고 쓰고, 목록 항목에 저장된 다운로드 정보를 붙인다.
@@ -44,12 +41,10 @@ internal class PlaylistRepository(
     fun resetPosition(magnet: String) = history.savePosition(magnet, 0, 0)
 
     companion object {
-        /** 재생 목록 파일 위치(noBackupFilesDir 아래)와 캐시 키. 바꾸면 기존 목록을 읽지 못한다. */
+        /** 재생 목록 파일 위치(noBackupFilesDir 아래). 바꾸면 기존 목록을 읽지 못한다. */
         private const val HISTORY_FILE = "magnet_history"
-        private val HISTORY_KEY = "0".repeat(64)
 
         fun create(context: Context, lookup: (SavedMagnet) -> SavedMagnet): PlaylistRepository =
-            PlaylistRepository(MagnetHistory(TorrentCache(File(context.noBackupFilesDir, HISTORY_FILE), HISTORY_KEY,
-                TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)), lookup)
+            PlaylistRepository(MagnetHistory(AppStateCache.create(context, HISTORY_FILE)), lookup)
     }
 }

@@ -98,7 +98,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     var deleting by remember { mutableStateOf<SavedMagnet?>(null) }
     val liveEntries = entries.map { entry ->
         val task = downloadJobs[MagnetIdentity.key(entry.magnet)]
-        val snapshot = task?.takeIf { it.phase == DownloadPhase.RUNNING || it.phase == DownloadPhase.QUEUED }?.snapshot
+        val snapshot = task?.takeIf { it.phase.stoppable }?.snapshot
         if (snapshot != null) entry.copy(fileSize = snapshot.size, downloadedBytes = snapshot.downloaded, pieces = snapshot.pieces)
         else
         if (MagnetIdentity.key(entry.magnet) == activeKey && activeProgress != null)
