@@ -24,18 +24,18 @@ class ConnectionWatchTest {
     }
 
     @Test fun shortFlipsAreDroppedAndTheFirstValuePassesAtOnce() = runBlocking {
-        val settleMs = 300L
+        val settleMs = 1_000L
         val source = flow {
             emit(ConnectionType.WIFI)
-            delay(50)
+            delay(20)
             emit(ConnectionType.MOBILE)
-            delay(50)
+            delay(20)
             emit(ConnectionType.NONE)
-            delay(50)
+            delay(20)
             emit(ConnectionType.WIFI)
-            delay(settleMs * 3)
+            delay(settleMs * 2)
             emit(ConnectionType.MOBILE)
-            delay(settleMs * 3)
+            delay(settleMs * 2)
         }
         assertEquals(listOf(ConnectionType.WIFI, ConnectionType.MOBILE), source.settled(settleMs).toList())
     }

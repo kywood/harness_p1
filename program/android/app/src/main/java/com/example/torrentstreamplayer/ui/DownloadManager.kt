@@ -103,11 +103,18 @@ internal class DownloadManager(private val scope: CoroutineScope,
         }
     }
     /**
-     * Before playback of [key] starts: whether to ask "이번만 재생" first. [complete] files use no data. Call before
-     * [borrow]; [borrow] refuses a task that waits for Wi-Fi without a one-time permission.
+     * The one Wi-Fi only decision before playback of [key]. Returns [PlaybackNetworkCheck.CONFIRM_MOBILE] when the
+     * user must answer "이번만 재생" first; nothing changes then. On [PlaybackNetworkCheck.START] after the user's
+     * [allowMobileOnce] or for a [complete] file (no data used), the task gets a one-time permission ([allowOnce]),
+     * so [start] and [borrow] let it run on mobile data. Call before [start] and [borrow]; [borrow] refuses a task
+     * that waits for Wi-Fi without that permission.
      */
-    fun playbackCheck(key: String, complete: Boolean): PlaybackNetworkCheck =
-        DownloadNetworkPolicy.playbackStart(network, allowedOnce = key in allowedOnce, complete = complete)
+    fun preparePlayback(key: String, complete: Boolean, allowMobileOnce: Boolean): PlaybackNetworkCheck {
+        val check = DownloadNetworkPolicy.playbackStart(network,
+            allowedOnce = allowMobileOnce || key in allowedOnce, complete = complete)
+        if (check == PlaybackNetworkCheck.START && (allowMobileOnce || complete)) allowOnce(key)
+        return check
+    }
 
     /**
      * Lends [key]'s engine to playback. A borrowed task is left out of the Wi-Fi only rule: playback keeps going on

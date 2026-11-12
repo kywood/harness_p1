@@ -7,6 +7,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import com.example.torrentstreamplayer.engine.MagnetIdentity
 import org.junit.Test
 import kotlin.concurrent.thread
 import kotlin.coroutines.CoroutineContext
@@ -117,15 +119,34 @@ class DownloadManagerTest {
         manager.start(magnet('1')) { true }
         val key = manager.tasks.value.keys.single()
 
-        assertEquals(PlaybackNetworkCheck.CONFIRM_MOBILE, manager.playbackCheck(key, complete = false))
-        assertEquals(PlaybackNetworkCheck.START, manager.playbackCheck(key, complete = true))
+        assertEquals(PlaybackNetworkCheck.CONFIRM_MOBILE,
+            manager.preparePlayback(key, complete = false, allowMobileOnce = false))
         assertNull("not started on mobile data", manager.borrow(key))
         assertEquals(DownloadPhase.WAITING_FOR_WIFI, phases(manager)[key])
 
-        manager.allowOnce(key)
-        assertEquals(PlaybackNetworkCheck.START, manager.playbackCheck(key, complete = false))
+        assertEquals(PlaybackNetworkCheck.START, manager.preparePlayback(key, complete = false, allowMobileOnce = true))
         assertEquals(DownloadPhase.RUNNING, phases(manager)[key])
+        assertEquals("allowed once stays allowed", PlaybackNetworkCheck.START,
+            manager.preparePlayback(key, complete = false, allowMobileOnce = false))
         assertNull("allowed playback on mobile data is not reported", manager.mobilePlayback.value)
+        scope.cancel()
+    }
+
+    /** Review #135 (2nd): Wi-Fi only on mobile data, playing a finished file must not fail at borrow. */
+    @Test fun finishedFileOnMobileDataIsLentWithoutAsking() {
+        val scope = CoroutineScope(SupervisorJob() + held)
+        val manager = manager(scope)
+        manager.applyNetwork(NetworkConditions(wifiOnly = true, connection = ConnectionType.MOBILE))
+        val key = MagnetIdentity.key(magnet('1'))
+
+        // The ViewModel's order: decide, then start the task, then borrow it.
+        assertEquals(PlaybackNetworkCheck.START, manager.preparePlayback(key, complete = true, allowMobileOnce = false))
+        manager.start(magnet('1')) { true }
+        assertEquals(DownloadPhase.RUNNING, phases(manager)[key])
+        // A refusal returns null; a loan reaches the engine, where the lazy test engine throws.
+        val lent = runCatching { manager.borrow(key) }
+        assertTrue("borrow does not refuse it", lent.isFailure)
+        assertNull("a finished file uses no data", manager.mobilePlayback.value)
         scope.cancel()
     }
 

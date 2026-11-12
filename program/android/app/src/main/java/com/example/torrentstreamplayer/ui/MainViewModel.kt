@@ -141,7 +141,11 @@ class MainViewModel @JvmOverloads internal constructor(
     val activeKey = _activeKey.asStateFlow()
     private var requestVersion = 0L
 
-    fun startStreaming(magnetUrl: String, downloadOnly: Boolean = false) {
+    /**
+     * 재생(또는 [downloadOnly]면 받기만)을 시작한다. [allowMobileOnce]는 확인 창에서 "이번만 재생"을 고른 재생이다.
+     * Wi-Fi 전용 확인은 주소를 처리한 뒤 [needsMobileConfirm]에서 한다.
+     */
+    fun startStreaming(magnetUrl: String, downloadOnly: Boolean = false, allowMobileOnce: Boolean = false) {
         if (downloadOnly) {
             downloads.start(magnetUrl) { key -> key != _activeKey.value }
             return
@@ -165,7 +169,7 @@ class MainViewModel @JvmOverloads internal constructor(
                 if (!continueDownloading) _activeKey.value = com.example.torrentstreamplayer.engine.MagnetIdentity.key(resolved)
                 val lastPosition = withContext(Dispatchers.IO) { playlist.addForPlayback(resolved) }
                 if (request == requestVersion) resume.start(resolved, lastPosition)
-                if (request == requestVersion && needsMobileConfirm(resolved, request)) {
+                if (request == requestVersion && needsMobileConfirm(resolved, request, allowMobileOnce)) {
                     if (request == requestVersion) askMobilePlayback(resolved)
                     return@launch
                 }
@@ -181,7 +185,6 @@ class MainViewModel @JvmOverloads internal constructor(
 
     private fun startResolved(magnet: String, request: Long) {
         val key = com.example.torrentstreamplayer.engine.MagnetIdentity.key(magnet)
-        if (request == mobileAllowedRequest) downloads.allowOnce(key)
         downloads.start(magnet) { true }
         if (continueDownloading) { _activeKey.value = null; setStream(StreamUiState.Idle); return }
         val source = downloads.borrow(key) ?: error("다운로드 작업을 연결하지 못했습니다.")
@@ -223,15 +226,13 @@ class MainViewModel @JvmOverloads internal constructor(
     internal val settings: StateFlow<AppSettings> get() = settingsRepository.settings
     /** 지금 연결 종류(Wi-Fi / 모바일 / 데이터 절약 / 없음). 설정 화면 안내 줄에 쓴다. */
     internal val connection: StateFlow<ConnectionType> get() = connections.connection
-    /** "이번만 허용"으로 시작한 재생 요청([requestVersion]). 그 다운로드 작업은 모바일 데이터에서도 이어 받는다. */
-    private var mobileAllowedRequest = -1L
-    private val _mobilePlaybackConfirm = MutableStateFlow<MobilePlaybackRequest?>(null)
+    private val mobileGate = MobilePlaybackGate()
 
     /**
      * 모바일 데이터 재생 확인 창에 올릴 요청. null이 아니면 확인 창을 띄우고 [confirmMobilePlayback] 또는
      * [dismissMobilePlayback]을 부른다. 모든 재생 진입점([playFromMain], [playFromPlaylist])이 여기를 거친다.
      */
-    internal val mobilePlaybackConfirm: StateFlow<MobilePlaybackRequest?> = _mobilePlaybackConfirm.asStateFlow()
+    internal val mobilePlaybackConfirm: StateFlow<MobilePlaybackRequest?> get() = mobileGate.request
 
     /** Wi-Fi 전용인데 Wi-Fi가 끊겨 모바일 데이터로 이어 재생 중인 작업 키. null이 아니게 바뀌면 알림을 한 번 보인다. */
     internal val mobilePlayback: StateFlow<String?> get() = downloads.mobilePlayback
@@ -247,16 +248,22 @@ class MainViewModel @JvmOverloads internal constructor(
         }
     }
 
-    /** Wi-Fi 전용 + 모바일 데이터에서 "이번만 허용" 없이 덜 받은 영상을 재생하려 하면 true. */
-    private suspend fun needsMobileConfirm(magnet: String, request: Long): Boolean {
-        if (continueDownloading || request == mobileAllowedRequest) return false
+    /**
+     * Wi-Fi 전용 + 모바일 데이터에서 "이번만 허용" 없이 덜 받은 영상을 재생하려 하면 true. 판단과 허용 기록은
+     * [DownloadManager.preparePlayback] 한 곳에서 한다(다 받은 파일·이번만 재생은 허용이 남아 [startResolved]가 빌린다).
+     * 연결 변화는 [NetworkSpec.CONNECTION_SETTLE_MS] 뒤에 반영되므로, 그 사이에 시작한 재생은 묻지 않고 시작해
+     * [mobilePlayback]으로 알린다.
+     */
+    private suspend fun needsMobileConfirm(magnet: String, request: Long, allowMobileOnce: Boolean): Boolean {
+        if (continueDownloading) return false
         val key = MagnetIdentity.key(magnet)
-        if (downloads.playbackCheck(key, complete = false) == PlaybackNetworkCheck.START) return false
+        if (downloads.preparePlayback(key, complete = false, allowMobileOnce) == PlaybackNetworkCheck.START) return false
         val complete = withContext(Dispatchers.IO) {
             runCatching { PlaylistOrdering.complete(torrentEngine.savedMagnet(SavedMagnet(magnet, "", 0))) }
                 .getOrDefault(false)
         }
-        return downloads.playbackCheck(key, complete) == PlaybackNetworkCheck.CONFIRM_MOBILE
+        if (request != requestVersion || continueDownloading) return false
+        return downloads.preparePlayback(key, complete, allowMobileOnce = false) == PlaybackNetworkCheck.CONFIRM_MOBILE
     }
 
     /** 재생을 시작하지 않고 시작한 화면으로 돌아가 확인 창을 띄운다. */
@@ -265,13 +272,12 @@ class MainViewModel @JvmOverloads internal constructor(
         _activeKey.value = null
         setStream(StreamUiState.Idle)
         navigator.closePlayback()
-        _mobilePlaybackConfirm.value = MobilePlaybackRequest(magnet, origin)
+        mobileGate.ask(MobilePlaybackRequest(magnet, origin))
     }
 
     /** 확인 창의 "이번만 재생": 같은 곳에서 이번만 모바일 데이터를 허용해 다시 시작한다. */
     fun confirmMobilePlayback() {
-        val request = _mobilePlaybackConfirm.value ?: return
-        _mobilePlaybackConfirm.value = null
+        val request = mobileGate.accept() ?: return
         when (request.origin) {
             PlaybackOrigin.MAIN -> playFromMain(request.magnet, allowMobileOnce = true)
             PlaybackOrigin.PLAYLIST -> playFromPlaylist(request.magnet, allowMobileOnce = true)
@@ -279,9 +285,7 @@ class MainViewModel @JvmOverloads internal constructor(
     }
 
     /** 확인 창의 "취소"·바깥 탭·뒤로: 아무것도 시작하지 않는다. */
-    fun dismissMobilePlayback() {
-        _mobilePlaybackConfirm.value = null
-    }
+    fun dismissMobilePlayback() = mobileGate.clear()
 
     fun setWifiOnly(enabled: Boolean) = updateSettings { it.copy(wifiOnly = enabled) }
 
@@ -293,11 +297,6 @@ class MainViewModel @JvmOverloads internal constructor(
             catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { Log.w("Settings", "Unable to save: ${EngineFailureLog.describe(failure)}") }
         }
-    }
-
-    /** 방금 시작한 재생 요청에 모바일 데이터를 이번만 허용한다. 주소 처리 전에 불려 [needsMobileConfirm]이 본다. */
-    private fun allowMobileForCurrentRequest() {
-        mobileAllowedRequest = requestVersion
     }
 
     fun stopDownload(key: String) {
@@ -321,15 +320,13 @@ class MainViewModel @JvmOverloads internal constructor(
     /** 메인에서 링크를 재생한다. 닫으면 메인으로 돌아온다. */
     fun playFromMain(input: String, allowMobileOnce: Boolean = false) {
         navigator.startPlayback(PlaybackOrigin.MAIN)
-        startStreaming(input)
-        if (allowMobileOnce) allowMobileForCurrentRequest()
+        startStreaming(input, allowMobileOnce = allowMobileOnce)
     }
 
     /** 재생 목록에서 재생한다. 닫거나 뒤로 가면 재생 목록으로 돌아온다. */
     fun playFromPlaylist(magnet: String, allowMobileOnce: Boolean = false) {
         navigator.startPlayback(PlaybackOrigin.PLAYLIST)
-        startStreaming(magnet)
-        if (allowMobileOnce) allowMobileForCurrentRequest()
+        startStreaming(magnet, allowMobileOnce = allowMobileOnce)
     }
 
     /** 다른 앱 링크 → 확인 → 재생/받기 흐름. ViewModel은 참여 함수만 넘긴다. */
@@ -424,7 +421,9 @@ class MainViewModel @JvmOverloads internal constructor(
         if (_activeKey.value in keys && sharedPlayback != null) stopStream()
         downloads.stop(keys)
     }
+    /** 재생을 멈춘다. 새 재생도 이것으로 시작하므로 남아 있던 모바일 데이터 확인 요청도 여기서 지운다. */
     fun stopStream() {
+        mobileGate.clear()
         val shared = sharedPlayback
         sharedPlayback = null
         if (shared != null) commands.post { shared.releasePlaybackPriority() }
