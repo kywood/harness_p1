@@ -59,7 +59,7 @@ class TorrentEngine(private val context: Context) {
     private val downloadRoot = storage.dir(TorrentStorageDir.DOWNLOADS)
     private val stateRoot = storage.dir(TorrentStorageDir.STATE)
     private val diskStore = TorrentDiskStore(listOf(downloadRoot, stateRoot))
-    private val teardown = EngineTeardown(onError = { Log.e(TAG, "Error stopping torrent engine", it) })
+    private val teardown = EngineTeardown(onError = { Log.e(TAG, "Stop failed: ${EngineFailureLog.describe(it)}") })
     var selectedVideoFile: File? = null
         private set
     var selectedFileLength: Long = 0L
@@ -148,7 +148,7 @@ class TorrentEngine(private val context: Context) {
                             .fetch(magnetUrl, downloadDir)
                     }
                 } catch (t: Throwable) {
-                    Log.e(TAG, "Error in fetchMagnet", t)
+                    Log.e(TAG, "Error in fetchMagnet: ${EngineFailureLog.describe(t)}")
                     null to null
                 }
 
@@ -161,7 +161,7 @@ class TorrentEngine(private val context: Context) {
                 val torrentInfo = try {
                     TorrentInfo.bdecode(metadataBytes)
                 } catch (t: Throwable) {
-                    Log.e(TAG, "Error in TorrentInfo.bdecode", t)
+                    Log.e(TAG, "Error in TorrentInfo.bdecode: ${EngineFailureLog.describe(t)}")
                     null
                 }
 
@@ -260,7 +260,7 @@ class TorrentEngine(private val context: Context) {
                 try {
                     handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
                 } catch (t: Throwable) {
-                    Log.e(TAG, "Error setting sequential download flag", t)
+                    Log.e(TAG, "Error setting sequential download flag: ${EngineFailureLog.describe(t)}")
                     onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
                     return@Thread
                 }
@@ -289,7 +289,7 @@ class TorrentEngine(private val context: Context) {
                     }
                     handle.piecePriority(lastPieceIndex, Priority.TOP_PRIORITY)
                 } catch (t: Throwable) {
-                    Log.e(TAG, "Error setting piece priorities", t)
+                    Log.e(TAG, "Error setting piece priorities: ${EngineFailureLog.describe(t)}")
                     onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
                     return@Thread
                 }
