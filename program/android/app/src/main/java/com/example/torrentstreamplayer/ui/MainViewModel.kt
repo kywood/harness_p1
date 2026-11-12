@@ -344,6 +344,7 @@ class MainViewModel @JvmOverloads internal constructor(
             }
         },
         isPlaybackActive = { _uiState.value !is StreamUiState.Idle && _uiState.value !is StreamUiState.Error },
+        // Wi-Fi 전용 확인은 playFromMain 안([needsMobileConfirm] → [mobilePlaybackConfirm])에서 한다.
         startPlayback = { link -> playFromMain(link) },
         saveLink = { link -> queueDownload(link) },
     )
