@@ -27,7 +27,7 @@ import com.example.torrentstreamplayer.BuildConfig
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.data.AppSettings
 import com.example.torrentstreamplayer.ui.LegalFooterPolicy
-import com.example.torrentstreamplayer.ui.LegalLink
+import com.example.torrentstreamplayer.ui.LegalLinkActions
 import com.example.torrentstreamplayer.ui.components.AppTopBar
 import com.example.torrentstreamplayer.ui.components.SectionHeader
 import com.example.torrentstreamplayer.ui.components.SettingsLinkItem
@@ -61,9 +61,12 @@ internal fun SettingsScreen(
     val browserUnavailable = stringResource(R.string.error_browser_unavailable)
     val saveFailedText = stringResource(R.string.settings_save_failed)
     var showUsageGuide by rememberSaveable { mutableStateOf(false) }
-    val openBrowser: (String) -> Unit = { url ->
-        if (!openExternal(url)) scope.launch { snackbar.showSnackbar(browserUnavailable) }
-    }
+    val linkActions = LegalLinkActions(
+        openUsageGuide = { showUsageGuide = true },
+        openExternal = { url -> if (!openExternal(url)) scope.launch { snackbar.showSnackbar(browserUnavailable) } },
+        openLicenses = onOpenLicenses,
+        privacyOptions = onPrivacyOptions
+    )
     BackHandler(onBack = onBack)
     LaunchedEffect(saveFailed) {
         if (!saveFailed) return@LaunchedEffect
@@ -92,7 +95,7 @@ internal fun SettingsScreen(
                         onCheckedChange = onWifiOnlyChange
                     )
                     // TODO(#128): InlineNotice(개발자 B의 공용 컴포넌트)가 main에 들어오면 여기에
-                    //  SettingsNoticePolicy.showsWifiPaused(...)일 때 settings_wifi_paused_notice를 붙인다.
+                    //  viewModel.waitsForWifi가 true일 때 settings_wifi_paused_notice를 붙인다.
 
                     SectionHeader(stringResource(R.string.settings_section_playback))
                     SettingsSwitchItem(
@@ -103,14 +106,8 @@ internal fun SettingsScreen(
                     )
 
                     SectionHeader(stringResource(R.string.settings_section_about))
-                    LegalFooterPolicy.links(consentOptionsAvailable = onPrivacyOptions != null).forEach { link ->
-                        val url = link.url?.let { stringResource(it) }
-                        val onClick: () -> Unit = when (link) {
-                            LegalLink.USAGE_GUIDE -> { { showUsageGuide = true } }
-                            LegalLink.PRIVACY_POLICY -> { { url?.let(openBrowser) } }
-                            LegalLink.OPEN_SOURCE_LICENSES -> onOpenLicenses
-                            LegalLink.AD_PRIVACY -> onPrivacyOptions ?: return@forEach
-                        }
+                    linkActions.links.forEach { link ->
+                        val onClick = linkActions.actionFor(link, link.url?.let { stringResource(it) }) ?: return@forEach
                         SettingsLinkItem(stringResource(link.label), external = link.external, onClick = onClick)
                     }
                     LegalFooterPolicy.versionLabel(BuildConfig.VERSION_NAME)?.let { version ->

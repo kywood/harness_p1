@@ -226,6 +226,13 @@ class MainViewModel @JvmOverloads internal constructor(
     internal val settings: StateFlow<AppSettings> get() = settingsRepository.settings
     /** 지금 연결 종류(Wi-Fi / 모바일 / 데이터 절약 / 없음). 설정 화면 안내 줄에 쓴다. */
     internal val connection: StateFlow<ConnectionType> get() = connections.connection
+
+    /** 지금 새 다운로드가 "Wi-Fi 대기"로 멈추면 true([WifiWaitPolicy]). 설정 안내 줄과 재생 목록 스낵바가 쓴다. */
+    internal val waitsForWifi: StateFlow<Boolean> by lazy {
+        combine(settingsRepository.settings, connections.connection) { saved, connection ->
+            WifiWaitPolicy.waitsForWifi(saved.wifiOnly, connection)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    }
     private val mobileGate = MobilePlaybackGate()
 
     /**

@@ -67,17 +67,21 @@ internal fun AppRoot(
                         onPrivacyOptions = onPrivacyOptions,
                         saveFailed = saveFailed, onSaveFailedShown = viewModel::consumeSettingsSaveFailed)
                 }
-                AppScreen.Playlist -> MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
-                    onPlay = viewModel::playFromPlaylist,
-                    onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
-                    onStopDownload = viewModel::stopDownloads, downloadJobs = downloadJobs,
-                    onStopItem = viewModel::stopDownload, onStopItems = viewModel::stopDownloads,
-                    downloadError = downloadError,
-                    simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
-                    downloadCount = downloadJobs.values.count { it.phase == DownloadPhase.RUNNING },
-                    sort = playlistSort, onSortChange = { playlistSort = it },
-                    filter = playlistFilter, onFilterChange = { playlistFilter = it },
-                    onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition)
+                AppScreen.Playlist -> {
+                    val waitsForWifi by viewModel.waitsForWifi.collectAsState()
+                    MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
+                        onPlay = viewModel::playFromPlaylist,
+                        onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
+                        onStopDownload = viewModel::stopDownloads, downloadJobs = downloadJobs,
+                        onStopItem = viewModel::stopDownload, onStopItems = viewModel::stopDownloads,
+                        downloadError = downloadError,
+                        simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
+                        downloadCount = downloadJobs.values.count { it.phase == DownloadPhase.RUNNING },
+                        sort = playlistSort, onSortChange = { playlistSort = it },
+                        filter = playlistFilter, onFilterChange = { playlistFilter = it },
+                        onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition,
+                        waitsForWifi = waitsForWifi)
+                }
                 is AppScreen.Main -> MagnetLinkInputScreen(
                     onStartStream = viewModel::playFromMain,
                     errorMessage = current.errorMessage,

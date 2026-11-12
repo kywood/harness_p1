@@ -27,6 +27,8 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -86,7 +88,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     filter: PlaylistFilter = PlaylistFilter.ALL, onFilterChange: (PlaylistFilter) -> Unit = {},
     downloadJobs: Map<String, DownloadEntry> = emptyMap(), onStopItem: (String) -> Unit = {},
     onStopItems: ((Set<String>) -> Unit)? = null, onAddDownload: (() -> Unit)? = null,
-    onResetPosition: (suspend (String) -> Unit)? = null) {
+    onResetPosition: (suspend (String) -> Unit)? = null, waitsForWifi: Boolean = false) {
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
     var selected by remember { mutableStateOf(emptySet<String>()) }
@@ -112,6 +114,13 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     val refreshing = activeKey != null || summary.hasLiveJobs
     val jobIdentity = downloadJobs.values.joinToString { it.key + it.phase.name }
     val loadErrorText = stringResource(R.string.playlist_load_error)
+    val snackbar = remember { SnackbarHostState() }
+    val waitingForWifiText = stringResource(R.string.info_waiting_for_wifi)
+    // 다운로드 버튼: Wi-Fi 전용 + 모바일 데이터면 작업은 바로 Wi-Fi 대기로 들어가고 그 사실을 스낵바로 알린다.
+    val startDownloads: (List<String>) -> Unit = { magnets ->
+        magnets.forEach(onDownload)
+        if (magnets.isNotEmpty() && waitsForWifi) scope.launch { snackbar.showSnackbar(waitingForWifiText) }
+    }
     BackHandler { if (!bulkBusy) onBack() }
     LaunchedEffect(visibleEntries) { selected = selected.intersect(visibleEntries.map { it.magnet }.toSet()) }
     LaunchedEffect(refresh, activeKey, jobIdentity) {
@@ -168,7 +177,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                             deleteLabel = stringResource(R.string.action_delete)) { enabled ->
                             TextAction(stringResource(if (stoppable.isEmpty()) R.string.action_download else R.string.action_stop),
                                 enabled = enabled && !bulkBusy && (stoppable.isNotEmpty() || targets.isNotEmpty()), onClick = {
-                                if (stoppable.isEmpty()) targets.forEach { onDownload(it.magnet) }
+                                if (stoppable.isEmpty()) startDownloads(targets.map { it.magnet })
                                 else {
                                     val keys = stoppable.filter { it in downloadJobs }.toSet()
                                     if (onStopItems != null) onStopItems(keys) else keys.forEach(onStopItem)
@@ -205,7 +214,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                         onPlay = { onPlay(entry.magnet) },
                         onDownloadAction = {
                             if ((active || task?.phase?.stoppable == true) && task != null) onStopItem(key)
-                            else if (active) onStopDownload() else onDownload(entry.magnet)
+                            else if (active) onStopDownload() else startDownloads(listOf(entry.magnet))
                         },
                         onDelete = { deleting = entry },
                         onResetPosition = onResetPosition?.let { reset -> {
@@ -223,6 +232,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                     )
                 }
             }
+            SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
         }
     }
     deleting?.let { entry ->

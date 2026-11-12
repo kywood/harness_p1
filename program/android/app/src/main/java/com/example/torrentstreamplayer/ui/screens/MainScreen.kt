@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.ui.LegalFooterPolicy
 import com.example.torrentstreamplayer.ui.LegalLink
+import com.example.torrentstreamplayer.ui.LegalLinkActions
 import com.example.torrentstreamplayer.ui.components.LinkTextField
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
 import com.example.torrentstreamplayer.ui.components.SecondaryButton
@@ -83,7 +84,7 @@ internal fun MagnetLinkInputScreen(
     val openExternal = rememberExternalLinkOpener()
     val browserUnavailable = stringResource(R.string.error_browser_unavailable)
     var showUsageGuide by rememberSaveable { mutableStateOf(false) }
-    val footerActions = FooterActions(
+    val footerActions = LegalLinkActions(
         openUsageGuide = { showUsageGuide = true },
         openExternal = { url -> if (!openExternal(url)) scope.launch { snackbar.showSnackbar(browserUnavailable) } },
         openLicenses = onOpenLicenses,
@@ -192,21 +193,13 @@ private fun ShortcutCard(icon: ImageVector, title: String, hint: String, onClick
     }
 }
 
-/** 하단 링크가 부르는 동작. [privacyOptions]는 동의 필요 지역에서만 있다. */
-private class FooterActions(
-    val openUsageGuide: () -> Unit,
-    val openExternal: (String) -> Unit,
-    val openLicenses: () -> Unit,
-    val privacyOptions: (() -> Unit)?
-)
-
 /**
  * 메인 하단 법적 진입점(`design/specs/main-legal-footer.md`): 저작권 안내 한 줄, 링크 묶음, 버전.
  * 아래 여백은 바깥 스크롤의 `Spacing.xl`이 맡는다(배너와 24dp 이상, 잘못 누르기 방지).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Footer(versionName: String?, actions: FooterActions) {
+private fun Footer(versionName: String?, actions: LegalLinkActions) {
     // 바깥 Column의 spacedBy(lg)에 더해 바로가기 카드와 Spacing.xl만큼 띄운다.
     Column(
         Modifier.fillMaxWidth().padding(top = Spacing.xl - Spacing.lg),
@@ -215,7 +208,7 @@ private fun Footer(versionName: String?, actions: FooterActions) {
     ) {
         Text(stringResource(R.string.main_rights_notice), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
-        val links = LegalFooterPolicy.links(consentOptionsAvailable = actions.privacyOptions != null)
+        val links = actions.links
         FlowRow(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -235,14 +228,8 @@ private fun Footer(versionName: String?, actions: FooterActions) {
 }
 
 @Composable
-private fun FooterLink(link: LegalLink, actions: FooterActions) {
-    val url = link.url?.let { stringResource(it) }
-    val onClick: () -> Unit = when (link) {
-        LegalLink.USAGE_GUIDE -> actions.openUsageGuide
-        LegalLink.PRIVACY_POLICY -> { { url?.let(actions.openExternal) } }
-        LegalLink.OPEN_SOURCE_LICENSES -> actions.openLicenses
-        LegalLink.AD_PRIVACY -> actions.privacyOptions ?: return
-    }
+private fun FooterLink(link: LegalLink, actions: LegalLinkActions) {
+    val onClick = actions.actionFor(link, link.url?.let { stringResource(it) }) ?: return
     TextAction(
         text = stringResource(link.label),
         onClick = onClick,

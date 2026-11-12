@@ -5,7 +5,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.IOException
 
 class SettingsRepositoryTest {
     private class MemoryStore(var bytes: ByteArray? = null) : SettingsStore {
@@ -50,6 +52,19 @@ class SettingsRepositoryTest {
         val writes = store.writes
         repository.update { it }
         assertEquals(writes, store.writes)
+    }
+
+    @Test fun failedSaveKeepsThePreviousValueInMemoryAndOnDisk() = runBlocking {
+        val saved = AppSettingsCodec.encode(AppSettings(wifiOnly = false))
+        val store = object : SettingsStore {
+            override fun read(): ByteArray = saved
+            override fun write(bytes: ByteArray) = throw IOException("disk full")
+        }
+        val repository = SettingsRepository(store, Dispatchers.Unconfined)
+        val failure = runCatching { repository.update { it.copy(wifiOnly = true) } }.exceptionOrNull()
+        assertTrue(failure is IOException)
+        assertEquals(AppSettings(wifiOnly = false), repository.settings.value)
+        assertEquals(AppSettingsCodec.decode(store.read()), repository.settings.value)
     }
 
     @Test fun emptyStoreLoadsDefaults() = runBlocking {

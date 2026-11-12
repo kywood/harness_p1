@@ -205,6 +205,7 @@
     <string name="settings_save_failed">설정을 저장하지 못했습니다. 다시 눌러 주세요.</string>
     <string name="status_wifi_waiting">Wi-Fi 대기</string>
     <string name="playlist_summary_wifi_waiting">Wi-Fi 대기 %1$d개</string>
+    <string name="info_waiting_for_wifi">Wi-Fi에 연결되면 받기 시작합니다.</string>
     <string name="mobile_play_confirm_title">이번만 모바일 데이터로 재생할까요?</string>
     <string name="mobile_play_confirm_message">Wi-Fi 전용이 켜져 있습니다. 영상 크기만큼 모바일 데이터를 쓸 수 있습니다.</string>
     <string name="action_play_once">이번만 재생</string>

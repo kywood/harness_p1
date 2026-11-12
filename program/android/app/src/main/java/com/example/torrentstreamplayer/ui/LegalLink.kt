@@ -24,6 +24,30 @@ internal enum class LegalLink(
     val external: Boolean get() = url != null
 }
 
+/**
+ * 법적 링크가 부르는 동작. 메인 하단 묶음과 설정의 "정보" 묶음이 같은 연결을 쓴다(링크 ↔ 동작 연결은 [actionFor] 한 곳).
+ *
+ * @param openExternal 외부 브라우저로 주소를 연다(실패 안내는 부르는 화면이 맡는다).
+ * @param privacyOptions 광고 개인정보 설정. 동의가 필요한 지역에서만 있다.
+ */
+internal class LegalLinkActions(
+    val openUsageGuide: () -> Unit,
+    val openExternal: (String) -> Unit,
+    val openLicenses: () -> Unit,
+    val privacyOptions: (() -> Unit)?,
+) {
+    /** 보일 링크를 순서대로([LegalFooterPolicy.links]). */
+    val links: List<LegalLink> get() = LegalFooterPolicy.links(consentOptionsAvailable = privacyOptions != null)
+
+    /** [link]를 눌렀을 때의 동작. [url]은 [LegalLink.url]을 읽은 주소다. 동작이 없으면(동의 불필요 지역) null. */
+    fun actionFor(link: LegalLink, url: String?): (() -> Unit)? = when (link) {
+        LegalLink.USAGE_GUIDE -> openUsageGuide
+        LegalLink.PRIVACY_POLICY -> url?.let { address -> { openExternal(address) } }
+        LegalLink.OPEN_SOURCE_LICENSES -> openLicenses
+        LegalLink.AD_PRIVACY -> privacyOptions
+    }
+}
+
 /** 메인 하단 묶음에 무엇을 보일지 정한다. */
 internal object LegalFooterPolicy {
     /** 보일 링크를 순서대로. 광고 개인정보 설정은 UMP 옵션 창이 있을 때(동의 필요 지역)만. */
