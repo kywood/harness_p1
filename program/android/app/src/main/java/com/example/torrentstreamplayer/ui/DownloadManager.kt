@@ -2,7 +2,8 @@ package com.example.torrentstreamplayer.ui
 import com.example.torrentstreamplayer.engine.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-internal enum class DownloadPhase { QUEUED, RUNNING, COMPLETE, FAILED }
+/** [WAITING_FOR_WIFI]: stopped by the Wi-Fi only rule ([DownloadNetworkPolicy]); queued again when it allows. */
+internal enum class DownloadPhase { QUEUED, RUNNING, COMPLETE, FAILED, WAITING_FOR_WIFI }
 internal data class DownloadEntry(val key: String, val phase: DownloadPhase = DownloadPhase.QUEUED,
     val snapshot: DownloadSnapshot? = null, val speed: Long = 0, val error: String? = null)
 internal object DownloadQueuePlan {
@@ -19,6 +20,9 @@ internal class DownloadManager(private val scope: CoroutineScope,
     private val nodes = linkedMapOf<String, Node>()
     private val retired = java.util.concurrent.CopyOnWriteArrayList<DownloadController>()
     private val borrowed = mutableSetOf<String>()
+    /** Keys the user allowed on mobile data this time; kept until the task is stopped. */
+    private val allowedOnce = mutableSetOf<String>()
+    private var network = NetworkConditions()
     private val mutableTasks = MutableStateFlow<Map<String, DownloadEntry>>(emptyMap())
     val tasks = mutableTasks.asStateFlow()
     private val mutableError = MutableStateFlow<String?>(null)
@@ -44,7 +48,7 @@ internal class DownloadManager(private val scope: CoroutineScope,
         nodes.remove(key)?.let { retire(it) }
         mutableError.value = null
         nodes[key] = Node(magnet, createController())
-        update(DownloadEntry(key))
+        update(DownloadEntry(key, if (mayRun(key)) DownloadPhase.QUEUED else DownloadPhase.WAITING_FOR_WIFI))
         pump()
     }
     private fun pump() { DownloadQueuePlan.ready(tasks.value.values, limit).forEach { launch(it) } }
@@ -66,11 +70,15 @@ internal class DownloadManager(private val scope: CoroutineScope,
                 }
         }
     }
+    /**
+     * Lends [key]'s engine to playback. A borrowed task is never stopped for Wi-Fi only (stopping it would end
+     * playback with an error); the caller asks before starting playback on mobile data ([DownloadNetworkPolicy]).
+     */
     fun borrow(key: String): TorrentEngine? {
         val phase = tasks.value[key]?.phase ?: return null
-        if (phase != DownloadPhase.RUNNING && phase != DownloadPhase.QUEUED) return null
+        if (phase !in listOf(DownloadPhase.RUNNING, DownloadPhase.QUEUED, DownloadPhase.WAITING_FOR_WIFI)) return null
         borrowed.add(key)
-        if (phase == DownloadPhase.QUEUED) {
+        if (phase != DownloadPhase.RUNNING) {
             if (tasks.value.values.count { it.phase == DownloadPhase.RUNNING } >= limit) {
                 val victim = tasks.value.values.lastOrNull { it.phase == DownloadPhase.RUNNING && it.key !in borrowed }
                 if (victim != null) pause(victim.key)
@@ -79,13 +87,46 @@ internal class DownloadManager(private val scope: CoroutineScope,
         }
         return nodes[key]?.controller?.engine
     }
-    private fun pause(key: String) {
+    private fun pause(key: String, phase: DownloadPhase = DownloadPhase.QUEUED) {
         val node = nodes[key] ?: return
         node.watcher?.cancel(); node.controller.stop()
-        update((tasks.value[key] ?: return).copy(phase = DownloadPhase.QUEUED, speed = 0))
+        update((tasks.value[key] ?: return).copy(phase = phase, speed = 0))
     }
+    private fun mayRun(key: String) =
+        DownloadNetworkPolicy.decide(network, allowedOnce = key in allowedOnce || key in borrowed).mayRun
+
+    /**
+     * Applies new Wi-Fi only settings or a new connection: running and queued tasks that may not run wait for Wi-Fi
+     * (their engines stop through the engine queue, like any stop), waiting tasks that may run are queued again.
+     */
+    fun applyNetwork(conditions: NetworkConditions) {
+        network = conditions
+        tasks.value.values.toList().forEach { entry ->
+            val active = entry.phase == DownloadPhase.RUNNING || entry.phase == DownloadPhase.QUEUED
+            if (active && !mayRun(entry.key)) pause(entry.key, DownloadPhase.WAITING_FOR_WIFI)
+            if (entry.phase == DownloadPhase.WAITING_FOR_WIFI && mayRun(entry.key))
+                update(entry.copy(phase = DownloadPhase.QUEUED))
+        }
+        pump()
+    }
+
+    /** "이번만 허용": lets [key] use mobile data until it is stopped, even while Wi-Fi only is on. */
+    fun allowOnce(key: String) {
+        allowedOnce += key
+        tasks.value[key]?.takeIf { it.phase == DownloadPhase.WAITING_FOR_WIFI && mayRun(key) }?.let {
+            update(it.copy(phase = DownloadPhase.QUEUED))
+            pump()
+        }
+    }
+    /** Ends playback's loan. A task left running on mobile data without a one-time permission now waits for Wi-Fi. */
     fun release(key: String) {
-        if (borrowed.remove(key) && tasks.value[key]?.phase == DownloadPhase.COMPLETE) nodes[key]?.controller?.stop()
+        if (!borrowed.remove(key)) return
+        val phase = tasks.value[key]?.phase
+        if (phase == DownloadPhase.COMPLETE) nodes[key]?.controller?.stop()
+        if ((phase == DownloadPhase.RUNNING || phase == DownloadPhase.QUEUED) && !mayRun(key)) {
+            pause(key, DownloadPhase.WAITING_FOR_WIFI)
+            pump()
+        }
     }
     fun stop(key: String) {
         stop(setOf(key))
@@ -93,13 +134,14 @@ internal class DownloadManager(private val scope: CoroutineScope,
     fun stop(keys: Set<String>) {
         val removed = keys.mapNotNull { nodes.remove(it) }
         borrowed.removeAll(keys)
+        allowedOnce.removeAll(keys)
         publish(tasks.value - keys)
         removed.forEach { retire(it) }
         pump()
     }
     fun stop() {
         val previous = nodes.values.toList()
-        nodes.clear(); borrowed.clear(); publish(emptyMap()); mutableError.value = null
+        nodes.clear(); borrowed.clear(); allowedOnce.clear(); publish(emptyMap()); mutableError.value = null
         previous.forEach { retire(it) }
     }
     private fun retire(node: Node) {
