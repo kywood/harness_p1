@@ -13,7 +13,9 @@ class SubtitleFilePlanTest {
     /** Files laid out back to back like libtorrent's file storage. */
     private fun files(vararg entries: Pair<String, Long>): List<TorrentFileEntry> {
         var offset = 0L
-        return entries.mapIndexed { index, (path, size) -> TorrentFileEntry(index, path, size, offset).also { offset += size } }
+        return entries.mapIndexed { index, (path, size) ->
+            TorrentFileEntry(index, path, size, offset).also { offset += size }
+        }
     }
 
     private fun chosen(files: List<TorrentFileEntry>, videoIndex: Int = 0) =

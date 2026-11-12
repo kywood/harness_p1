@@ -19,7 +19,8 @@ internal data class SubtitleFile(
 internal object SubtitleSelectionPolicy {
     fun preferred(files: List<SubtitleFile>): SubtitleFile? {
         val pool = files.filter { it.matchesVideoName }.ifEmpty { files }
-        return SubtitleLanguage.entries.firstNotNullOfOrNull { language -> pool.firstOrNull { it.language == language } }
+        return SubtitleLanguage.entries
+            .firstNotNullOfOrNull { language -> pool.firstOrNull { it.language == language } }
             ?: pool.firstOrNull()
     }
 }

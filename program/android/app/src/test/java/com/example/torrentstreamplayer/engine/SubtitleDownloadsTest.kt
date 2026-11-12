@@ -13,7 +13,9 @@ class SubtitleDownloadsTest {
 
     private fun entries(vararg files: Pair<String, Long>): List<TorrentFileEntry> {
         var offset = 0L
-        return files.mapIndexed { index, (path, size) -> TorrentFileEntry(index, path, size, offset).also { offset += size } }
+        return files.mapIndexed { index, (path, size) ->
+            TorrentFileEntry(index, path, size, offset).also { offset += size }
+        }
     }
 
     @Test fun publishesOnlyFilesWhosePiecesAreAllVerified() {
