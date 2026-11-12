@@ -55,7 +55,7 @@ internal class TorrentStorage(private val root: File, private val legacyRoot: Fi
                 if (!migrated) {
                     runCatching { storage.migrateLegacy() }
                         .onSuccess { if (it.kept > 0) Log.w(TAG, "Kept ${it.kept} legacy entries that already exist") }
-                        .onFailure { Log.e(TAG, "Legacy storage migration failed", it) }
+                        .onFailure { Log.e(TAG, "Legacy storage migration failed: ${EngineFailureLog.describe(it)}") }
                     migrated = true
                 }
             }

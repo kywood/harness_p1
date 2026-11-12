@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.engine
 
+import com.example.torrentstreamplayer.BuildConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -60,5 +61,11 @@ class EngineFailureLogTest {
         val line = EngineFailureLog.describe(IllegalStateException(), debug = true)
         assertTrue(line.startsWith("IllegalStateException at "))
         assertTrue(line.contains("EngineFailureLogTest"))
+    }
+
+    @Test fun defaultDescribeFollowsTheBuildType() {
+        val error = IllegalStateException("Secret Film", IOException("Secret Film"))
+        assertEquals(EngineFailureLog.describe(error, BuildConfig.DEBUG), EngineFailureLog.describe(error))
+        assertFalse(EngineFailureLog.describe(error).contains("Secret"))
     }
 }
