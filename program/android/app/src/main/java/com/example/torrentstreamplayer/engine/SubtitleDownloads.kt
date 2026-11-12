@@ -44,10 +44,8 @@ internal class SubtitleDownloads {
     }
 
     @Synchronized fun select(entries: List<TorrentFileEntry>, videoIndex: Int, pieceLength: Long, downloadDir: File) {
-        val root = downloadDir.canonicalFile.toPath()
         planned = SubtitleFilePlan.select(entries, videoIndex, pieceLength).mapNotNull { candidate ->
-            File(downloadDir, candidate.path).canonicalFile.takeIf { it.toPath().startsWith(root) }
-                ?.let { candidate to it }
+            DownloadPathGuard.resolve(downloadDir, candidate.path)?.let { candidate to it }
         }
         completed.clear()
         publish()
