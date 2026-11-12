@@ -12,7 +12,7 @@ internal class TorrentInputResolver(
 ) {
     fun resolve(input: String): ResolvedTorrentInput {
         val value = input.trim()
-        require(value.length in 1..8192) { "입력 주소의 길이가 올바르지 않습니다." }
+        require(value.length in 1..NetworkSpec.MAX_LINK_CHARS) { "입력 주소의 길이가 올바르지 않습니다." }
         if (value.startsWith("magnet:", true)) return ResolvedTorrentInput(value.also(MagnetIdentity::key))
         val uri = runCatching { URI(value) }.getOrNull()
         require(uri != null && uri.scheme in listOf("http", "https") && !uri.host.isNullOrEmpty()) {

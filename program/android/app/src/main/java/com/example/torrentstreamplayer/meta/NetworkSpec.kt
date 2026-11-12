@@ -7,6 +7,9 @@ internal object NetworkSpec {
     /** The only hosts allowed to use plain HTTP: the in-app stream server on this device. */
     val CLEARTEXT_HOSTS: Set<String> = setOf("127.0.0.1", "localhost")
 
+    /** Longest magnet or `.torrent` address accepted from the user or another app. */
+    const val MAX_LINK_CHARS = 8192
+
     /** Largest `.torrent` file accepted from a link (2 MiB). */
     const val TORRENT_MAX_BYTES = 2 * 1024 * 1024
 
