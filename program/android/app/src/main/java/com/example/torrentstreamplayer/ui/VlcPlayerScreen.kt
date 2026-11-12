@@ -242,7 +242,8 @@ fun VlcPlayerScreen(
         currentTimeMs = position
         sliderPosition = position.toFloat() / totalLengthMs
     }
-    LaunchedEffect(holder, initialPositionMs) {
+    // Keyed on the player only: a changed start position must not restart the one-time resume seek.
+    LaunchedEffect(holder) {
         while (!resumeApplied && holder != null) {
             if (totalLengthMs > 0 && holder.mediaPlayer.isSeekable) {
                 resumeApplied = true

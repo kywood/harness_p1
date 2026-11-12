@@ -84,6 +84,8 @@ internal fun AppRoot(
                     // TODO(#37 이후, 디자인 4단계): 재생 화면 분리 때 엔진 대신 재생 포트를 넘긴다.
                     val engine = viewModel.torrentEngine
                     val positionWriter = remember(engine) { viewModel.playbackPositionWriter() }
+                    // Read once per player: the saved position changes every few seconds while playing.
+                    val startPositionMs = remember(engine) { viewModel.resumePositionMs }
                     VlcPlayerScreen(
                         fileName = current.fileName,
                         torrentEngine = engine,
@@ -93,7 +95,7 @@ internal fun AppRoot(
                             onPlaybackFinished(watchedMs)
                         },
                         onAddDownload = { showDownloadDialog = true },
-                        initialPositionMs = viewModel.resumePositionMs, onPositionChanged = positionWriter,
+                        initialPositionMs = startPositionMs, onPositionChanged = positionWriter,
                         onPlaybackCompleted = { watchedMs ->
                             viewModel.onPlaybackCompleted()
                             onPlaybackFinished(watchedMs)
