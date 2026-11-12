@@ -14,10 +14,8 @@ internal class TorrentInputResolver(
         val value = input.trim()
         require(value.length in 1..NetworkSpec.MAX_LINK_CHARS) { "입력 주소의 길이가 올바르지 않습니다." }
         if (value.startsWith("magnet:", true)) return ResolvedTorrentInput(value.also(MagnetIdentity::key))
-        val uri = runCatching { URI(value) }.getOrNull()
-        require(uri != null && uri.scheme in listOf("http", "https") && !uri.host.isNullOrEmpty()) {
-            "마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요."
-        }
+        val uri = webAddress(value)
+        require(uri != null) { "마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요." }
         val target = NetworkSpec.secure(uri.toURL())
         val bytes = try { fetch(target) } catch (e: java.io.IOException) {
             if (target.protocol != uri.scheme) throw IllegalArgumentException("보안 연결(HTTPS)을 지원하지 않는 주소입니다. https:// 주소를 입력하세요.", e)
@@ -34,6 +32,9 @@ internal class TorrentInputResolver(
     class InvalidTorrentFileException(cause: Throwable) : IllegalArgumentException("Unreadable torrent file", cause)
     companion object {
         const val MAX_BYTES = NetworkSpec.TORRENT_MAX_BYTES
+        /** [value] as an http(s) address with a host, the only kind [resolve] downloads; otherwise null. */
+        fun webAddress(value: String): URI? = runCatching { URI(value) }.getOrNull()
+            ?.takeIf { it.scheme in listOf("http", "https") && !it.host.isNullOrEmpty() }
         private fun download(initial: URL): ByteArray {
             var url = initial
             repeat(NetworkSpec.TORRENT_MAX_REQUESTS) {
