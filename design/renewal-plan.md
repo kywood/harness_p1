@@ -86,7 +86,12 @@
 | `TextAction` | 어두운 표면 위 글자 버튼. 기본 `primaryLight`, 삭제는 `error`, 덜 중요한 동작은 `onSurfaceVariant` (#47) |
 | `LinkTextField` | 마그넷·.torrent 링크 입력창. 메인 입력 카드와 링크 추가 대화상자가 같이 쓴다 (#47) |
 | `InlineNotice` (예정, #72) | 카드 안 안내 줄: `surfaceContainer` + 정보 아이콘 + 문장 + 선택 글자 버튼. 준비 화면 피어 0명 안내부터 (`design/specs/error-recovery.md`) |
-| `AppBottomSheet` (예정, #72) | 공용 하단 시트(`surface`, 최대 폭 600dp). 이용 안내 시트와 재생 화면 더보기 시트가 같이 쓴다 (`design/specs/usage-guide.md`) |
+| `AppBottomSheet` (#72) | 공용 하단 시트(`surface`, 최대 폭 600dp). 이용 안내 시트, 재생 화면 더보기 시트, 자막·음성 시트, 링크 확인 시트가 같이 쓴다 (`design/specs/usage-guide.md`) |
+| `SectionHeader` (예정, #125·#128) | 시트·설정 화면 묶음 제목: `titleSmall` `onSurfaceVariant` + heading (`design/specs/subtitles.md`, `settings-wifi.md`) |
+| `RadioListItem` (예정, #125) | 행 전체가 누르는 영역인 라디오 행, 선택 태그(`파일`·`받는 중`) 슬롯 (`design/specs/subtitles.md`) |
+| `SettingsSwitchItem`·`SettingsLinkItem` (예정, #128) | 설정 화면 행. 스위치 끔 테두리는 `onSurfaceVariant`(`outline`은 대비 미달) (`design/specs/settings-wifi.md`) |
+| `StatusChip` 변경 (예정, #128) | `icon` 인자와 `StatusTone.WAITING_WIFI`("Wi-Fi 대기", `ic_wifi`) |
+| `PlayerNoticeChip` (예정, #125, 재생 화면 전용) | 왼쪽 아래 2.5초 알림 칩(`PlaybackColors.Panel` + `OnVideo`). 자막 자동 선택 알림, 이어보기 칩 |
 
 ## 6. 화면별 변경
 
