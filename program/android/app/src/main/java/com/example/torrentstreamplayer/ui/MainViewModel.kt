@@ -89,7 +89,16 @@ class MainViewModel @JvmOverloads internal constructor(
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { playlist.add(it) }; Unit },
         { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit },
-        describeFailure = { InputFailureText.message(it, application) }) })
+        describeFailure = { InputFailureText.message(it, application) }) }, onTaskAdded = ::saveQueuedLink)
+
+    /** 대기열·Wi-Fi 대기 작업도 재생 목록에 바로 보이게 기록한다. 작업이 시작되면 컨트롤러가 다시 기록해도 같다. */
+    private fun saveQueuedLink(magnet: String) {
+        viewModelScope.launch {
+            try { withContext(Dispatchers.IO) { playlist.add(magnet) } }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { Log.w("Playlist", "Unable to save: ${EngineFailureLog.describe(failure)}") }
+        }
+    }
     /** Stopped downloads may still be writing their files; waits for them on [Dispatchers.IO] before deleting. */
     suspend fun deleteStoredFile(path: String): Boolean {
         val writers = withContext(Dispatchers.Main.immediate) {

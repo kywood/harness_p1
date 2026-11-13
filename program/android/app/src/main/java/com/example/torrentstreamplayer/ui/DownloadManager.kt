@@ -32,8 +32,14 @@ internal object DownloadQueuePlan {
         return entries.filter { it.phase == DownloadPhase.QUEUED }.take(slots).map { it.key }
     }
 }
+/**
+ * @param onTaskAdded called with the magnet each time [start] adds a task, before it may run. A task that waits in the
+ * queue or for Wi-Fi has not started its controller (which saves the link), so the playlist records it here; without
+ * this a 4th download had no playlist card until a slot freed up.
+ */
 internal class DownloadManager(private val scope: CoroutineScope,
-    private val createController: () -> DownloadController, private val limit: Int = 3) {
+    private val createController: () -> DownloadController, private val limit: Int = 3,
+    private val onTaskAdded: (String) -> Unit = {}) {
     init { require(limit in 1..8) }
     private class Node(val magnet: String, val controller: DownloadController, var watcher: Job? = null)
     private val nodes = linkedMapOf<String, Node>()
@@ -81,6 +87,7 @@ internal class DownloadManager(private val scope: CoroutineScope,
         mutableError.value = null
         nodes[key] = Node(magnet, createController())
         update(DownloadEntry(key, if (mayRun(key)) DownloadPhase.QUEUED else DownloadPhase.WAITING_FOR_WIFI))
+        onTaskAdded(magnet)
         pump()
     }
     private fun pump() { DownloadQueuePlan.ready(tasks.value.values, limit).forEach { launch(it) } }

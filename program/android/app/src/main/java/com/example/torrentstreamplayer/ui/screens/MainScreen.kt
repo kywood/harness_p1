@@ -1,6 +1,8 @@
 package com.example.torrentstreamplayer.ui.screens
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,10 +10,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,14 +36,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -51,8 +56,8 @@ import com.example.torrentstreamplayer.ui.LegalLink
 import com.example.torrentstreamplayer.ui.LegalLinkActions
 import com.example.torrentstreamplayer.ui.MainInputFill
 import com.example.torrentstreamplayer.ui.components.LinkTextField
+import com.example.torrentstreamplayer.ui.components.PasteButton
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
-import com.example.torrentstreamplayer.ui.components.SecondaryButton
 import com.example.torrentstreamplayer.ui.components.SectionCard
 import com.example.torrentstreamplayer.ui.components.TextAction
 import com.example.torrentstreamplayer.ui.components.TextActionTone
@@ -60,7 +65,7 @@ import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * 메인: 링크를 넣고 바로 재생하거나 재생 목록·저장 파일 관리로 간다.
@@ -88,8 +93,14 @@ internal fun MagnetLinkInputScreen(
         }
     }
     val context = LocalContext.current
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
+    val inputArea = remember { BringIntoViewRequester() }
+    var inputFocused by remember { mutableStateOf(false) }
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    // 키보드가 올라오는 동안 화면이 줄어드니, 높이가 바뀔 때마다 입력 카드와 [바로 재생]을 다시 보이게 한다.
+    LaunchedEffect(inputFocused) {
+        if (inputFocused) snapshotFlow { ime.getBottom(density) }.collectLatest { if (it > 0) inputArea.bringIntoView() }
+    }
     val versionName = remember(context) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
@@ -116,26 +127,22 @@ internal fun MagnetLinkInputScreen(
                     SettingsEntry(onOpenSettings)
                     BrandHeader()
                 }
-                SectionCard {
-                    LinkTextField(magnetLink, { magnetLink = it }, errorMessage)
-                    SecondaryButton(
-                        text = stringResource(R.string.action_paste),
-                        icon = ImageVector.vectorResource(R.drawable.ic_content_paste),
-                        onClick = {
-                            scope.launch {
-                                val clip = clipboard.getClipEntry()?.clipData
-                                val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)
-                                if (!text.isNullOrBlank()) magnetLink = text.toString().trim()
-                            }
-                        },
-                        modifier = Modifier.align(Alignment.End)
+                // 입력란에 포커스가 가고 키보드가 올라오면 [바로 재생]까지 키보드 위로 올린다(#148).
+                Column(
+                    Modifier.bringIntoViewRequester(inputArea),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.lg)
+                ) {
+                    SectionCard {
+                        LinkTextField(magnetLink, { magnetLink = it }, errorMessage,
+                            modifier = Modifier.onFocusChanged { inputFocused = it.isFocused })
+                        PasteButton({ magnetLink = it }, Modifier.align(Alignment.End))
+                    }
+                    PrimaryButton(
+                        text = stringResource(R.string.action_stream_play),
+                        onClick = { onStartStream(magnetLink) },
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-                PrimaryButton(
-                    text = stringResource(R.string.action_stream_play),
-                    onClick = { onStartStream(magnetLink) },
-                    modifier = Modifier.fillMaxWidth()
-                )
                 Row(
                     Modifier.fillMaxWidth().height(IntrinsicSize.Min),
                     horizontalArrangement = Arrangement.spacedBy(Spacing.md)
