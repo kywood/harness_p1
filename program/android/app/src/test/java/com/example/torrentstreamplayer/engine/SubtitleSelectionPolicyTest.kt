@@ -37,4 +37,17 @@ class SubtitleSelectionPolicyTest {
         val otherEpisode = sub("Show E02.ko.srt", SubtitleLanguage.KOREAN, matches = false, fallback = false)
         assertNull(SubtitleSelectionPolicy.preferred(listOf(otherEpisode)))
     }
+
+    @Test fun poolIsNameMatchesOrElseStandIns() {
+        val sameName = sub("Movie.en.srt", SubtitleLanguage.ENGLISH)
+        val standIn = sub("Subs/Korean.srt", SubtitleLanguage.KOREAN, matches = false)
+        val otherEpisode = sub("Show E02.ko.srt", SubtitleLanguage.KOREAN, matches = false, fallback = false)
+        assertEquals(listOf(sameName), SubtitleSelectionPolicy.pool(listOf(standIn, sameName)))
+        assertEquals(listOf(standIn), SubtitleSelectionPolicy.pool(listOf(standIn, otherEpisode)))
+    }
+
+    @Test fun fallbackIsOffUnlessTheEnginePlanAllowsIt() {
+        val unplanned = SubtitleFile(File("Subs/Korean.srt"), SubtitleLanguage.KOREAN, matchesVideoName = false)
+        assertNull(SubtitleSelectionPolicy.preferred(listOf(unplanned)))
+    }
 }

@@ -56,6 +56,8 @@ class TorrentEngine(private val context: Context) {
     private val subtitles = SubtitleDownloads()
     /** Verified subtitle files downloaded with the selected video (path, guessed language). */
     internal val subtitleFiles = subtitles.files
+    /** Chosen subtitle files still downloading. */
+    internal val pendingSubtitleFiles = subtitles.pending
     private val _activeDownload = MutableStateFlow<DownloadSnapshot?>(null)
     internal val activeDownload = _activeDownload.asStateFlow()
     private val storage = TorrentStorage.of(context)

@@ -7,6 +7,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 import java.io.IOException
 
 class SettingsRepositoryTest {
@@ -29,6 +31,20 @@ class SettingsRepositoryTest {
         assertEquals(AppSettings(), AppSettingsCodec.decode(byteArrayOf(0, 0)))
         val future = AppSettingsCodec.encode(custom).also { it[3] = (AppSettingsCodec.VERSION + 1).toByte() }
         assertEquals(AppSettings(), AppSettingsCodec.decode(future))
+    }
+
+    @Test fun subtitleLanguageRoundTripsAndVersionOneStillReads() {
+        val custom = AppSettings(autoSubtitles = false, subtitleLanguage = "en")
+        assertEquals(custom, AppSettingsCodec.decode(AppSettingsCodec.encode(custom)))
+        assertEquals(AppSettings(), AppSettingsCodec.decode(AppSettingsCodec.encode(AppSettings(subtitleLanguage = ""))))
+        val versionOne = ByteArrayOutputStream().also { bytes ->
+            DataOutputStream(bytes).use { out ->
+                out.writeInt(1)
+                out.writeBoolean(true)
+                out.writeBoolean(false)
+            }
+        }.toByteArray()
+        assertEquals(AppSettings(wifiOnly = true, autoSubtitles = false), AppSettingsCodec.decode(versionOne))
     }
 
     @Test fun updateSavesAndSurvivesANewRepository() = runBlocking {
@@ -65,6 +81,19 @@ class SettingsRepositoryTest {
         assertTrue(failure is IOException)
         assertEquals(AppSettings(wifiOnly = false), repository.settings.value)
         assertEquals(AppSettingsCodec.decode(store.read()), repository.settings.value)
+    }
+
+    @Test fun subtitleLanguageChangesOnlyAfterASuccessfulSave() = runBlocking {
+        val store = MemoryStore()
+        val repository = SettingsRepository(store, Dispatchers.Unconfined)
+        repository.update { it.copy(subtitleLanguage = "en") }
+        assertEquals("en", AppSettingsCodec.decode(store.bytes).subtitleLanguage)
+        val failing = SettingsRepository(object : SettingsStore {
+            override fun read(): ByteArray? = store.bytes
+            override fun write(bytes: ByteArray) = throw IOException("disk full")
+        }, Dispatchers.Unconfined)
+        assertTrue(runCatching { failing.update { it.copy(subtitleLanguage = "ja") } }.isFailure)
+        assertEquals("en", failing.settings.value.subtitleLanguage)
     }
 
     @Test fun emptyStoreLoadsDefaults() = runBlocking {

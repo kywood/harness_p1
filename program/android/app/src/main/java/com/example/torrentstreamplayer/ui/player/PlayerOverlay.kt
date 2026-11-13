@@ -5,6 +5,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.vectorResource
@@ -48,20 +58,27 @@ import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
 
+/** 배율 숫자 폭이 바뀌어도 칩이 흔들리지 않게 고정폭 숫자를 쓴다(시안 1절 "tnum"). */
+internal const val TABULAR_FIGURES = "tnum"
+
 /**
- * 재생 화면 위쪽: 상단 가림막 + 뒤로 · 파일 이름 · 회전 · 확대 축소 · 더보기.
- * [stats](속도 · 받은 비율 · 피어)는 가로 화면이면 같은 줄, 세로 화면이면 아래 칩으로 보인다.
+ * 재생 화면 위쪽: 상단 가림막 + 뒤로 · 파일 이름 · 자막 · 회전 · 더보기(`design/specs/subtitles.md` 1절).
+ * [stats](속도 · 받은 비율 · 피어)와 배율 칩은 가로 화면이면 같은 줄, 세로 화면이면 아래 칩 줄로 보인다.
+ *
+ * @param zoomLabel 배율이 1.0×가 아닐 때만 넘긴다. 칩을 누르면 [onZoomReset].
+ * @param subtitleLabel 켜진 자막 이름("한국어(파일)"), 꺼져 있으면 null. 켜져 있으면 아이콘이 강조색이 된다.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PlayerTopBar(
     fileName: String,
     stats: String,
-    zoomLabel: String,
+    zoomLabel: String?,
+    subtitleLabel: String?,
     landscape: Boolean,
     onBack: () -> Unit,
-    onZoomOut: () -> Unit,
+    onSubtitles: () -> Unit,
     onZoomReset: () -> Unit,
-    onZoomIn: () -> Unit,
     onMore: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -74,16 +91,28 @@ internal fun PlayerTopBar(
             OverlayIconButton(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.cd_back), onBack)
             Text(fileName, Modifier.weight(1f).padding(horizontal = Spacing.xs), color = PlaybackColors.OnVideo,
                 style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (landscape) StatsChip(stats, Modifier.padding(horizontal = Spacing.xs))
+            if (landscape) {
+                StatsChip(stats, Modifier.padding(horizontal = Spacing.xs))
+                if (zoomLabel != null) ZoomChip(zoomLabel, onZoomReset)
+            }
+            OverlayIconButton(
+                ImageVector.vectorResource(R.drawable.ic_subtitles),
+                if (subtitleLabel != null) stringResource(R.string.cd_subtitles_on, subtitleLabel)
+                else stringResource(R.string.cd_subtitles_off),
+                onSubtitles,
+                tint = if (subtitleLabel != null) PlaybackColors.Accent else PlaybackColors.OnVideo,
+            )
             VideoOrientationButton()
-            OverlayIconButton(ImageVector.vectorResource(R.drawable.ic_zoom_out), stringResource(R.string.cd_zoom_out),
-                onZoomOut)
-            SecondaryLabelButton(zoomLabel, stringResource(R.string.cd_zoom_reset), onZoomReset)
-            OverlayIconButton(ImageVector.vectorResource(R.drawable.ic_zoom_in), stringResource(R.string.cd_zoom_in),
-                onZoomIn)
             OverlayIconButton(Icons.Filled.MoreVert, stringResource(R.string.cd_more), onMore)
         }
-        if (!landscape) StatsChip(stats, Modifier.padding(start = Spacing.md, top = Spacing.xs))
+        if (!landscape) {
+            FlowRow(Modifier.padding(start = Spacing.md, top = Spacing.xs),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                itemVerticalAlignment = Alignment.CenterVertically) {
+                StatsChip(stats)
+                if (zoomLabel != null) ZoomChip(zoomLabel, onZoomReset)
+            }
+        }
     }
 }
 
@@ -149,12 +178,24 @@ internal fun PlayerTimePill(timeLabel: String, modifier: Modifier = Modifier) {
             .padding(horizontal = Spacing.sm, vertical = Spacing.xs))
 }
 
-/** 더보기 하단 시트: 링크 추가, 처음부터 재생. */
+/**
+ * 영상 왼쪽 아래에 잠깐 뜨는 알림("자막: 한국어(파일)", 시안 3절). 누를 수 없고, 나타날 때 한 번 읽힌다.
+ * 폭은 [maxWidth]까지이고 넘치면 끝을 말줄임한다.
+ */
 @Composable
-internal fun PlayerMoreSheet(onDismiss: () -> Unit, onAddLink: (() -> Unit)?, onRestart: () -> Unit) {
-    AppBottomSheet(onDismiss = onDismiss) {
-        if (onAddLink != null) SheetItem(Icons.Filled.Add, stringResource(R.string.action_add_link), onAddLink)
-        SheetItem(Icons.Filled.Refresh, stringResource(R.string.player_restart), onRestart)
+internal fun PlayerNoticeChip(text: String, icon: ImageVector?, maxWidth: Dp, modifier: Modifier = Modifier) {
+    Row(
+        modifier.widthIn(max = maxWidth).background(PlaybackColors.Panel, Shapes.pill)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = PlaybackColors.OnVideo, modifier = Modifier.size(Sizes.iconSmall))
+        }
+        Text(text, color = PlaybackColors.OnVideo, style = MaterialTheme.typography.labelLarge, maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -185,22 +226,34 @@ private fun PlayerWaitingPanel(message: String) {
 
 @Composable
 private fun StatsChip(text: String, modifier: Modifier = Modifier) {
-    Text(text, color = PlaybackColors.Accent, style = MaterialTheme.typography.labelMedium, maxLines = 1,
-        modifier = modifier.background(PlaybackColors.Chip, Shapes.pill)
+    // Panel 바탕 + OnVideo 글자: 흰 영상 위에서도 AA 대비(시안 7절, PR #131 PM 결정).
+    Text(text, color = PlaybackColors.OnVideo, style = MaterialTheme.typography.labelMedium, maxLines = 1,
+        modifier = modifier.background(PlaybackColors.Panel, Shapes.pill)
             .padding(horizontal = Spacing.md, vertical = Spacing.xs))
 }
 
+/** 배율 칩: 1.0×가 아닐 때만 보이고, 누르면 1.0×로 되돌린다. 보이는 크기보다 넓게 48dp 터치 영역을 둔다. */
 @Composable
-private fun OverlayIconButton(icon: ImageVector, description: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick) {
-        Icon(icon, contentDescription = description, tint = PlaybackColors.OnVideo, modifier = Modifier.size(Sizes.icon))
+private fun ZoomChip(label: String, onReset: () -> Unit) {
+    val description = zoomResetDescription(label)
+    Box(Modifier.minimumInteractiveComponentSize().clickable(onClick = onReset, role = Role.Button)
+        .semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
+        Text(label, color = PlaybackColors.OnVideo, maxLines = 1,
+            style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = TABULAR_FIGURES),
+            modifier = Modifier.clearAndSetSemantics {}.background(PlaybackColors.Panel, Shapes.pill)
+                .padding(horizontal = Spacing.md, vertical = Spacing.xs))
     }
 }
 
 @Composable
-private fun SecondaryLabelButton(label: String, description: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = description }) {
-        Text(label, color = PlaybackColors.OnVideo, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+private fun OverlayIconButton(
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit,
+    tint: Color = PlaybackColors.OnVideo,
+) {
+    IconButton(onClick = onClick) {
+        Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(Sizes.icon))
     }
 }
 
@@ -217,22 +270,15 @@ private fun RoundControl(
     }
 }
 
-@Composable
-private fun SheetItem(icon: ImageVector, label: String, onClick: () -> Unit) {
-    ListItem(
-        headlineContent = { Text(label, style = MaterialTheme.typography.bodyLarge) },
-        leadingContent = { Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary) },
-        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
-    )
-}
-
 @Preview(widthDp = 411, heightDp = 300)
 @Composable
 private fun PlayerOverlayPreview() {
     TorrentStreamPlayerTheme {
         Column(Modifier.background(PlaybackColors.Video)) {
-            PlayerTopBar("Big.Buck.Bunny.1080p.mkv", "↓ 1.20 MB/s · 35% · 피어 3명", "1.0×", false, {}, {}, {}, {}, {})
+            PlayerTopBar("Big.Buck.Bunny.1080p.mkv", "↓ 1.20 MB/s · 35% · 피어 3명", "1.5×", "한국어(파일)", false,
+                {}, {}, {}, {})
+            PlayerNoticeChip("자막: 한국어(파일)", ImageVector.vectorResource(R.drawable.ic_subtitles),
+                Sizes.contentMaxWidth)
             PlayerCenterControls(true, null, {}, {}, {}, Modifier.align(Alignment.CenterHorizontally))
         }
     }

@@ -29,6 +29,7 @@ import com.example.torrentstreamplayer.ui.StoredFilesScreen
 import com.example.torrentstreamplayer.ui.TestAdPolicy
 import com.example.torrentstreamplayer.ui.TestBannerAd
 import com.example.torrentstreamplayer.ui.VlcPlayerScreen
+import com.example.torrentstreamplayer.ui.player.PlayerSubtitleOptions
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 
 /**
@@ -125,7 +126,14 @@ internal fun AppRoot(
                     val positionWriter = remember(engine) { viewModel.playbackPositionWriter() }
                     // Read once per player: the saved position changes every few seconds while playing.
                     val startPositionMs = remember(engine) { viewModel.resumePositionMs }
+                    val subtitleFiles by viewModel.subtitleFiles.collectAsState()
+                    val pendingSubtitles by viewModel.pendingSubtitleFiles.collectAsState()
+                    val settings by viewModel.settings.collectAsState()
+                    val mobilePlaybackKey by viewModel.mobilePlayback.collectAsState()
                     VlcPlayerScreen(
+                        subtitleOptions = PlayerSubtitleOptions(subtitleFiles, pendingSubtitles, settings.autoSubtitles,
+                            settings.subtitleLanguage, viewModel::rememberSubtitleLanguage),
+                        mobilePlayback = mobilePlaybackKey != null,
                         fileName = current.fileName,
                         torrentEngine = engine,
                         onBackClicked = viewModel::closePlayback,

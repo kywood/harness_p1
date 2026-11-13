@@ -10,7 +10,7 @@ internal data class SubtitleFile(
     /** True when the name (or its episode folder's name) matches the video's name word for word. */
     val matchesVideoName: Boolean,
     /** True when the video is alone in its folder, so a subtitle with another name may stand in for it. */
-    val fallbackAllowed: Boolean = true,
+    val fallbackAllowed: Boolean = false,
 )
 
 /**
@@ -19,8 +19,12 @@ internal data class SubtitleFile(
  * order (Korean, then English), then the first file.
  */
 internal object SubtitleSelectionPolicy {
+    /** Files that may be shown for the video: named like it, or only when none is, the ones that may stand in. */
+    fun pool(files: List<SubtitleFile>): List<SubtitleFile> =
+        files.filter { it.matchesVideoName }.ifEmpty { files.filter { it.fallbackAllowed } }
+
     fun preferred(files: List<SubtitleFile>): SubtitleFile? {
-        val pool = files.filter { it.matchesVideoName }.ifEmpty { files.filter { it.fallbackAllowed } }
+        val pool = pool(files)
         return SubtitleLanguage.entries
             .firstNotNullOfOrNull { language -> pool.firstOrNull { it.language == language } }
             ?: pool.firstOrNull()

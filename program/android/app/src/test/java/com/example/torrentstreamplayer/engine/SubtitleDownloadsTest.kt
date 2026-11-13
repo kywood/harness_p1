@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class SubtitleDownloadsTest {
     @get:Rule val temp = TemporaryFolder()
@@ -23,13 +24,16 @@ class SubtitleDownloadsTest {
         subtitles.select(entries("v.mkv" to 250, "v.ko.srt" to 100, "v.en.srt" to 100), 0, pieceLength, temp.root)
         assertEquals(setOf(1, 2), subtitles.fileIndexes)
         assertTrue(subtitles.hasPending)
+        assertEquals(listOf("v.ko.srt", "v.en.srt"), subtitles.pending.value.map { it.name })
         // v.ko.srt spans pieces 2..3, v.en.srt spans 3..4.
         assertFalse(subtitles.track { it == 2 })
         assertTrue(subtitles.track { it in 2..3 })
         assertEquals(listOf(SubtitleLanguage.KOREAN), subtitles.files.value.map { it.language })
+        assertEquals(listOf("v.en.srt"), subtitles.pending.value.map { it.name })
         assertTrue(subtitles.hasPending)
         assertTrue(subtitles.track { true })
         assertFalse(subtitles.hasPending)
+        assertEquals(emptyList<String>(), subtitles.pending.value)
         assertFalse("nothing new", subtitles.track { true })
     }
 
@@ -57,6 +61,13 @@ class SubtitleDownloadsTest {
         restored.select(plan, 0, pieceLength, root)
         restored.restore(saved)
         assertEquals(listOf("v.ko.srt"), restored.files.value.map { it.file.name })
+        assertEquals("nothing downloads the rest without a handle", emptyList<File>(), restored.pending.value)
+
+        val unsaved = SubtitleDownloads()
+        unsaved.select(plan, 0, pieceLength, root)
+        unsaved.restore(null)
+        assertEquals(emptyList<File>(), unsaved.pending.value)
+        assertFalse(unsaved.hasPending)
 
         restored.restore(byteArrayOf(1, 2))
         restored.clear()

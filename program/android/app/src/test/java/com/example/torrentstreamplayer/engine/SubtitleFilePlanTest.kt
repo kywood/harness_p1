@@ -38,8 +38,15 @@ class SubtitleFilePlanTest {
 
     @Test fun skipsUnrelatedFoldersTooDeepFoldersAndNamesWithoutMarkers() {
         val torrent = files("Show/E01.mkv" to 500_000_000, "Other/E01.srt" to 1_000,
-            "Show/Subs/E01/Extra/E01.srt" to 1_000, "Show/Extras/E01.srt" to 1_000, "Show/commentary.srt" to 1_000)
+            "Show/Subs/E01/Extra/E01.srt" to 1_000, "Show/Extras/E01.srt" to 1_000, "Show/commentary.srt" to 1_000, "Show/trivia.srt" to 1_000)
         assertEquals(emptyList<String>(), chosen(torrent))
+    }
+
+    @Test fun aLoneVideosOnlySubtitleIsTakenWithoutALanguageMarker() {
+        val lone = files("M/Movie.mkv" to 500_000_000, "M/Subs/subtitle.srt" to 1_000)
+        assertEquals(listOf("M/Subs/subtitle.srt"), chosen(lone))
+        val pack = files("S/Show E1.mkv" to 500_000_000, "S/Show E2.mkv" to 500_000_000, "S/subtitle.srt" to 1_000)
+        assertEquals("not in a season pack", emptyList<String>(), chosen(pack))
     }
 
     @Test fun searchesTwoFoldersDownAndMatchesTheEpisodeFolderName() {
@@ -93,6 +100,88 @@ class SubtitleFilePlanTest {
     @Test fun piecesCoverTheWholeSubtitleFile() {
         val torrent = files("v.mkv" to pieceLength * 2 - 10, "v.srt" to 20)
         assertEquals(1..2, SubtitleFilePlan.select(torrent, 0, pieceLength).single().pieces)
+    }
+
+    @Test fun aSmallerEpisodeNextToALargeSpecialStillMakesASeasonPack() {
+        val torrent = files("S/Show.S01E00.Special.mkv" to 4_000_000_000, "S/Show.S01E01.mkv" to 900_000_000,
+            "S/Show.S01E01.ko.srt" to 10)
+        assertFalse(SubtitleFilePlan.select(torrent, 0, pieceLength).any { it.fallbackAllowed })
+        assertEquals(emptyList<String>(), chosen(torrent))
+    }
+
+    @Test fun oneLargeExtraNextToAMovieIsNotASeasonPack() {
+        val torrent = files("M/Movie.mkv" to 4_000_000_000, "M/Behind.The.Scenes.mkv" to 1_200_000_000,
+            "M/Subs/Korean.srt" to 10)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("M/Subs/Korean.srt"), plan.map { it.path })
+        assertTrue(plan.single().fallbackAllowed)
+    }
+
+    @Test fun seasonPacksKeepSubtitlesNamedExactlyLikeTheVideo() {
+        val anime = files("S/[Grp] Show - 01 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 02 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 03 [1080p].mkv" to 500_000_000, "S/[Grp] Show - 01 [1080p].ass" to 10,
+            "S/[Grp] Show - 02 [1080p].ass" to 10)
+        assertEquals(listOf("S/[Grp] Show - 01 [1080p].ass"), chosen(anime))
+        val drama = files("D/드라마 1회.mp4" to 500_000_000, "D/드라마 2회.mp4" to 500_000_000,
+            "D/드라마 3회.mp4" to 500_000_000, "D/드라마 1회.smi" to 10, "D/드라마.smi" to 10)
+        assertEquals(listOf("D/드라마 1회.smi"), chosen(drama))
+    }
+
+    @Test fun resolutionWordsAreCutEvenWithoutAnEpisodeMarker() {
+        val anime = files("S/[Grp] Show - 01 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 02 [1080p].mkv" to 500_000_000, "S/[Grp] Show - 03 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 01.ass" to 10, "S/[Grp] Show - 02.ass" to 10)
+        assertEquals(listOf("S/[Grp] Show - 01.ass"), chosen(anime))
+        val drama = files("D/드라마 1회 720p.mp4" to 500_000_000, "D/드라마 2회 720p.mp4" to 500_000_000,
+            "D/드라마 3회 720p.mp4" to 500_000_000, "D/드라마 1회.smi" to 10, "D/드라마 2회.smi" to 10)
+        assertEquals(listOf("D/드라마 1회.smi"), chosen(drama))
+    }
+
+    @Test fun releaseWordsInTheTitleItselfAreKept() {
+        val pack = files("S/Web.of.Lies.S01E01.1080p.mkv" to 500_000_000,
+            "S/Web.of.Lies.S01E02.1080p.mkv" to 500_000_000,
+            "S/Web.of.Lies.S01E01.ko.srt" to 10, "S/Web.of.Lies.S01E02.ko.srt" to 10, "S/Lies.S01E01.ko.srt" to 10)
+        assertEquals(listOf("S/Web.of.Lies.S01E01.ko.srt"), chosen(pack))
+        val movie = files("M/Charlottes.Web.2006.WEB.mkv" to 500_000_000, "M/Charlottes.Web.2006.srt" to 10)
+        assertTrue(SubtitleFilePlan.select(movie, 0, pieceLength).single().matchesVideoName)
+    }
+
+    @Test fun aSmallExtraWithAnEpisodeMarkerDoesNotMakeASeasonPack() {
+        val torrent = files("M/Movie.2020.1080p.mkv" to 2_000_000_000, "M/Featurettes.E01.mkv" to 50_000_000,
+            "M/Movie.2020.1080p.ko.srt" to 10)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("M/Movie.2020.1080p.ko.srt"), plan.map { it.path })
+        assertTrue(plan.single().fallbackAllowed)
+    }
+
+    @Test fun aSampleOfTheSameEpisodeIsNotAnotherEpisode() {
+        val torrent = files("S/Show.S01E01.mkv" to 900_000_000, "S/Show.S01E01.sample.mkv" to 30_000_000,
+            "S/Korean.srt" to 10)
+        assertEquals(listOf("S/Korean.srt"), chosen(torrent))
+    }
+
+    @Test fun threeLargeVideosWithoutMarkersAreASeasonPack() {
+        val torrent = files("S/Show 01.mkv" to 500_000_000, "S/Show 02.mkv" to 500_000_000,
+            "S/Show 03.mkv" to 500_000_000, "S/Korean.srt" to 10)
+        assertEquals(emptyList<String>(), chosen(torrent))
+    }
+
+    @Test fun aSeasonPackIgnoresNamesWithoutAnEpisodeMarker() {
+        val torrent = files("S/Show.S01E01.mkv" to 500_000_000, "S/Show.S01E02.mkv" to 500_000_000,
+            "S/Show.srt" to 10, "S/Subs/Show.S01E01/English.srt" to 10)
+        assertEquals(listOf("S/Subs/Show.S01E01/English.srt"), chosen(torrent))
+        val single = files("M/Show.2020.mkv" to 500_000_000, "M/Show.srt" to 10)
+        assertEquals("a lone video still matches a short name", listOf("M/Show.srt"), chosen(single))
+    }
+
+    @Test fun releaseWordsAreLeftOutOfTheNameComparison() {
+        val torrent = files("S/Show.S01E01.1080p.WEB.H264-GRP.mkv" to 500_000_000, "S/Show.S01E01.ko.srt" to 10,
+            "S/Show.S01E02.ko.srt" to 10)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("S/Show.S01E01.ko.srt"), plan.filter { it.matchesVideoName }.map { it.path })
+        assertTrue(SubtitleSpec.QUALITY_WORD.matches("2160p"))
+        assertFalse(SubtitleSpec.QUALITY_WORD.matches("show"))
     }
 
     @Test fun languageNeedsAWholeTokenForLatinMarkers() {

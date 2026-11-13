@@ -28,6 +28,12 @@ import com.example.torrentstreamplayer.ui.player.PlayerBottomPanel
 import com.example.torrentstreamplayer.ui.player.PlayerCenterControls
 import com.example.torrentstreamplayer.ui.player.PlayerErrorState
 import com.example.torrentstreamplayer.ui.player.PlayerMoreSheet
+import com.example.torrentstreamplayer.ui.player.PlayerNoticeHost
+import com.example.torrentstreamplayer.ui.player.PlayerSubtitleOptions
+import com.example.torrentstreamplayer.ui.player.PlayerSubtitleSheetHost
+import com.example.torrentstreamplayer.ui.player.rememberPlayerSubtitles
+import com.example.torrentstreamplayer.ui.player.sheetState
+import com.example.torrentstreamplayer.ui.player.trackNoticeText
 import com.example.torrentstreamplayer.ui.player.PlayerTimePill
 import com.example.torrentstreamplayer.ui.player.PlayerTopBar
 import com.example.torrentstreamplayer.ui.theme.PlaybackColors
@@ -38,6 +44,7 @@ import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.util.Locale
 import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.BuildConfig
 import com.example.torrentstreamplayer.R
 
 private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
@@ -79,12 +86,14 @@ private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VlcPlayerScreen(
+internal fun VlcPlayerScreen(
     fileName: String,
     torrentEngine: TorrentEngine,
     onBackClicked: () -> Unit, onAddDownload: (() -> Unit)? = null,
     initialPositionMs: Long = 0, onPositionChanged: (Long, Long) -> Unit = { _, _ -> },
-    onPlaybackCompleted: (Long) -> Unit = {}, onPlaybackExited: ((Long) -> Unit)? = null
+    onPlaybackCompleted: (Long) -> Unit = {}, onPlaybackExited: ((Long) -> Unit)? = null,
+    subtitleOptions: PlayerSubtitleOptions = PlayerSubtitleOptions(),
+    mobilePlayback: Boolean = false,
 ) {
     val context = LocalContext.current
     val resources = androidx.compose.ui.platform.LocalResources.current
@@ -124,6 +133,10 @@ fun VlcPlayerScreen(
     var showControls by remember { mutableStateOf(true) }
     var showSeekBarOnly by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
+    var showSubtitles by remember { mutableStateOf(false) }
+    var bottomPanelHeight by remember { mutableIntStateOf(0) }
+    // VLC events that change the track list; the subtitle session re-reads the tracks on each change.
+    var trackChanges by remember { mutableIntStateOf(0) }
     var zoom by remember { mutableStateOf(VideoZoomState()) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
 
@@ -148,8 +161,8 @@ fun VlcPlayerScreen(
     LaunchedEffect(showSeekBarOnly, isSeeking) {
         if (showSeekBarOnly && !isSeeking) { delay(1800); showSeekBarOnly = false }
     }
-    LaunchedEffect(showControls, isPlaying, zoom, isSeeking, showMore) {
-        if (showControls && isPlaying && !isSeeking && !showMore) {
+    LaunchedEffect(showControls, isPlaying, zoom, isSeeking, showMore, showSubtitles) {
+        if (showControls && isPlaying && !isSeeking && !showMore && !showSubtitles) {
             delay(3500)
             showControls = false
         }
@@ -157,7 +170,7 @@ fun VlcPlayerScreen(
 
     val playerHolder = remember(torrentEngine) {
         try {
-            val options = VideoPlaybackPolicy.options(com.example.torrentstreamplayer.BuildConfig.DEBUG)
+            val options = VideoPlaybackPolicy.options(BuildConfig.DEBUG)
             val vlc = LibVLC(context, options)
             val mp = MediaPlayer(vlc)
 
@@ -184,6 +197,7 @@ fun VlcPlayerScreen(
                     MediaPlayer.Event.Playing -> {
                         isPlaying = true
                     }
+                    MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> trackChanges++
                     MediaPlayer.Event.Paused -> {
                         isPlaying = false
                     }
@@ -201,6 +215,8 @@ fun VlcPlayerScreen(
             null
         }
     }
+    val subtitles = rememberPlayerSubtitles(playerHolder?.mediaPlayer, subtitleOptions, isPlaying && !seekUi.waiting,
+        trackChanges)
 
     DisposableEffect(playerHolder, streamServer, lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -211,6 +227,7 @@ fun VlcPlayerScreen(
         onDispose {
             lifecycle.removeObserver(observer)
             if (resumeApplied && totalLengthMs > 0) positionCallback(currentTimeMs, totalLengthMs)
+            subtitles?.close()
             if (playerHolder != null) playerHolder.releaseAsync(streamServer)
             else EngineCommandQueue.shared.post { streamServer.stop() } // Player failed to start; only the server is open.
         }
@@ -368,18 +385,13 @@ fun VlcPlayerScreen(
                         fileName = fileName,
                         stats = stringResource(R.string.player_stats, formatSpeed(downloadSpeedBytes),
                             downloadProgress.toInt(), numPeers),
-                        zoomLabel = String.format(Locale.US, "%.1f×", zoom.scale),
+                        zoomLabel = PlayerOverlayPolicy.zoomLabel(zoom.scale)
+                            .takeIf { PlayerOverlayPolicy.zoomChipVisible(zoom.scale) },
+                        subtitleLabel = subtitles.sheetState().selectedName?.let { trackNoticeText(it) },
                         landscape = landscape,
                         onBack = { exitPlayback() },
-                        onZoomOut = {
-                            zoom = zoom.transformed(0.8f, 0f, 0f,
-                                viewport.width.toFloat(), viewport.height.toFloat())
-                        },
+                        onSubtitles = { showSubtitles = true },
                         onZoomReset = { zoom = VideoZoomState() },
-                        onZoomIn = {
-                            zoom = zoom.transformed(1.25f, 0f, 0f,
-                                viewport.width.toFloat(), viewport.height.toFloat())
-                        },
                         onMore = { showMore = true },
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
@@ -431,12 +443,21 @@ fun VlcPlayerScreen(
                                 seekTo(targetTime)
                             }
                         },
-                        modifier = Modifier.align(Alignment.BottomCenter)
+                        modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged { bottomPanelHeight = it.height }
                     )
                 }
             }
+            PlayerNoticeHost(subtitles, mobilePlayback, viewport.width, if (showControls) bottomPanelHeight else 0,
+                Modifier.align(Alignment.BottomStart))
+            fun zoomBy(factor: Float) {
+                zoom = zoom.transformed(factor, 0f, 0f, viewport.width.toFloat(), viewport.height.toFloat())
+            }
             if (showMore) {
                 PlayerMoreSheet(
+                    zoomLabel = PlayerOverlayPolicy.zoomLabel(zoom.scale),
+                    onZoomOut = { zoomBy(0.8f) },
+                    onZoomReset = { zoom = VideoZoomState() },
+                    onZoomIn = { zoomBy(1.25f) },
                     onDismiss = { showMore = false },
                     onAddLink = onAddDownload?.let { add -> { showMore = false; add() } },
                     onRestart = {
@@ -444,29 +465,7 @@ fun VlcPlayerScreen(
                     }
                 )
             }
+            PlayerSubtitleSheetHost(subtitles, showSubtitles, onDismiss = { showSubtitles = false })
         }
-    }
-}
-
-private fun formatSpeed(bytesPerSec: Long): String {
-    val kb = bytesPerSec / 1024
-    val mb = kb / 1024.0
-    return if (mb >= 1.0) {
-        String.format(Locale.US, "%.2f MB/s", mb)
-    } else {
-        "$kb KB/s"
-    }
-}
-
-internal fun formatTime(timeMs: Long): String {
-    if (timeMs <= 0) return "00:00"
-    val totalSeconds = timeMs / 1000
-    val seconds = totalSeconds % 60
-    val minutes = (totalSeconds / 60) % 60
-    val hours = totalSeconds / 3600
-    return if (hours > 0) {
-        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.US, "%02d:%02d", minutes, seconds)
     }
 }

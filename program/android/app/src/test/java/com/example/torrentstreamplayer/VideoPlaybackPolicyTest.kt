@@ -22,6 +22,9 @@ class VideoPlaybackPolicyTest {
             assertFalse(options.contains("--no-skip-frames"))
         }
     }
+    @Test fun noSubtitleEncodingIsForcedOnVlc() {
+        assertFalse(VideoPlaybackPolicy.options(debug = false).any { it.startsWith("--subsdec-encoding") })
+    }
     @Test fun verboseNativeLoggingIsOnlyForDebugBuilds() {
         assertTrue(VideoPlaybackPolicy.options(debug = true).contains("-vvv"))
         assertFalse(VideoPlaybackPolicy.options(debug = false).contains("-vvv"))

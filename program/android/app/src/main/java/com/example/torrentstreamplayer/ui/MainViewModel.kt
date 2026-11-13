@@ -41,6 +41,7 @@ import com.example.torrentstreamplayer.engine.SubtitleSelectionPolicy
 import com.example.torrentstreamplayer.ui.navigation.AppNavigator
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import com.example.torrentstreamplayer.ui.navigation.PlaybackOrigin
+import java.io.File
 
 /** @param connections 연결 감시 포트. 앱은 [NetworkMonitor], 테스트는 가짜를 넣는다. */
 class MainViewModel @JvmOverloads internal constructor(
@@ -149,6 +150,12 @@ class MainViewModel @JvmOverloads internal constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     internal val subtitleFiles: StateFlow<List<SubtitleFile>> = playbackSource
         .flatMapLatest { it?.subtitleFiles ?: flowOf(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), emptyList())
+
+    /** 재생 중인 영상과 함께 아직 받는 중인 자막 파일. 자막 시트에 "받는 중"으로 보인다. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    internal val pendingSubtitleFiles: StateFlow<List<File>> = playbackSource
+        .flatMapLatest { it?.pendingSubtitleFiles ?: flowOf(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), emptyList())
 
     /** 자동으로 켤 자막: 영상 이름과 맞는 것 중 한국어 → 영어 → 첫 번째([SubtitleSelectionPolicy]). */
@@ -335,6 +342,18 @@ class MainViewModel @JvmOverloads internal constructor(
 
     fun setAutoSubtitles(enabled: Boolean) = updateSettings { it.copy(autoSubtitles = enabled) }
 
+    /**
+     * 재생 화면에서 고른 자막 언어를 "선호 언어"로 기억한다(영상별이 아님, PR #131 PM 결정). 다른 설정과 같이
+     * [SettingsRepository.update]가 저장에 성공해야 값이 바뀐다. 실패는 로그만 남긴다: 사용자가 누른 스위치가 아니라
+     * 설정 화면의 "다시 눌러 주세요" 안내([settingsSaveFailed])를 띄우지 않고, 다음에 고를 때 다시 저장한다.
+     */
+    fun rememberSubtitleLanguage(key: String) {
+        viewModelScope.launch {
+            try { settingsRepository.update { it.copy(subtitleLanguage = key) } }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { Log.w("Settings", "Unable to save: ${EngineFailureLog.describe(failure)}") }
+        }
+    }
     private val saveNotice = SettingsSaveNotice()
 
     /** 설정을 디스크에 저장하지 못했으면 true. 설정 화면이 스낵바를 한 번 보이고 [consumeSettingsSaveFailed]를 부른다. */
