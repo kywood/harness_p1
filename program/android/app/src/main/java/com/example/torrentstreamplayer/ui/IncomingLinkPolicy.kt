@@ -78,6 +78,14 @@ internal object IncomingLinkPolicy {
         IncomingLinkState.Confirm(link, membership(link, match), allowed(playbackActive), match)
 
     /**
+     * The snackbar button for [notice]. While something plays or prepares there is none: "재생 목록" would leave the
+     * player, but the sheet promised that playback goes on (`open-link-sheet.md` 2-3).
+     */
+    @StringRes
+    fun noticeAction(notice: IncomingLinkNotice, playbackActive: Boolean): Int? =
+        if (playbackActive) null else notice.action
+
+    /**
      * The status chip of a playlist entry, as the playlist card shows it. [task] is the entry's download task;
      * [playing] is true when it is the video playing now. Waiting for Wi-Fi shows as queued.
      */

@@ -358,16 +358,18 @@ class MainViewModel @JvmOverloads internal constructor(
         viewModelScope.launch { incomingLinks.save() }
     }
 
-    /** 시트의 "취소"·오류 시트의 "확인". */
-    fun dismissIncomingLink() = incomingLinks.dismiss()
+    /** 시트의 "취소"·오류 시트의 "확인". [shown]이 아직 시트의 링크일 때만 닫는다(닫는 애니메이션 중 새 링크 보호). */
+    internal fun dismissIncomingLink(shown: IncomingLinkState) = incomingLinks.dismiss(shown)
 
-    /** "받아 두기" 뒤 한 번 보일 스낵바. 보인 뒤 [incomingLinkNoticeShown]을 부른다. */
-    internal val incomingLinkNotice: StateFlow<IncomingLinkNotice?> get() = incomingLinks.notice
+    /** "받아 두기" 뒤 한 번 보일 스낵바. 스낵바가 끝난 뒤 [incomingLinkNoticeShown]을 부른다. */
+    internal val incomingLinkNotice: StateFlow<IncomingLinkNoticeEvent?> get() = incomingLinks.notice
 
-    fun incomingLinkNoticeShown() = incomingLinks.noticeShown()
+    internal fun incomingLinkNoticeShown(event: IncomingLinkNoticeEvent) = incomingLinks.noticeShown(event)
 
-    /** 들어온 링크로 메인 입력란을 채우거나, 받아 둔 뒤 비운다. */
+    /** 들어온 링크로 메인 입력란을 채우거나, 받아 둔 뒤 비운다. 메인이 반영한 뒤 [mainInputFilled]를 부른다. */
     internal val mainInputFill: StateFlow<MainInputFill?> get() = incomingLinks.mainInput
+
+    internal fun mainInputFilled(fill: MainInputFill) = incomingLinks.inputFilled(fill)
 
     /** 오류가 남은 메인에서 열면 오류 상태를 정리한 뒤 연다. */
     fun openPlaylist() {

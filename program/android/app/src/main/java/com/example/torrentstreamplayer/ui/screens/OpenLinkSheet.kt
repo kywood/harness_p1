@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,7 @@ import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
+import kotlinx.coroutines.flow.filterNotNull
 
 /**
  * 링크 확인 시트와 "받아 두기" 뒤 스낵바를 띄운다. 메인·준비·재생 어느 화면 위에서든 같은 시트다
@@ -63,28 +65,33 @@ import com.example.torrentstreamplayer.ui.theme.Spacing
 @Composable
 internal fun OpenLinkHost(viewModel: MainViewModel, downloadJobs: Map<String, DownloadEntry>, modifier: Modifier) {
     val state by viewModel.incomingLink.collectAsState()
-    val notice by viewModel.incomingLinkNotice.collectAsState()
     val activeKey by viewModel.activeKey.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
-    LaunchedEffect(notice) {
-        val current = notice ?: return@LaunchedEffect
-        viewModel.incomingLinkNoticeShown()
-        val result = snackbar.showSnackbar(context.getString(current.message),
-            actionLabel = current.action?.let(context::getString))
-        if (result == SnackbarResult.ActionPerformed) viewModel.openPlaylist()
+    // 키가 바뀌지 않는 효과 하나가 알림을 차례로 받는다. 스낵바가 끝난 뒤에야 "보였다"고 알려, 알림 값이 바뀌어도
+    // 떠 있는 스낵바가 취소되지 않는다.
+    LaunchedEffect(viewModel) {
+        viewModel.incomingLinkNotice.filterNotNull().collect { event ->
+            val result = snackbar.showSnackbar(context.getString(event.notice.message),
+                actionLabel = event.action?.let(context::getString))
+            viewModel.incomingLinkNoticeShown(event)
+            if (result == SnackbarResult.ActionPerformed) viewModel.openPlaylist()
+        }
     }
     when (val current = state) {
         null -> Unit
-        is IncomingLinkState.Rejected -> RejectedLinkSheet(current, onDismiss = viewModel::dismissIncomingLink)
-        is IncomingLinkState.Confirm -> {
+        // 링크마다 새 시트: 앞 시트가 닫히는 동안 들어온 링크도 펼친 시트로 보인다.
+        is IncomingLinkState.Rejected -> key(current) {
+            RejectedLinkSheet(current, onDismiss = { viewModel.dismissIncomingLink(current) })
+        }
+        is IncomingLinkState.Confirm -> key(current.link) {
             val key = current.match?.let { runCatching { MagnetIdentity.key(it.magnet) }.getOrNull() }
             val task = key?.let(downloadJobs::get)
             val status = current.match?.let { IncomingLinkPolicy.status(it, task, playing = key == activeKey) }
             OpenLinkSheet(current, task, status,
                 onPlay = { viewModel.playIncomingLink() },
                 onSave = viewModel::saveIncomingLink,
-                onDismiss = viewModel::dismissIncomingLink)
+                onDismiss = { viewModel.dismissIncomingLink(current) })
         }
     }
     SnackbarHost(snackbar, modifier)

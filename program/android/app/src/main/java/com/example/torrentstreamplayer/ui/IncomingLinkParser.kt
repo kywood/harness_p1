@@ -79,6 +79,9 @@ internal object IncomingLinkParser {
     /** Longest part of shared text searched for a link; message apps can share whole conversations. */
     const val MAX_SHARED_CHARS = NetworkSpec.MAX_LINK_CHARS * 4
     private val LINK = Regex("""(?i)(?<![a-z0-9])(?:magnet:\?[^\s\p{Z}]+|https?://[\x21-\x7E]+)""")
+    /** One letter a magnet / an http(s) address may contain; matches the two halves of [LINK]. */
+    private val MAGNET_LETTER = Regex("""[^\s\p{Z}]""")
+    private val WEB_LETTER = Regex("""[\x21-\x7E]""")
     private const val TRAILING_PUNCTUATION = ".,;:!?)]}>\"'"
     private const val MAGNET_PREFIX = "magnet:"
     private const val HTTP_PREFIX = "http://"
@@ -95,8 +98,10 @@ internal object IncomingLinkParser {
     fun firstLink(text: String): IncomingLinkResult {
         val searched = text.take(MAX_SHARED_CHARS)
         val found = LINK.find(searched) ?: return invalid(IncomingLinkError.UNSUPPORTED)
+        // Cut only when the letter after the searched part would have continued this kind of link.
+        val linkLetter = if (found.value.startsWith(MAGNET_PREFIX, ignoreCase = true)) MAGNET_LETTER else WEB_LETTER
         val cut = found.range.last == searched.lastIndex && text.length > searched.length &&
-            !text[searched.length].isWhitespace()
+            linkLetter.matches(text[searched.length].toString())
         if (cut) return invalid(IncomingLinkError.TOO_LONG)
         return link(found.value.trimEnd { it in TRAILING_PUNCTUATION })
     }

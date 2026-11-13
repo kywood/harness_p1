@@ -64,7 +64,8 @@ import kotlinx.coroutines.launch
 /**
  * 메인: 링크를 넣고 바로 재생하거나 재생 목록·저장 파일 관리로 간다.
  *
- * @param inputFill 다른 앱에서 받은 링크로 입력란을 채우거나(받아 두기 뒤에는) 비운다. 바뀔 때마다 한 번 반영한다.
+ * @param inputFill 다른 앱에서 받은 링크로 입력란을 채우거나(받아 두기 뒤에는) 비운다. 한 번 반영하고
+ * [onInputFilled]로 알려, 사용자가 지운 뒤 다른 화면을 다녀와도 다시 채우지 않는다.
  */
 @Composable
 internal fun MagnetLinkInputScreen(
@@ -74,10 +75,16 @@ internal fun MagnetLinkInputScreen(
     onOpenHistory: () -> Unit = {},
     onOpenLicenses: () -> Unit = {},
     onPrivacyOptions: (() -> Unit)? = null,
-    inputFill: MainInputFill? = null
+    inputFill: MainInputFill? = null,
+    onInputFilled: (MainInputFill) -> Unit = {}
 ) {
     var magnetLink by remember { mutableStateOf("") }
-    LaunchedEffect(inputFill) { inputFill?.let { magnetLink = it.text } }
+    LaunchedEffect(inputFill) {
+        inputFill?.let {
+            magnetLink = it.text
+            onInputFilled(it)
+        }
+    }
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()

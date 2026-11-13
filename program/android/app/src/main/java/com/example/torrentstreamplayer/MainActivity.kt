@@ -83,9 +83,13 @@ class MainActivity : ComponentActivity() {
         receiveLink(intent)
     }
 
-    /** Passes the link, or why it cannot be opened, to the ViewModel; the link text is never logged. */
+    /**
+     * Passes the link, or why it cannot be opened, to the ViewModel; the link text is never logged. Shared text is
+     * read as a CharSequence: apps that share styled text get null from getStringExtra.
+     */
     private fun receiveLink(intent: Intent) {
-        IncomingLinkParser.parse(intent.action, intent.dataString, intent.getStringExtra(Intent.EXTRA_TEXT))
+        val shared = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+        IncomingLinkParser.parse(intent.action, intent.dataString, shared)
             ?.let(viewModel::receiveLink)
     }
 }

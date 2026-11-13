@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.ui
 
+import com.example.torrentstreamplayer.R
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +56,7 @@ class IncomingLinkCoordinatorTest {
         assertEquals(IncomingLinkState.Rejected(IncomingLinkError.UNSUPPORTED), coordinator.state.value)
         assertNull(coordinator.mainInput.value)
         assertFalse(coordinator.play())
-        coordinator.dismiss()
+        coordinator.dismiss(coordinator.state.value!!)
         assertNull(coordinator.state.value)
     }
 
@@ -97,7 +98,7 @@ class IncomingLinkCoordinatorTest {
         val slow = CompletableDeferred<PlaylistMatch?>()
         lookup = { slow.await() }
         coordinator.receive(valid(first))
-        coordinator.dismiss()
+        coordinator.dismiss(coordinator.state.value!!)
         slow.complete(null)
         assertNull(coordinator.state.value)
         assertEquals("cancel keeps the link in the main input", first, coordinator.mainInput.value?.text)
@@ -127,9 +128,64 @@ class IncomingLinkCoordinatorTest {
         assertEquals(listOf(first), saved)
         assertNull(coordinator.state.value)
         assertEquals("", coordinator.mainInput.value?.text)
-        assertEquals(IncomingLinkNotice.SAVED, coordinator.notice.value)
-        coordinator.noticeShown()
+        val event = coordinator.notice.value!!
+        assertEquals(IncomingLinkNotice.SAVED, event.notice)
+        assertEquals("nothing plays: the snackbar offers the playlist", R.string.action_open_playlist, event.action)
+        coordinator.noticeShown(event)
         assertNull(coordinator.notice.value)
+    }
+
+    @Test fun savingDuringPlaybackShowsTheSnackbarWithoutThePlaylistButton() = runBlocking {
+        playing = true
+        coordinator.receive(valid(first))
+        coordinator.save()
+        assertEquals(IncomingLinkNotice.SAVED, coordinator.notice.value?.notice)
+        assertNull("leaving the player is not offered", coordinator.notice.value?.action)
+    }
+
+    @Test fun aNoticeRaisedWhileTheLastOneShowsIsKept() = runBlocking {
+        coordinator.receive(valid(first))
+        coordinator.save()
+        val shown = coordinator.notice.value!!
+        coordinator.receive(valid(second))
+        coordinator.save()
+        val newer = coordinator.notice.value!!
+        coordinator.noticeShown(shown)
+        assertEquals("two equal notices are two events", newer, coordinator.notice.value)
+    }
+
+    @Test fun cancellingWhileSavingStillClearsTheInputWhenTheSaveSucceeds() = runBlocking {
+        coordinator.receive(valid(first))
+        val gate = CompletableDeferred<Unit>()
+        saveGate = gate
+        val press = scope.launch { coordinator.save() }
+        coordinator.dismiss(coordinator.state.value!!)
+        assertNull(coordinator.state.value)
+        gate.complete(Unit)
+        press.join()
+        assertEquals(listOf(first), saved)
+        assertEquals("", coordinator.mainInput.value?.text)
+    }
+
+    @Test fun aClosingSheetDoesNotCloseANewerLink() {
+        coordinator.receive(valid(first))
+        val closing = coordinator.state.value!!
+        coordinator.receive(valid(second))
+        coordinator.dismiss(closing)
+        assertEquals(second, confirm().link.value)
+        coordinator.dismiss(coordinator.state.value!!)
+        assertNull(coordinator.state.value)
+    }
+
+    @Test fun theInputIsFilledOnceAndNotAgainAfterItWasTaken() {
+        coordinator.receive(valid(first))
+        val fill = coordinator.mainInput.value!!
+        coordinator.inputFilled(fill)
+        assertNull("an erased link does not come back", coordinator.mainInput.value)
+        coordinator.receive(valid(second))
+        val newer = coordinator.mainInput.value!!
+        coordinator.inputFilled(fill)
+        assertEquals("an older fill does not drop a newer one", newer, coordinator.mainInput.value)
     }
 
     @Test fun aFailedSaveClosesTheSheetKeepsTheInputAndTellsTheFailure() = runBlocking {
@@ -139,7 +195,8 @@ class IncomingLinkCoordinatorTest {
         assertTrue(saved.isEmpty())
         assertNull(coordinator.state.value)
         assertEquals(first, coordinator.mainInput.value?.text)
-        assertEquals(IncomingLinkNotice.SAVE_FAILED, coordinator.notice.value)
+        assertEquals(IncomingLinkNotice.SAVE_FAILED, coordinator.notice.value?.notice)
+        assertNull(coordinator.notice.value?.action)
     }
 
     @Test fun pressingSaveTwiceSavesOnce() = runBlocking {

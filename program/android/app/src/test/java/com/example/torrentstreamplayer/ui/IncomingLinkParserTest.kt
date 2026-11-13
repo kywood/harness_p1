@@ -105,6 +105,17 @@ class IncomingLinkParserTest {
         assertEquals(IncomingLinkError.TOO_LONG, reason(shared(lead + address)))
         val fits = "가".repeat(IncomingLinkParser.MAX_SHARED_CHARS - address.length - 1) + " "
         assertEquals("ending exactly at the boundary is whole", address, valid(shared(fits + address + " 끝")).value)
+        assertEquals("Hangul ends an https address, so it was not cut", address, valid(shared(fits + address + "입니다")).value)
+        val magnetLead = "가".repeat(IncomingLinkParser.MAX_SHARED_CHARS - magnet.length - 1) + " "
+        assertEquals("Hangul continues a magnet's name, so it was cut",
+            IncomingLinkError.TOO_LONG, reason(shared(magnetLead + magnet + "입니다")))
+        assertEquals(magnet, valid(shared(magnetLead + magnet + "　끝")).value)
+    }
+
+    @Test fun playingKeepsTheSnackbarToText() {
+        assertNull(IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVED, playbackActive = true))
+        assertEquals(IncomingLinkNotice.SAVED.action, IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVED, false))
+        assertNull(IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVE_FAILED, playbackActive = false))
     }
 
     @Test fun upperCaseSchemesAreAcceptedAndHandedOnInLowerCase() {

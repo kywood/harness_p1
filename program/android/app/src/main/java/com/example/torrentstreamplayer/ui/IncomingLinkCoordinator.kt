@@ -9,15 +9,21 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/** A one-time message after "받아 두기", shown as a snackbar. [action] is the snackbar button text, if any. */
+/** A message after "받아 두기", shown as a snackbar. [action] is the snackbar button text, if any. */
 internal enum class IncomingLinkNotice(@StringRes val message: Int, @StringRes val action: Int?) {
-    /** Added to the playlist; the snackbar offers "재생 목록". */
+    /** Added to the playlist; the snackbar offers "재생 목록" unless something plays ([IncomingLinkPolicy.noticeAction]). */
     SAVED(R.string.open_link_saved, R.string.action_open_playlist),
     SAVE_FAILED(R.string.error_download_start, null),
 }
 
 /**
- * Text the main input should take. [serial] grows with every fill, so the same text can be filled twice.
+ * One showing of [notice]. [action] is the snackbar button chosen when it was raised, or null for text only.
+ * [serial] makes two equal notices in a row two events.
+ */
+internal data class IncomingLinkNoticeEvent(val notice: IncomingLinkNotice, @StringRes val action: Int?, val serial: Long)
+
+/**
+ * Text the main input should take once. [serial] grows with every fill, so the same text can be filled twice.
  * An empty [text] clears the input.
  */
 internal data class MainInputFill(val text: String, val serial: Long)
@@ -43,13 +49,17 @@ internal class IncomingLinkCoordinator(
     private val mutableState = MutableStateFlow<IncomingLinkState?>(null)
     /** What the link sheet shows, or null when no sheet is open. A newer link replaces the sheet's content. */
     val state: StateFlow<IncomingLinkState?> = mutableState.asStateFlow()
-    private val mutableNotice = MutableStateFlow<IncomingLinkNotice?>(null)
-    /** The message to show once; the screen calls [noticeShown] after showing it. */
-    val notice: StateFlow<IncomingLinkNotice?> = mutableNotice.asStateFlow()
+    private val mutableNotice = MutableStateFlow<IncomingLinkNoticeEvent?>(null)
+    /** The snackbar to show once; the screen calls [noticeShown] with it after the snackbar has finished. */
+    val notice: StateFlow<IncomingLinkNoticeEvent?> = mutableNotice.asStateFlow()
     private val mutableInput = MutableStateFlow<MainInputFill?>(null)
-    /** Fills the main input with a received link, and clears it after "받아 두기". Never set for a rejected link. */
+    /**
+     * Fills the main input with a received link, or clears it after "받아 두기". Never set for a rejected link.
+     * The main screen applies it once and calls [inputFilled], so a link the user erased does not come back.
+     */
     val mainInput: StateFlow<MainInputFill?> = mutableInput.asStateFlow()
     private var version = 0L
+    private var serial = 0L
 
     fun receive(result: IncomingLinkResult) {
         val current = ++version
@@ -86,9 +96,10 @@ internal class IncomingLinkCoordinator(
     }
 
     /**
-     * "받아 두기". The sheet is busy meanwhile, so a second press does nothing. Afterwards the sheet closes and
-     * [notice] tells the result; on success the main input is cleared so the saved link is not played by mistake.
-     * If a newer link replaced the sheet meanwhile, that sheet stays.
+     * "받아 두기". The sheet is busy meanwhile, so a second press does nothing; "취소" still closes the sheet but does
+     * not stop the save. Afterwards the sheet closes and [notice] tells the result. On success the main input is
+     * cleared (also when the sheet was cancelled meanwhile) so the saved link is not played by mistake. If a newer
+     * link replaced the sheet meanwhile, that sheet and its input stay.
      */
     suspend fun save() {
         val pending = mutableState.value as? IncomingLinkState.Confirm ?: return
@@ -103,21 +114,40 @@ internal class IncomingLinkCoordinator(
         } catch (_: Exception) {
             false
         }
-        mutableNotice.value = if (saved) IncomingLinkNotice.SAVED else IncomingLinkNotice.SAVE_FAILED
-        if (mutableState.value !== saving) return
-        if (saved) fillInput("")
-        close()
+        val notice = if (saved) IncomingLinkNotice.SAVED else IncomingLinkNotice.SAVE_FAILED
+        mutableNotice.value = IncomingLinkNoticeEvent(notice,
+            IncomingLinkPolicy.noticeAction(notice, isPlaybackActive()), ++serial)
+        val now = mutableState.value
+        if (saved && (now === saving || now == null)) fillInput("")
+        if (now === saving) close()
     }
 
-    /** "취소", "확인" on the error sheet, or dismissing the sheet. The main input keeps the link. */
-    fun dismiss() = close()
+    /**
+     * "취소", "확인" on the error sheet, or dismissing the sheet. Closes only if [shown] is still the sheet's link: a
+     * closing animation must not close a newer link that arrived meanwhile. The main input keeps the link.
+     */
+    fun dismiss(shown: IncomingLinkState) {
+        if (sheetOf(mutableState.value) == sheetOf(shown)) close()
+    }
 
-    fun noticeShown() {
-        mutableNotice.value = null
+    /** The snackbar for [event] has finished. A newer event raised meanwhile stays. */
+    fun noticeShown(event: IncomingLinkNoticeEvent) {
+        mutableNotice.compareAndSet(event, null)
+    }
+
+    /** The main screen took [fill] into its input. */
+    fun inputFilled(fill: MainInputFill) {
+        mutableInput.compareAndSet(fill, null)
+    }
+
+    private fun sheetOf(state: IncomingLinkState?): Any? = when (state) {
+        is IncomingLinkState.Confirm -> state.link
+        is IncomingLinkState.Rejected -> state
+        null -> null
     }
 
     private fun fillInput(text: String) {
-        mutableInput.value = MainInputFill(text, (mutableInput.value?.serial ?: 0) + 1)
+        mutableInput.value = MainInputFill(text, ++serial)
     }
 
     private fun close() {

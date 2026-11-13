@@ -72,6 +72,7 @@ internal fun AppRoot(
                 is AppScreen.Main -> MagnetLinkInputScreen(
                     onStartStream = viewModel::playFromMain,
                     inputFill = viewModel.mainInputFill.collectAsState().value,
+                    onInputFilled = viewModel::mainInputFilled,
                     errorMessage = current.errorMessage,
                     onOpenFiles = viewModel::openStoredFiles,
                     onOpenHistory = viewModel::openPlaylist,

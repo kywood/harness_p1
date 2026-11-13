@@ -13,6 +13,7 @@ import com.example.torrentstreamplayer.ui.IncomingLinkError
 import com.example.torrentstreamplayer.ui.IncomingLinkState
 import com.example.torrentstreamplayer.ui.MainViewModel
 import com.example.torrentstreamplayer.ui.StreamUiState
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,6 +25,9 @@ import org.junit.runner.RunWith
  * Links handed over by other apps (#127): a tapped magnet (VIEW), shared text (SEND), a link arriving while
  * something prepares (onNewIntent), and recreation not handling the same intent twice. Checks the ViewModel's
  * sheet state; the sheet itself only draws that state.
+ *
+ * Only the preparing case starts anything. Its magnet has no trackers, and the test deletes its playlist entry and
+ * files through [MainViewModel.deleteSavedMagnet] (stop → awaitStoppedWrites → delete) so nothing is left behind.
  */
 @RunWith(AndroidJUnit4::class)
 class IncomingLinkIntentTest {
@@ -34,7 +38,7 @@ class IncomingLinkIntentTest {
     private fun viewIntent(link: String) = Intent(Intent.ACTION_VIEW, Uri.parse(link))
         .setClass(context, MainActivity::class.java)
 
-    private fun sendIntent(text: String) = Intent(Intent.ACTION_SEND).setType("text/plain")
+    private fun sendIntent(text: CharSequence) = Intent(Intent.ACTION_SEND).setType("text/plain")
         .putExtra(Intent.EXTRA_TEXT, text).setClass(context, MainActivity::class.java)
 
     /** Runs [block] on the main thread with the activity's ViewModel and returns its result. */
@@ -59,44 +63,51 @@ class IncomingLinkIntentTest {
     private fun settledConfirm(scenario: ActivityScenario<MainActivity>) =
         awaitState(scenario) { it is IncomingLinkState.Confirm && !it.busy } as IncomingLinkState.Confirm
 
+    private fun dismiss(scenario: ActivityScenario<MainActivity>) = withModel(scenario) { model ->
+        model.incomingLink.value?.let(model::dismissIncomingLink)
+    }
+
     @Test fun aTappedMagnetOpensTheConfirmSheetWithoutStartingAnything() {
         ActivityScenario.launch<MainActivity>(viewIntent(magnet)).use { scenario ->
             val state = settledConfirm(scenario)
             assertEquals(magnet, state.link.value)
             assertEquals(IncomingLinkAction.entries.toSet(), state.allowed)
             assertEquals(StreamUiState.Idle, withModel(scenario) { it.uiState.value })
-            assertEquals(magnet, withModel(scenario) { it.mainInputFill.value?.text })
-            withModel(scenario) { it.dismissIncomingLink() }
+            dismiss(scenario)
         }
     }
 
     @Test fun sharedTextOpensTheSheetForItsFirstLinkAndPlainHttpIsRejected() {
-        ActivityScenario.launch<MainActivity>(sendIntent("이거 보세요\n$magnet\n그리고 $other")).use { scenario ->
-            assertEquals(magnet, settledConfirm(scenario).link.value)
-            withModel(scenario) { it.dismissIncomingLink() }
+        val styled = android.text.SpannableString("이거 보세요\n$magnet\n그리고 $other")
+        ActivityScenario.launch<MainActivity>(sendIntent(styled)).use { scenario ->
+            assertEquals("styled shared text is read too", magnet, settledConfirm(scenario).link.value)
+            dismiss(scenario)
         }
         ActivityScenario.launch<MainActivity>(sendIntent("http://example.com/a.torrent")).use { scenario ->
             val rejected = awaitState(scenario) { it is IncomingLinkState.Rejected }
             assertEquals(IncomingLinkState.Rejected(IncomingLinkError.HTTPS_REQUIRED), rejected)
-            withModel(scenario) { it.dismissIncomingLink() }
+            dismiss(scenario)
         }
     }
 
     @Test fun aLinkArrivingWhilePreparingOffersOnlySavingAndKeepsPlayback() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            withModel(scenario) { it.playFromMain(other) }
-            assertTrue(withModel(scenario) { it.uiState.value !is StreamUiState.Idle })
-            // singleTask: a second hand-over reaches the running activity through onNewIntent.
-            InstrumentationRegistry.getInstrumentation().targetContext
-                .startActivity(viewIntent(magnet).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            val state = settledConfirm(scenario)
-            assertEquals(magnet, state.link.value)
-            assertEquals(setOf(IncomingLinkAction.SAVE), state.allowed)
-            assertTrue("playback goes on", withModel(scenario) { it.uiState.value !is StreamUiState.Idle })
-            assertFalse(withModel(scenario) { it.playIncomingLink() })
-            withModel(scenario) {
-                it.dismissIncomingLink()
-                it.cancelToMain()
+            try {
+                withModel(scenario) { it.playFromMain(other) }
+                assertTrue(withModel(scenario) { it.uiState.value !is StreamUiState.Idle })
+                // singleTask: a second hand-over reaches the running activity through onNewIntent.
+                InstrumentationRegistry.getInstrumentation().targetContext
+                    .startActivity(viewIntent(magnet).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                val state = settledConfirm(scenario)
+                assertEquals(magnet, state.link.value)
+                assertEquals(setOf(IncomingLinkAction.SAVE), state.allowed)
+                assertTrue("playback goes on", withModel(scenario) { it.uiState.value !is StreamUiState.Idle })
+                assertFalse(withModel(scenario) { it.playIncomingLink() })
+                dismiss(scenario)
+            } finally {
+                withModel(scenario) { it.cancelToMain() }
+                val model = withModel(scenario) { it }
+                runBlocking { model.deleteSavedMagnet(other) }
             }
         }
     }
@@ -104,7 +115,7 @@ class IncomingLinkIntentTest {
     @Test fun recreatingTheActivityDoesNotHandleTheSameLinkAgain() {
         ActivityScenario.launch<MainActivity>(viewIntent(magnet)).use { scenario ->
             settledConfirm(scenario)
-            withModel(scenario) { it.dismissIncomingLink() }
+            dismiss(scenario)
             scenario.recreate() // rotation and other configuration changes
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
             Thread.sleep(500)
