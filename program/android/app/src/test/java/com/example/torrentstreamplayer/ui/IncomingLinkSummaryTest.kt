@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.ui
 
+import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -59,12 +60,20 @@ class IncomingLinkSummaryTest {
         assertFalse(buttons(null, busy = true).enabled)
     }
 
-    @Test fun aFailedSaveWaitsForTheSnackbarWhileASuccessIsDropped() {
-        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, snackbarVisible = true))
-        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, true))
+    @Test fun aFailedSaveDuringPlaybackWaitsWhileASuccessIsDropped() {
+        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, playbackActive = false))
+        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, false))
         assertEquals("the user must learn it was not saved",
-            NoticeTiming.WAIT, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, snackbarVisible = false))
-        assertEquals(NoticeTiming.DROP, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, snackbarVisible = false))
+            NoticeTiming.WAIT, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, playbackActive = true))
+        assertEquals(NoticeTiming.DROP, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, playbackActive = true))
+    }
+
+    @Test fun aWaitingNoticeShowsOnlyAfterSettlingOnAScreenWithTheSnackbar() {
+        assertFalse("nothing settled yet", IncomingLinkPolicy.waitingNoticeMayShow(null))
+        assertFalse(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Player("a.mkv")))
+        assertFalse(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Preparing.FetchingMetadata))
+        assertTrue(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Main()))
+        assertTrue(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Playlist))
     }
 
     @Test fun clearingAfterSavingAppliesOnlyToTheSavedLink() {

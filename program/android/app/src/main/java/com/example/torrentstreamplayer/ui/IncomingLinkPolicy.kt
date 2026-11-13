@@ -2,6 +2,7 @@ package com.example.torrentstreamplayer.ui
 
 import androidx.annotation.StringRes
 import com.example.torrentstreamplayer.R
+import com.example.torrentstreamplayer.ui.navigation.AppScreen
 
 /** Whether an incoming link is already in the playlist. */
 internal enum class PlaylistMembership {
@@ -46,8 +47,18 @@ internal sealed interface IncomingLinkState {
     data class Rejected(val reason: IncomingLinkError) : IncomingLinkState
 }
 
-/** What to do with a "받아 두기" notice now ([IncomingLinkPolicy.noticeTiming]). */
-internal enum class NoticeTiming { SHOW, WAIT, DROP }
+/**
+ * When a "받아 두기" notice is shown ([IncomingLinkPolicy.noticeTiming]).
+ *
+ * @property persistent the snackbar stays until its button is pressed.
+ */
+internal enum class NoticeTiming(val persistent: Boolean) {
+    SHOW(persistent = false),
+
+    /** Raised during playback; shown after leaving the player or preparing screen. */
+    WAIT(persistent = true),
+    DROP(persistent = false),
+}
 
 /** A button of the link sheet. Each registers its text. */
 internal enum class LinkSheetButton(@StringRes val label: Int) {
@@ -81,23 +92,35 @@ internal object IncomingLinkPolicy {
         IncomingLinkState.Confirm(link, membership(link, match), allowed(playbackActive), match)
 
     /**
-     * The snackbar button for [notice]. While something plays or prepares there is none: "재생 목록" would leave the
-     * player, but the sheet promised that playback goes on (`open-link-sheet.md` 2-3).
+     * When to show [notice], decided once when it is raised. Nothing playing → at once. While something plays or
+     * prepares the shared snackbar is not drawn ([AppSnackbarPolicy]): a failure must still reach the user, or they
+     * would think the link was saved, so it waits for a screen with the snackbar; a success seen later would only
+     * confuse, so it is dropped (also when it is collected after an earlier waiting failure).
      */
-    @StringRes
-    fun noticeAction(notice: IncomingLinkNotice, playbackActive: Boolean): Int? =
-        if (playbackActive) null else notice.action
-
-    /**
-     * When to show [notice] given whether the shared snackbar is drawn now ([AppSnackbarPolicy]; not on the player or
-     * preparing screen). A failure must reach the user, or they would think the link was saved, so it waits until a
-     * screen with the snackbar; a success seen later would only confuse, so it is dropped.
-     */
-    fun noticeTiming(notice: IncomingLinkNotice, snackbarVisible: Boolean): NoticeTiming = when {
-        snackbarVisible -> NoticeTiming.SHOW
+    fun noticeTiming(notice: IncomingLinkNotice, playbackActive: Boolean): NoticeTiming = when {
+        !playbackActive -> NoticeTiming.SHOW
         notice == IncomingLinkNotice.SAVE_FAILED -> NoticeTiming.WAIT
         else -> NoticeTiming.DROP
     }
+
+    /**
+     * The snackbar button. Shown at once: the notice's own ("재생 목록"). A waiting failure: "확인", and it stays until
+     * pressed ([NoticeTiming.persistent]): playback often ends with a full-screen ad, and a timed snackbar would run
+     * out behind it. "재생 목록" is never offered for a notice raised during playback.
+     */
+    @StringRes
+    fun noticeAction(notice: IncomingLinkNotice, timing: NoticeTiming): Int? = when (timing) {
+        NoticeTiming.SHOW -> notice.action
+        NoticeTiming.WAIT -> R.string.action_confirm
+        NoticeTiming.DROP -> null
+    }
+
+    /**
+     * A waiting notice may show once the screen change has settled (AppRoot dismissed the old screen's snackbar and
+     * then published [settledScreen]) on a screen that draws the shared snackbar.
+     */
+    fun waitingNoticeMayShow(settledScreen: AppScreen?): Boolean =
+        settledScreen != null && AppSnackbarPolicy.visible(settledScreen)
 
     /**
      * After a successful "받아 두기" while new downloads wait for Wi-Fi, the snackbar says so (`info_waiting_for_wifi`,

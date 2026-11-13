@@ -11,16 +11,21 @@ import kotlinx.coroutines.launch
 
 /** A message after "받아 두기", shown as a snackbar. [action] is the snackbar button text, if any. */
 internal enum class IncomingLinkNotice(@StringRes val message: Int, @StringRes val action: Int?) {
-    /** Added to the playlist; the snackbar offers "재생 목록" unless something plays ([IncomingLinkPolicy.noticeAction]). */
+    /** Added to the playlist; the snackbar offers "재생 목록" unless something played ([IncomingLinkPolicy.noticeAction]). */
     SAVED(R.string.open_link_saved, R.string.action_open_playlist),
     SAVE_FAILED(R.string.error_download_start, null),
 }
 
 /**
- * One showing of [notice]. [action] is the snackbar button chosen when it was raised, or null for text only.
- * [serial] makes two equal notices in a row two events.
+ * One showing of [notice]. [timing] and [action] (snackbar button, or null for text only) are decided when it is
+ * raised, from whether something played then. [serial] makes two equal notices in a row two events.
  */
-internal data class IncomingLinkNoticeEvent(val notice: IncomingLinkNotice, @StringRes val action: Int?, val serial: Long)
+internal data class IncomingLinkNoticeEvent(
+    val notice: IncomingLinkNotice,
+    val timing: NoticeTiming,
+    @StringRes val action: Int?,
+    val serial: Long,
+)
 
 /**
  * Text the main input should take once. [serial] grows with every fill, so the same text can be filled twice.
@@ -122,8 +127,8 @@ internal class IncomingLinkCoordinator(
             false
         }
         val notice = if (saved) IncomingLinkNotice.SAVED else IncomingLinkNotice.SAVE_FAILED
-        mutableNotice.value = IncomingLinkNoticeEvent(notice,
-            IncomingLinkPolicy.noticeAction(notice, isPlaybackActive()), ++serial)
+        val timing = IncomingLinkPolicy.noticeTiming(notice, isPlaybackActive())
+        mutableNotice.value = IncomingLinkNoticeEvent(notice, timing, IncomingLinkPolicy.noticeAction(notice, timing), ++serial)
         val now = mutableState.value
         if (saved && (now === saving || now == null)) fillInput("", replaces = pending.link.value)
         if (now === saving) close()

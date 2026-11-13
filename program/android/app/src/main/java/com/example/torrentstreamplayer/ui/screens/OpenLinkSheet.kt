@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -24,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,6 +47,7 @@ import com.example.torrentstreamplayer.ui.MainViewModel
 import com.example.torrentstreamplayer.ui.NoticeTiming
 import com.example.torrentstreamplayer.ui.AppSnackbarPolicy
 import com.example.torrentstreamplayer.ui.PlaylistItemStatus
+import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import com.example.torrentstreamplayer.ui.components.AppBottomSheet
 import com.example.torrentstreamplayer.ui.components.InlineNotice
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
@@ -65,8 +66,11 @@ import kotlinx.coroutines.flow.first
 /**
  * 링크 확인 시트와 "받아 두기" 뒤 스낵바를 띄운다. 메인·준비·재생 어느 화면 위에서든 같은 시트다
  * (`design/specs/open-link-sheet.md`). 스낵바는 앱 공용 [snackbar]에 띄우고 [AppSnackbarPolicy]를 따른다:
- * 공용 스낵바를 그리지 않는 재생·준비 화면([snackbarVisible]이 false)에서는 띄우지 않는다. 성공 알림은 버리고,
- * 실패 알림만 남겨 두었다가 그 화면을 벗어나면 띄운다([IncomingLinkPolicy.noticeTiming]).
+ * 공용 스낵바를 그리지 않는 재생·준비 화면에서는 띄우지 않는다. 재생 중에 생긴 성공 알림은 버리고, 실패 알림만
+ * 남겨 두었다가 그 화면을 벗어나 전환이 끝나면([settledScreen]) [확인]을 누를 때까지 띄운다
+ * ([IncomingLinkPolicy.noticeTiming]). 재생을 마칠 때 전면 광고가 떠도 광고를 닫은 뒤 보인다.
+ *
+ * @param settledScreen AppRoot이 앞 화면의 스낵바를 닫은 뒤 알리는, 전환이 끝난 화면.
  *
  * @param announceWifiWait 새 다운로드가 Wi-Fi 대기로 멈추면 `info_waiting_for_wifi`를 띄운다([rememberWifiWaitAnnouncer]).
  */
@@ -77,8 +81,10 @@ internal fun OpenLinkHost(
     snackbar: SnackbarHostState,
     snackbarVisible: Boolean,
     waitsForWifi: Boolean,
-    announceWifiWait: () -> Unit
+    announceWifiWait: () -> Unit,
+    settledScreen: AppScreen?
 ) {
+    val settled by rememberUpdatedState(settledScreen)
     val state by viewModel.incomingLink.collectAsState()
     val activeKey by viewModel.activeKey.collectAsState()
     val context = LocalContext.current
@@ -89,19 +95,22 @@ internal fun OpenLinkHost(
     // 떠 있는 스낵바가 취소되지 않는다.
     LaunchedEffect(viewModel) {
         viewModel.incomingLinkNotice.filterNotNull().collect { event ->
-            val timing = IncomingLinkPolicy.noticeTiming(event.notice, visible)
-            if (timing == NoticeTiming.WAIT) {
-                snapshotFlow { visible }.first { it }
-                // AppRoot은 화면이 바뀐 프레임에 떠 있던 스낵바를 닫는다. 그 뒤에 띄우도록 한 프레임 기다린다.
-                withFrameNanos { }
-            }
-            when {
-                timing == NoticeTiming.DROP -> Unit
-                IncomingLinkPolicy.announcesWifiWait(event.notice, wifiWait) -> announce()
-                else -> {
-                    val result = snackbar.showSnackbar(context.getString(event.notice.message),
-                        actionLabel = event.action?.let(context::getString))
-                    if (result == SnackbarResult.ActionPerformed) viewModel.openPlaylist()
+            when (event.timing) {
+                NoticeTiming.DROP -> Unit
+                NoticeTiming.WAIT -> {
+                    // AppRoot이 앞 화면의 스낵바를 닫은 뒤에 알리는 전환 완료 화면을 기다린다(프레임 순서에 기대지 않는다).
+                    snapshotFlow { settled }.first(IncomingLinkPolicy::waitingNoticeMayShow)
+                    snackbar.showSnackbar(context.getString(event.notice.message),
+                        actionLabel = event.action?.let(context::getString), duration = SnackbarDuration.Indefinite)
+                }
+                NoticeTiming.SHOW -> when {
+                    !visible -> Unit
+                    IncomingLinkPolicy.announcesWifiWait(event.notice, wifiWait) -> announce()
+                    else -> {
+                        val result = snackbar.showSnackbar(context.getString(event.notice.message),
+                            actionLabel = event.action?.let(context::getString))
+                        if (result == SnackbarResult.ActionPerformed) viewModel.openPlaylist()
+                    }
                 }
             }
             viewModel.incomingLinkNoticeShown(event)

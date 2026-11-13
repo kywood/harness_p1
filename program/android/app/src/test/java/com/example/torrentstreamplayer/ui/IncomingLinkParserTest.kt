@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.ui
 
+import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.meta.NetworkSpec
 import org.junit.Assert.assertEquals
@@ -113,9 +114,13 @@ class IncomingLinkParserTest {
     }
 
     @Test fun playingKeepsTheSnackbarToText() {
-        assertNull(IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVED, playbackActive = true))
-        assertEquals(IncomingLinkNotice.SAVED.action, IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVED, false))
-        assertNull(IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVE_FAILED, playbackActive = false))
+        assertNull(IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVED, NoticeTiming.DROP))
+        assertEquals(IncomingLinkNotice.SAVED.action, IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVED, NoticeTiming.SHOW))
+        assertNull(IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVE_FAILED, NoticeTiming.SHOW))
+        assertEquals("a waiting failure stays until 확인", R.string.action_confirm,
+            IncomingLinkPolicy.noticeAction(IncomingLinkNotice.SAVE_FAILED, NoticeTiming.WAIT))
+        assertTrue(NoticeTiming.WAIT.persistent)
+        assertFalse(NoticeTiming.SHOW.persistent)
     }
 
     @Test fun upperCaseSchemesAreAcceptedAndHandedOnInLowerCase() {
