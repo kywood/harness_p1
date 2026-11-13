@@ -107,9 +107,13 @@ internal object SubtitleFilePlan {
         return below.getOrNull(1).orEmpty()
     }
 
-    /** Words of [name] up to the first release word ([SubtitleSpec.QUALITY_WORD]). */
-    private fun nameWords(name: String) =
-        SubtitleLanguage.words(name).takeWhile { !SubtitleSpec.QUALITY_WORD.matches(it) }
+    /** Words of [name], cut at the first release word after an episode marker or year (`Web.of.Lies` keeps `web`). */
+    private fun nameWords(name: String): List<String> {
+        val words = SubtitleLanguage.words(name)
+        val anchor = words.indexOfFirst { SubtitleSpec.EPISODE_WORD.matches(it) || SubtitleSpec.YEAR_WORD.matches(it) }
+        val tail = words.drop(anchor + 1).takeWhile { !SubtitleSpec.QUALITY_WORD.matches(it) }
+        return if (anchor < 0) words else words.take(anchor + 1) + tail
+    }
 
     private fun episode(words: List<String>) = words.firstOrNull(SubtitleSpec.EPISODE_WORD::matches)
 

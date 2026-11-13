@@ -128,6 +128,15 @@ class SubtitleFilePlanTest {
         assertEquals(listOf("D/드라마 1회.smi"), chosen(drama))
     }
 
+    @Test fun releaseWordsInTheTitleItselfAreKept() {
+        val pack = files("S/Web.of.Lies.S01E01.1080p.mkv" to 500_000_000,
+            "S/Web.of.Lies.S01E02.1080p.mkv" to 500_000_000,
+            "S/Web.of.Lies.S01E01.ko.srt" to 10, "S/Web.of.Lies.S01E02.ko.srt" to 10, "S/Lies.S01E01.ko.srt" to 10)
+        assertEquals(listOf("S/Web.of.Lies.S01E01.ko.srt"), chosen(pack))
+        val movie = files("M/Charlottes.Web.2006.WEB.mkv" to 500_000_000, "M/Charlottes.Web.2006.srt" to 10)
+        assertTrue(SubtitleFilePlan.select(movie, 0, pieceLength).single().matchesVideoName)
+    }
+
     @Test fun aSmallExtraWithAnEpisodeMarkerDoesNotMakeASeasonPack() {
         val torrent = files("M/Movie.2020.1080p.mkv" to 2_000_000_000, "M/Featurettes.E01.mkv" to 50_000_000,
             "M/Movie.2020.1080p.ko.srt" to 10)
