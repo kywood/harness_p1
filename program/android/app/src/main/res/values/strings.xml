@@ -191,6 +191,22 @@
     <string name="guide_ads_title">광고</string>
     <string name="guide_ads_body">메인과 재생 목록에 배너 광고가 나오고, 재생을 마친 뒤 가끔 전면 광고가 나옵니다. 재생하는 동안에는 광고가 나오지 않습니다.</string>
 
+    <!-- 링크: 다른 앱에서 받은 링크 확인 시트 (design/specs/open-link-sheet.md 3절, 오류 문구는 error-recovery.md 2-1) -->
+    <string name="open_link_title">이 링크를 열까요?</string>
+    <string name="open_link_kind_magnet">마그넷 링크</string>
+    <string name="open_link_kind_torrent">.torrent 파일 주소</string>
+    <string name="open_link_magnet_short">마그넷 링크 · %1$s…</string>
+    <string name="open_link_in_playlist">재생 목록에 있는 영상입니다.</string>
+    <string name="open_link_keep_playing">지금 재생은 그대로 이어집니다.</string>
+    <string name="open_link_saved">재생 목록에 추가했습니다.</string>
+    <string name="open_link_error_title">링크를 열 수 없습니다</string>
+    <string name="action_resume_play">이어서 재생</string>
+    <string name="action_save_for_later">받아 두기</string>
+    <string name="cd_save_for_later">받아 두기, 재생 목록에 추가하고 다운로드</string>
+    <string name="error_unsupported_link">마그넷 링크나 .torrent 파일 주소만 열 수 있습니다. 주소를 확인해 주세요.</string>
+    <string name="error_link_length">링크가 비어 있거나 너무 깁니다. 링크를 다시 복사해 붙여넣어 주세요.</string>
+    <string name="error_https_required">보안 연결(https)을 쓰지 않는 주소입니다. https:// 주소를 넣어 주세요.</string>
+    <string name="error_download_start">다운로드를 시작하지 못했습니다. 다시 시도해 주세요.</string>
     <!-- 설정 (design/specs/settings-wifi.md 6절) -->
     <string name="title_settings">설정</string>
     <string name="settings_section_download">다운로드</string>

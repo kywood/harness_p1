@@ -25,7 +25,8 @@ internal object MagnetIdentity {
         return MessageDigest.getInstance("SHA-256").digest(identity.toByteArray())
             .joinToString("") { "%02x".format(it.toInt() and 255) }
     }
-    private fun normalize(topic: String): String? {
+    /** `urn:btih:<40 hex>` or `urn:btmh:1220<64 hex>` for a lower-case `xt` value (base32 decoded), else null. */
+    internal fun normalize(topic: String): String? {
         if (topic.matches(HEX_BTIH)) return topic
         if (topic.matches(BTMH)) return topic
         if (!topic.matches(BASE32_BTIH)) return null

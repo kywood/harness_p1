@@ -17,8 +17,12 @@ internal class PlaylistRepository(
 ) {
     fun savedMagnets(): List<SavedMagnet> = history.list().map(lookup)
 
-    /** 재생 목록에 있는 링크의 마그넷 키. 다운로드 정보는 읽지 않는다. */
+    /** 재생 목록에 있는 링크의 마그넷 키. 다운로드 정보는 읽지 않는다. 깨진 항목은 [MagnetHistory.list]가 건너뛴다. */
     fun keys(): Set<String> = history.list().map { MagnetIdentity.key(it.magnet) }.toSet()
+
+    /** 마그넷 키가 [key]인 항목에 다운로드 정보를 붙여 돌려준다. 없으면 null. */
+    fun find(key: String): SavedMagnet? =
+        history.list().firstOrNull { MagnetIdentity.key(it.magnet) == key }?.let(lookup)
 
     fun add(magnet: String) = history.add(magnet)
 

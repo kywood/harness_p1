@@ -1,21 +1,23 @@
 package com.example.torrentstreamplayer.ui
 
+import androidx.annotation.StringRes
+import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.MagnetDisplayName
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentInputResolver
 import com.example.torrentstreamplayer.meta.NetworkSpec
 import java.util.Locale
 
-/** Kinds of link another app can hand over. */
-internal enum class IncomingLinkKind {
+/** Kinds of link another app can hand over. [label] is the sheet's kind line ("마그넷 링크"). */
+internal enum class IncomingLinkKind(@StringRes val label: Int) {
     /** A magnet link with a valid info hash ([MagnetIdentity]). */
-    MAGNET,
+    MAGNET(R.string.open_link_kind_magnet),
 
     /**
      * An https address, expected to serve a `.torrent` file. Its path may be anything (`download.php?id=3`):
      * [TorrentInputResolver] checks the downloaded bytes.
      */
-    TORRENT_URL,
+    TORRENT_URL(R.string.open_link_kind_torrent),
 }
 
 /** A validated link from another app. [displayName] is the magnet's `dn`, if any; never log [value]. */
@@ -25,21 +27,21 @@ internal data class IncomingLink(val value: String, val kind: IncomingLinkKind, 
 }
 
 /**
- * Why a handed-over link cannot be opened. Each reason matches one error text of the design's error sheet
- * (`design/specs/open-link-sheet.md` 2-2); the strings are added with the sheet.
+ * Why a handed-over link cannot be opened. Each reason registers the error sheet's text
+ * (`design/specs/open-link-sheet.md` 2-2, wording in `design/specs/error-recovery.md` 2-1).
  */
-internal enum class IncomingLinkError {
-    /** No `magnet:` or `http(s)://` link in the shared text, or another scheme (`error_unsupported_link`). */
-    UNSUPPORTED,
+internal enum class IncomingLinkError(@StringRes val message: Int) {
+    /** No `magnet:` or `http(s)://` link in the shared text, or another scheme. */
+    UNSUPPORTED(R.string.error_unsupported_link),
 
-    /** A `magnet:` link without a valid info hash (`error_invalid_magnet`). */
-    INVALID_MAGNET,
+    /** A `magnet:` link without a valid info hash. */
+    INVALID_MAGNET(R.string.error_invalid_magnet),
 
-    /** Longer than [NetworkSpec.MAX_LINK_CHARS] (`error_link_length`). */
-    TOO_LONG,
+    /** Longer than [NetworkSpec.MAX_LINK_CHARS], or cut off where the shared-text search ends. */
+    TOO_LONG(R.string.error_link_length),
 
-    /** A plain `http://` address (`error_https_required`). */
-    HTTPS_REQUIRED,
+    /** A plain `http://` address. */
+    HTTPS_REQUIRED(R.string.error_https_required),
 }
 
 /** Result of reading an intent: a link to confirm, or the reason it cannot be opened. */
@@ -67,14 +69,19 @@ internal enum class IncomingAction(val action: String) {
  * action, data string and shared text.
  *
  * Shared text: only its first [MAX_SHARED_CHARS] characters are searched, and only the first link found is judged
- * (a later valid link is not tried, so the user sees why the first one fails). A link may follow other letters
- * directly (`보세요magnet:?…`) and ends at whitespace or the first non-ASCII character; closing punctuation such as
- * `).` at its end is dropped.
+ * (a later valid link is not tried, so the user sees why the first one fails). A link that runs past the searched
+ * part is cut, so it is rejected ([IncomingLinkError.TOO_LONG]). A link may follow other letters directly
+ * (`보세요magnet:?…`). A magnet ends only at whitespace, because its `dn` may hold unencoded Hangul; an https
+ * address also ends at the first non-ASCII character. Closing punctuation such as `).` at its end is dropped.
+ * The scheme is matched without case (`HTTPS://`, `Magnet:`) and handed on in lower case.
  */
 internal object IncomingLinkParser {
     /** Longest part of shared text searched for a link; message apps can share whole conversations. */
     const val MAX_SHARED_CHARS = NetworkSpec.MAX_LINK_CHARS * 4
-    private val LINK = Regex("""(?i)(?<![a-z0-9])(?:magnet:\?|https?://)[\x21-\x7E]+""")
+    private val LINK = Regex("""(?i)(?<![a-z0-9])(?:magnet:\?[^\s\p{Z}]+|https?://[\x21-\x7E]+)""")
+    /** One letter a magnet / an http(s) address may contain; matches the two halves of [LINK]. */
+    private val MAGNET_LETTER = Regex("""[^\s\p{Z}]""")
+    private val WEB_LETTER = Regex("""[\x21-\x7E]""")
     private const val TRAILING_PUNCTUATION = ".,;:!?)]}>\"'"
     private const val MAGNET_PREFIX = "magnet:"
     private const val HTTP_PREFIX = "http://"
@@ -89,26 +96,30 @@ internal object IncomingLinkParser {
 
     /** The first link in [text], judged on its own. */
     fun firstLink(text: String): IncomingLinkResult {
-        val found = LINK.find(text.take(MAX_SHARED_CHARS))
-            ?: return IncomingLinkResult.Invalid(IncomingLinkError.UNSUPPORTED)
+        val searched = text.take(MAX_SHARED_CHARS)
+        val found = LINK.find(searched) ?: return invalid(IncomingLinkError.UNSUPPORTED)
+        // Cut only when the letter after the searched part would have continued this kind of link.
+        val linkLetter = if (found.value.startsWith(MAGNET_PREFIX, ignoreCase = true)) MAGNET_LETTER else WEB_LETTER
+        val cut = found.range.last == searched.lastIndex && text.length > searched.length &&
+            linkLetter.matches(text[searched.length].toString())
+        if (cut) return invalid(IncomingLinkError.TOO_LONG)
         return link(found.value.trimEnd { it in TRAILING_PUNCTUATION })
     }
 
     /** [value] as one whole link: a magnet, or an https address with a host. */
     fun link(value: String): IncomingLinkResult {
-        val trimmed = value.trim()
-        val lower = trimmed.lowercase(Locale.ROOT)
+        val trimmed = lowerCaseScheme(value.trim())
         return when {
             trimmed.isEmpty() -> invalid(IncomingLinkError.UNSUPPORTED)
             trimmed.length > NetworkSpec.MAX_LINK_CHARS -> invalid(IncomingLinkError.TOO_LONG)
-            lower.startsWith(MAGNET_PREFIX) ->
+            trimmed.startsWith(MAGNET_PREFIX) ->
                 if (runCatching { MagnetIdentity.key(trimmed) }.isSuccess) {
                     val name = MagnetDisplayName.of(trimmed)
                     IncomingLinkResult.Valid(IncomingLink(trimmed, IncomingLinkKind.MAGNET, name))
                 } else {
                     invalid(IncomingLinkError.INVALID_MAGNET)
                 }
-            lower.startsWith(HTTP_PREFIX) -> invalid(IncomingLinkError.HTTPS_REQUIRED)
+            trimmed.startsWith(HTTP_PREFIX) -> invalid(IncomingLinkError.HTTPS_REQUIRED)
             TorrentInputResolver.webAddress(trimmed) != null ->
                 IncomingLinkResult.Valid(IncomingLink(trimmed, IncomingLinkKind.TORRENT_URL, null))
             else -> invalid(IncomingLinkError.UNSUPPORTED)
@@ -120,6 +131,12 @@ internal object IncomingLinkParser {
         val value = data?.trim().orEmpty()
         if (!value.lowercase(Locale.ROOT).startsWith(MAGNET_PREFIX)) return invalid(IncomingLinkError.UNSUPPORTED)
         return link(value)
+    }
+
+    /** `HTTPS://Example.com/A` → `https://Example.com/A`: the resolver and the engine expect a lower-case scheme. */
+    private fun lowerCaseScheme(value: String): String {
+        val end = value.indexOf(':')
+        return if (end <= 0) value else value.substring(0, end).lowercase(Locale.ROOT) + value.substring(end)
     }
 
     private fun invalid(reason: IncomingLinkError) = IncomingLinkResult.Invalid(reason)

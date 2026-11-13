@@ -28,6 +28,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,7 @@ import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.ui.LegalFooterPolicy
 import com.example.torrentstreamplayer.ui.LegalLink
 import com.example.torrentstreamplayer.ui.LegalLinkActions
+import com.example.torrentstreamplayer.ui.MainInputFill
 import com.example.torrentstreamplayer.ui.components.LinkTextField
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
 import com.example.torrentstreamplayer.ui.components.SecondaryButton
@@ -60,7 +62,12 @@ import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import kotlinx.coroutines.launch
 
-/** 메인: 링크를 넣고 바로 재생하거나 재생 목록·저장 파일 관리로 간다. */
+/**
+ * 메인: 링크를 넣고 바로 재생하거나 재생 목록·저장 파일 관리로 간다.
+ *
+ * @param inputFill 다른 앱에서 받은 링크로 입력란을 채우거나(받아 두기 뒤에는) 비운다. 한 번 반영하고
+ * [onInputFilled]로 알려, 사용자가 지운 뒤 다른 화면을 다녀와도 다시 채우지 않는다.
+ */
 @Composable
 internal fun MagnetLinkInputScreen(
     onStartStream: (String) -> Unit,
@@ -69,9 +76,17 @@ internal fun MagnetLinkInputScreen(
     onOpenHistory: () -> Unit = {},
     onOpenLicenses: () -> Unit = {},
     onPrivacyOptions: (() -> Unit)? = null,
-    onOpenSettings: () -> Unit = {}
+    onOpenSettings: () -> Unit = {},
+    inputFill: MainInputFill? = null,
+    onInputFilled: (MainInputFill) -> Unit = {}
 ) {
     var magnetLink by remember { mutableStateOf("") }
+    LaunchedEffect(inputFill) {
+        inputFill?.let {
+            magnetLink = it.text
+            onInputFilled(it)
+        }
+    }
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()

@@ -15,12 +15,12 @@ internal class MagnetHistory(private val cache: TorrentCache) {
             require(count in 0..50)
             List(count) {
                 val magnet = input.readUTF()
-                MagnetIdentity.key(magnet)
-                val savedTitle = if (version < 0) input.readUTF() else title(magnet)
+                val savedTitle = if (version < 0) input.readUTF() else runCatching { title(magnet) }.getOrDefault("")
                 val receivedAt = input.readLong()
                 SavedMagnet(magnet, savedTitle, receivedAt, lastPlayedAt = if (version <= -2) input.readLong() else 0,
                     lastPositionMs = if (version == -3) input.readLong().coerceAtLeast(0) else 0)
-            }.sortedByDescending { it.addedAt }
+            }.filter { runCatching { MagnetIdentity.key(it.magnet) }.isSuccess } // A broken entry is skipped alone.
+                .sortedByDescending { it.addedAt }
         }
     } catch (_: Exception) { emptyList() }
     @Synchronized fun add(magnet: String, now: Long = System.currentTimeMillis()) {

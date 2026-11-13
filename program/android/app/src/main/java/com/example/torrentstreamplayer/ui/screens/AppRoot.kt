@@ -99,6 +99,8 @@ internal fun AppRoot(
                 }
                 is AppScreen.Main -> MagnetLinkInputScreen(
                     onStartStream = viewModel::playFromMain,
+                    inputFill = viewModel.mainInputFill.collectAsState().value,
+                    onInputFilled = viewModel::mainInputFilled,
                     errorMessage = current.errorMessage,
                     onOpenFiles = viewModel::openStoredFiles,
                     onOpenHistory = viewModel::openPlaylist,
@@ -135,6 +137,8 @@ internal fun AppRoot(
                     )
                 }
             }
+            // 다른 앱에서 받은 링크의 확인 시트. 어느 화면 위에서든 뜬다(#127).
+            OpenLinkHost(viewModel, downloadJobs, snackbar, snackbarVisible, waitsForWifi, announceWifiWait)
         }
     }
 }

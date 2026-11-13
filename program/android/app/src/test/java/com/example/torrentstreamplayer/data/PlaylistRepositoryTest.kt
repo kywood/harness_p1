@@ -52,6 +52,15 @@ class PlaylistRepositoryTest {
         assertEquals(setOf(MagnetIdentity.key(magnet(1))), repository.keys())
     }
 
+    @Test fun findReturnsTheEntryWithTheSameKeyWithDownloadDetails() {
+        repository().add(magnet(1) + "&dn=Old")
+        repository().savePosition(magnet(1), 42_000, 120_000)
+        val found = repository().find(MagnetIdentity.key(magnet(1) + "&tr=other"))
+        assertEquals(42_000L, found?.lastPositionMs)
+        assertEquals(7L, found?.fileSize)
+        assertEquals(null, repository().find(MagnetIdentity.key(magnet(2))))
+    }
+
     @Test fun titleMarkPlayedAndDeleteGoThroughToHistory() {
         repository().add(magnet(1))
         repository().updateTitle(magnet(1), "영상")

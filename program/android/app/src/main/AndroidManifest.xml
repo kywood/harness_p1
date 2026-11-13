@@ -40,7 +40,7 @@
 
                 <data android:scheme="magnet" />
             </intent-filter>
-            <!-- 다른 앱의 공유: 텍스트 안의 첫 마그넷 또는 http(s) .torrent 주소. -->
+            <!-- 다른 앱의 공유: 텍스트 안의 첫 링크(마그넷 또는 https 주소, 경로는 무엇이든 된다). http는 오류 시트로 알린다. 확인 시트 없이 시작하지 않는다. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
 
