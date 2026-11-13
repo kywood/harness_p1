@@ -40,6 +40,25 @@ class AppNavigatorTest {
         assertEquals(AppScreen.Main("실패"), navigator.screen.value)
     }
 
+    @Test fun settingsOpensFromMainAndBackReturnsToMain() {
+        val navigator = AppNavigator()
+        navigator.openSettings()
+        assertEquals(AppScreen.Settings, navigator.screen.value)
+        navigator.closeList()
+        assertEquals(AppScreen.Main(), navigator.screen.value)
+    }
+
+    @Test fun licensesOpenedFromSettingsReturnToSettingsThenMain() {
+        val navigator = AppNavigator()
+        navigator.openSettings()
+        navigator.openOpenSourceLicenses()
+        assertEquals(AppScreen.OpenSourceLicenses, navigator.screen.value)
+        navigator.closeList()
+        assertEquals(AppScreen.Settings, navigator.screen.value)
+        navigator.closeList()
+        assertEquals(AppScreen.Main(), navigator.screen.value)
+    }
+
     @Test fun playbackFromPlaylistReturnsToPlaylistWhenClosed() {
         val navigator = AppNavigator()
         navigator.openPlaylist()

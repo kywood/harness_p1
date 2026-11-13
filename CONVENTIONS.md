@@ -46,5 +46,8 @@ planning(무엇을·왜, 화면 정의) → PM(우선순위 결정, 이슈로 �
 | 준비 화면 | `PreparingScreen` (`LoadingScreen`, `BufferingScreen`, `ui/screens/PreparingScreen.kt`) |
 | 재생 화면 | `VlcPlayerScreen` |
 | 피스 맵 | `PieceMap` |
+| 설정 | `SettingsScreen` (`ui/screens/SettingsScreen.kt`, `AppScreen.Settings`) |
+| Wi-Fi 전용 | `AppSettings.wifiOnly` (설정 항목) |
+| Wi-Fi 대기 | `DownloadPhase.WAITING_FOR_WIFI`, `PlaylistItemStatus.WAITING_FOR_WIFI` (재생 목록 상태 칩) |
 
 문서와 사용자 문구는 한국어로 쓴다.

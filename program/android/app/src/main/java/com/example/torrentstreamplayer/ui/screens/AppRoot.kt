@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.example.torrentstreamplayer.ui.AppBackPolicy
+import com.example.torrentstreamplayer.ui.AppSnackbarPolicy
 import com.example.torrentstreamplayer.ui.DownloadPhase
 import com.example.torrentstreamplayer.ui.MagnetHistoryScreen
 import com.example.torrentstreamplayer.ui.MainViewModel
@@ -46,35 +50,61 @@ internal fun AppRoot(
     var playlistFilter by rememberSaveable { mutableStateOf(PlaylistFilter.ALL) }
     val downloadJobs by viewModel.downloads.tasks.collectAsState()
     val downloadError by viewModel.downloads.error.collectAsState()
-    if (showDownloadDialog) QuickDownloadDialog(onDismiss = { showDownloadDialog = false }, submit = viewModel::queueDownload)
+    val mobileConfirm by viewModel.mobilePlaybackConfirm.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
+    val waitsForWifi by viewModel.waitsForWifi.collectAsState()
+    val snackbarVisible = AppSnackbarPolicy.visible(screen)
+    // 호스트가 없는 재생·준비 화면에서는 안내를 쌓아 두지 않는다(나중에 다른 화면에서 늦게 뜨지 않게).
+    val announceWifiWait = rememberWifiWaitAnnouncer(snackbar, waitsForWifi && snackbarVisible)
+    // 화면이 바뀌면(예: 재생 목록 → 재생) 떠 있던 공용 스낵바를 닫는다. 재생·준비 화면은 호스트도 그리지 않는다.
+    LaunchedEffect(screen::class) { snackbar.currentSnackbarData?.dismiss() }
+    if (showDownloadDialog) QuickDownloadDialog(onDismiss = { showDownloadDialog = false }, submit = {
+        viewModel.queueDownload(it)
+        announceWifiWait()
+    })
+    if (mobileConfirm != null) MobilePlaybackConfirmDialog(viewModel::confirmMobilePlayback, viewModel::dismissMobilePlayback)
     BackHandler(enabled = AppBackPolicy.returnsToInput(screen)) { viewModel.closePlayback() }
 
-    Scaffold(modifier = Modifier.fillMaxSize(), bottomBar = {
-        if (TestAdPolicy.visible(screen)) Box(Modifier.navigationBarsPadding()) { TestBannerAd() }
-    }) { innerPadding ->
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        snackbarHost = { if (snackbarVisible) SnackbarHost(snackbar) },
+        bottomBar = { if (TestAdPolicy.visible(screen)) Box(Modifier.navigationBarsPadding()) { TestBannerAd() } }
+    ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
             when (val current = screen) {
                 AppScreen.StoredFiles -> StoredFilesScreen(viewModel::storedFiles, viewModel::deleteStoredFile,
                     onBack = viewModel::closeList)
                 AppScreen.OpenSourceLicenses -> OpenSourceLicensesScreen(onBack = viewModel::closeList)
-                AppScreen.Playlist -> MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
-                    onPlay = viewModel::playFromPlaylist,
-                    onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
-                    onStopDownload = viewModel::stopDownloads, downloadJobs = downloadJobs,
-                    onStopItem = viewModel::stopDownload, onStopItems = viewModel::stopDownloads,
-                    downloadError = downloadError,
-                    simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
-                    downloadCount = downloadJobs.values.count { it.phase == DownloadPhase.RUNNING },
-                    sort = playlistSort, onSortChange = { playlistSort = it },
-                    filter = playlistFilter, onFilterChange = { playlistFilter = it },
-                    onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition)
+                AppScreen.Settings -> {
+                    val settings by viewModel.settings.collectAsState()
+                    val saveFailed by viewModel.settingsSaveFailed.collectAsState()
+                    SettingsScreen(settings, viewModel::toggleWifiOnly, viewModel::toggleAutoSubtitles,
+                        onBack = viewModel::closeList, onOpenLicenses = viewModel::openOpenSourceLicenses,
+                        onPrivacyOptions = onPrivacyOptions,
+                        waitsForWifi = waitsForWifi, saveFailed = saveFailed, onSaveFailedShown = viewModel::consumeSettingsSaveFailed)
+                }
+                AppScreen.Playlist -> {
+                    MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
+                        onPlay = viewModel::playFromPlaylist,
+                        onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
+                        onStopDownload = viewModel::stopDownloads, downloadJobs = downloadJobs,
+                        onStopItem = viewModel::stopDownload, onStopItems = viewModel::stopDownloads,
+                        downloadError = downloadError,
+                        simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
+                        downloadCount = downloadJobs.values.count { it.phase == DownloadPhase.RUNNING },
+                        sort = playlistSort, onSortChange = { playlistSort = it },
+                        filter = playlistFilter, onFilterChange = { playlistFilter = it },
+                        onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition,
+                        onDownloadsStarted = announceWifiWait)
+                }
                 is AppScreen.Main -> MagnetLinkInputScreen(
                     onStartStream = viewModel::playFromMain,
                     errorMessage = current.errorMessage,
                     onOpenFiles = viewModel::openStoredFiles,
                     onOpenHistory = viewModel::openPlaylist,
                     onOpenLicenses = viewModel::openOpenSourceLicenses,
-                    onPrivacyOptions = onPrivacyOptions
+                    onPrivacyOptions = onPrivacyOptions,
+                    onOpenSettings = viewModel::openSettings
                 )
                 is AppScreen.Preparing -> {
                     val metadata by viewModel.metadataDetails.collectAsState()
