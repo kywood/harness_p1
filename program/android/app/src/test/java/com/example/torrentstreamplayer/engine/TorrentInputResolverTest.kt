@@ -1,4 +1,6 @@
 package com.example.torrentstreamplayer.engine
+import com.example.torrentstreamplayer.meta.TorrentFailure
+import com.example.torrentstreamplayer.meta.UserFacingFailure
 import org.junit.Assert.*
 import org.junit.Test
 import java.net.InetSocketAddress
@@ -39,7 +41,14 @@ class TorrentInputResolverTest {
         val resolver = TorrentInputResolver({ magnet }, { error("Network must not be used") })
         assertThrows(InvalidMagnetException::class.java) { resolver.resolve("$magnet&dn=[Group] Title") }
         val url = assertThrows(IllegalArgumentException::class.java) { resolver.resolve("https://exa mple.test/a b") }
-        assertEquals("마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요.", url.message)
+        assertEquals(TorrentFailure.INPUT_UNSUPPORTED, (url as UserFacingFailure).failure)
+    }
+    @Test fun inputLengthAndNonTorrentBytesUseRegisteredFailures() {
+        val resolver = TorrentInputResolver({ magnet }, { "<html>".toByteArray() })
+        val empty = assertThrows(IllegalArgumentException::class.java) { resolver.resolve("  ") }
+        assertEquals(TorrentFailure.INPUT_LENGTH, (empty as UserFacingFailure).failure)
+        val page = assertThrows(IllegalArgumentException::class.java) { resolver.resolve("https://example.test/a") }
+        assertEquals(TorrentFailure.NOT_TORRENT, (page as UserFacingFailure).failure)
     }
     @Test fun unreadableTorrentBytesAreReportedAsTorrentFileFailure() {
         val failure = assertThrows(TorrentInputResolver.InvalidTorrentFileException::class.java) {

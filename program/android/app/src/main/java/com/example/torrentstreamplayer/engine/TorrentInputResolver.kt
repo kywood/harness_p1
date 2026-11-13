@@ -4,6 +4,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import com.example.torrentstreamplayer.meta.NetworkSpec
+import com.example.torrentstreamplayer.meta.TorrentFailure
 
 internal data class ResolvedTorrentInput(val magnet: String, val metadata: ByteArray? = null)
 internal class TorrentInputResolver(
@@ -12,18 +13,16 @@ internal class TorrentInputResolver(
 ) {
     fun resolve(input: String): ResolvedTorrentInput {
         val value = input.trim()
-        require(value.length in 1..NetworkSpec.MAX_LINK_CHARS) { "입력 주소의 길이가 올바르지 않습니다." }
+        if (value.length !in 1..NetworkSpec.MAX_LINK_CHARS) throw TorrentFailure.INPUT_LENGTH.invalid()
         if (value.startsWith("magnet:", true)) return ResolvedTorrentInput(value.also(MagnetIdentity::key))
         val uri = webAddress(value)
-        require(uri != null) { "마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요." }
+        if (uri == null) throw TorrentFailure.INPUT_UNSUPPORTED.invalid()
         val target = NetworkSpec.secure(uri.toURL())
         val bytes = try { fetch(target) } catch (e: java.io.IOException) {
-            if (target.protocol != uri.scheme) throw IllegalArgumentException("보안 연결(HTTPS)을 지원하지 않는 주소입니다. https:// 주소를 입력하세요.", e)
+            if (target.protocol != uri.scheme) throw TorrentFailure.INPUT_HTTPS.invalid(e)
             throw e
         }
-        require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES && bytes[0] == 'd'.code.toByte()) {
-            ".torrent 파일이 아닙니다. 파일의 직접 다운로드 주소를 입력하세요."
-        }
+        if (bytes.isEmpty() || bytes.size > MAX_BYTES || bytes[0] != 'd'.code.toByte()) throw TorrentFailure.NOT_TORRENT.invalid()
         val magnet = try { decode(bytes) } catch (e: Exception) { throw InvalidTorrentFileException(e) }
         MagnetIdentity.key(magnet)
         return ResolvedTorrentInput(magnet, bytes)
