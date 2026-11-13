@@ -58,7 +58,7 @@ class TorrentEngine(private val context: Context) {
     private var priorityPins: Set<Int> = emptySet()
     @Volatile private var startTrace: PlaybackStartTrace? = null
     /** File-end index pieces pinned like the startup buffer but not waited for ([StartupPrefetchPlan]). */
-    private var prefetchPieces: Set<Int> = emptySet()
+    @Volatile private var prefetchPieces: Set<Int> = emptySet()
     private val _pieceMap = MutableStateFlow(PieceMapSnapshot.EMPTY)
     val pieceMap = _pieceMap.asStateFlow()
     private val _metadataDetails = MutableStateFlow(MetadataDetails())
@@ -394,6 +394,7 @@ class TorrentEngine(private val context: Context) {
         val handle = currentHandle ?: return
         val index = startupIndex ?: return
         val added = index.update(handle::havePiece) - startupPieces
+        prefetchPieces = StartupPrefetchPlan.pieces(prefetchPieces, index.location(StartupBufferPlan.HEAD_BYTES))
         if (added.isEmpty()) return
         startupPieces = startupPieces + added
         added.forEach { handle.piecePriority(it, Priority.TOP_PRIORITY); handle.setPieceDeadline(it, 1000) }
@@ -442,7 +443,8 @@ class TorrentEngine(private val context: Context) {
                 handle.resetPieceDeadline(p); handle.piecePriority(p, Priority.fromSwig(background))
             }
             for (p in pins - priorityPins) {
-                handle.piecePriority(p, Priority.TOP_PRIORITY); handle.setPieceDeadline(p, 1000)
+                handle.piecePriority(p, Priority.TOP_PRIORITY)
+                handle.setPieceDeadline(p, StartupPrefetchPlan.deadlineMs(p, prefetchPieces, startupPieces))
             }
             priorityPins = pins
             for (request in SequentialPiecePlan.requests(startPieceIndex, lastPieceIndex, buffer, handle::havePiece)) {
@@ -540,6 +542,7 @@ class TorrentEngine(private val context: Context) {
             val required = startupPieces
             if (required.isNotEmpty()) {
                 val ready = StartupBufferPlan.ready(required, handle::havePiece)
+                if (ready) prefetchPieces = emptySet()
                 if (ready) { startupPieces = emptySet(); if (BuildConfig.DEBUG) Log.d(TAG, "Initial verified playback buffer ready") }
                 if (ready && BuildConfig.DEBUG) startTrace?.ready()?.let { Log.d(TAG, it) }
                 return ready
