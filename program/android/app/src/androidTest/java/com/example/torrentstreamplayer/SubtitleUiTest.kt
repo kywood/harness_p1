@@ -13,7 +13,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -21,6 +23,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -63,8 +66,9 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * - [sheetListsTracksAndStaysOpenAfterAPick]: 네트워크 없이 시트만 그린다.
  * - [sintelSubtitleCanBeOpenedAndTurnedOff]: 공개 영상 Sintel(Blender Foundation, CC BY)을 실제로 받는다. 피어나 웹 시드가
- *   필요하고, 네트워크가 없으면 건너뛴다(`assumeTrue`). 전체 대기는 240초까지(공개 스웜이라 편차가 크다). 설정·재생 목록·받은 파일은 `finally`에서
- *   되돌리고 지운다.
+ *   필요하고, 네트워크가 없으면 건너뛴다(`assumeTrue`). 대기는 단계별이다: Playing까지 300초(공개 스웜이라 편차가 크다),
+ *   그 뒤 자막 파일 받기와 자동 켜기까지 60초, 시트 확인·끄기는 단계마다 10초. 실패 메시지에 단계와 걸린 시간이 나오고,
+ *   통과한 단계의 시간은 logcat `SubtitleUiTest`에 남는다. 설정·재생 목록·받은 파일은 `finally`에서 되돌리고 지운다.
  * - [koreanSmiAndSrtOpenInVlc]: 직접 만든 한글 `.srt`(UTF-8)·`.smi`(CP949, UTF-8 사본으로 바꿔) 파일을 이미지 영상 위에 붙인다. 글자가 바르게
  *   보이는지는 자동으로 판정하지 않는다. 저장한 화면 캡처를 사람이 본다(경로는 logcat `SubtitleUiTest`).
  */
@@ -82,6 +86,24 @@ class SubtitleUiTest {
             check(System.currentTimeMillis() < limit) { message }
             Thread.sleep(100)
         }
+    }
+
+    /**
+     * Waits up to [limitMs] for one Sintel stage and logs how long it took (logcat `SubtitleUiTest`). Uses the compose
+     * wait, which keeps the compose clock running: the player screen, and the subtitle list it collects, only update
+     * with it.
+     */
+    private fun sintelStage(name: String, limitMs: Long, done: () -> Boolean) {
+        val start = System.currentTimeMillis()
+        try {
+            compose.waitUntil(name, limitMs, done)
+        } catch (e: ComposeTimeoutException) {
+            val spent = (System.currentTimeMillis() - start) / 1000
+            // What was on screen, for the failure report.
+            runCatching { compose.onAllNodes(isRoot(), useUnmergedTree = true).printToLog("SubtitleUiTest") }
+            throw IllegalStateException("Sintel stage '$name' did not finish in ${spent}s (limit ${limitMs / 1000}s)", e)
+        }
+        Log.i("SubtitleUiTest", "Sintel stage '$name' took ${System.currentTimeMillis() - start}ms")
     }
 
     private fun hasDescriptionStarting(prefix: String) = SemanticsMatcher("description starts with $prefix") { node ->
@@ -112,42 +134,38 @@ class SubtitleUiTest {
         assumeTrue("needs a network connection", hasInternet())
         val model = ViewModelProvider(compose.activity)[MainViewModel::class.java]
         val saved = model.settings.value
-        // One deadline for the whole test, so a missing network or peer holds the run for at most this long.
-        val deadline = System.currentTimeMillis() + PLAYBACK_TIMEOUT_MS
-        fun remainingMs() = (deadline - System.currentTimeMillis()).coerceAtLeast(1)
+        val onPrefix = text(R.string.cd_subtitles_on, "")
+        val offPrefix = text(R.string.cd_subtitles_off)
+        fun shown(prefix: String) =
+            compose.onAllNodes(hasDescriptionStarting(prefix), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         try {
             compose.runOnUiThread {
                 model.setWifiOnly(false)
                 model.setAutoSubtitles(true)
                 model.startStreaming(SINTEL)
             }
-            await(remainingMs(), "Sintel did not start; this test needs Sintel peers or its web seed") {
+            sintelStage("Playing (needs Sintel peers or its web seed)", STAGE_PLAYING_MS) {
                 model.uiState.value is StreamUiState.Playing
             }
-            // subtitleFiles only updates while the player screen collects it, and the compose rule's clock moves
-            // only inside compose waits, so a plain sleep loop would read an empty list forever.
-            compose.waitUntil("Sintel subtitle files were downloaded", remainingMs()) {
-                model.subtitleFiles.value.isNotEmpty()
-            }
-            val onPrefix = text(R.string.cd_subtitles_on, "")
             // Sintel has no Korean file, so the English file is picked: the button reads "자막, 켜짐: 영어(파일)".
-            while (compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true).fetchSemanticsNodes()
-                    .isEmpty()) {
-                check(System.currentTimeMillis() < deadline) { "No subtitle was turned on automatically" }
-                // Hidden controls leave the tree; a tap shows them (the button exists only while they are shown).
-                if (compose.onAllNodes(hasDescriptionStarting(text(R.string.cd_subtitles_off)), useUnmergedTree = true)
-                        .fetchSemanticsNodes().isEmpty()) compose.onRoot().performTouchInput { click(center) }
-                Thread.sleep(500)
+            var lastTap = 0L
+            sintelStage("subtitle files downloaded and one turned on automatically", STAGE_SUBTITLE_ON_MS) {
+                model.subtitleFiles.value.isNotEmpty() && shown(onPrefix).also { on ->
+                    // Hidden controls leave the tree; a tap shows them (the button exists only while they are shown).
+                    // At most one tap a second, so a second tap does not hide them again before they draw.
+                    val now = System.currentTimeMillis()
+                    if (!on && !shown(offPrefix) && now - lastTap > 1_000) {
+                        lastTap = now
+                        compose.onRoot().performTouchInput { click(center) }
+                    }
+                }
             }
             compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true)[0].performClick()
-            compose.waitUntil(10_000) {
+            sintelStage("sheet lists Sintel.en.srt", STAGE_OFF_MS) {
                 compose.onAllNodesWithText("Sintel.en.srt").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText(text(R.string.subtitle_off)).performClick()
-            compose.waitUntil(10_000) {
-                compose.onAllNodes(hasDescriptionStarting(text(R.string.cd_subtitles_off)), useUnmergedTree = true)
-                    .fetchSemanticsNodes().isNotEmpty()
-            }
+            sintelStage("subtitles turned off", STAGE_OFF_MS) { shown(offPrefix) }
         } finally {
             compose.runOnUiThread {
                 model.closePlayback()
@@ -263,6 +281,11 @@ class SubtitleUiTest {
         const val SINTEL = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel" +
             "&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337" +
             "&tr=wss%3A%2F%2Ftracker.webtorrent.dev&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F"
-        const val PLAYBACK_TIMEOUT_MS = 240_000L
+        /** Start to Playing: a public swarm, so it varies widely with the network. */
+        const val STAGE_PLAYING_MS = 300_000L
+        /** Playing to a subtitle file downloaded and turned on automatically. */
+        const val STAGE_SUBTITLE_ON_MS = 60_000L
+        /** Each sheet step: listing the file, turning subtitles off. */
+        const val STAGE_OFF_MS = 10_000L
     }
 }
