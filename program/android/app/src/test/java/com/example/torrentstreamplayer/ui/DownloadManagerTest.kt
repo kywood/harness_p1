@@ -194,7 +194,8 @@ class DownloadManagerTest {
 
         val fourth = MagnetIdentity.key(magnets.last())
         assertEquals(DownloadPhase.QUEUED, phases(manager)[fourth])
-        assertEquals("the queued 4th link gets a playlist card too", magnets, added)
+        assertEquals("only the queued 4th link is reported; running ones are saved by their controllers",
+            listOf(magnets.last()), added)
         val queued = PlaylistItemStatus.of(manager.entry(fourth), playing = false, complete = false)
         assertEquals(PlaylistItemStatus.QUEUED, queued)
 
@@ -207,15 +208,17 @@ class DownloadManagerTest {
         scope.cancel()
     }
 
-    @Test fun startingALiveTaskAgainAddsNothing() {
+    @Test fun eachWaitingTaskIsReportedOnce() {
         val scope = CoroutineScope(SupervisorJob() + held)
         val added = mutableListOf<String>()
         val manager = DownloadManager(scope, {
             DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> })
-        }, onTaskAdded = { added += it })
+        }, limit = 1, onTaskAdded = { added += it })
         manager.start(magnet('1')) { true }
-        manager.start(magnet('1')) { true }
-        assertEquals(1, added.size)
+        assertEquals("a task that runs at once is not reported", emptyList<String>(), added)
+        manager.start(magnet('2')) { true }
+        manager.start(magnet('2')) { true }
+        assertEquals("starting a waiting task again reports nothing more", listOf(magnet('2')), added)
         scope.cancel()
     }
 }

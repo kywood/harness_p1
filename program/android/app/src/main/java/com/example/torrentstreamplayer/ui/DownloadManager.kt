@@ -33,9 +33,9 @@ internal object DownloadQueuePlan {
     }
 }
 /**
- * @param onTaskAdded called with the magnet each time [start] adds a task, before it may run. A task that waits in the
- * queue or for Wi-Fi has not started its controller (which saves the link), so the playlist records it here; without
- * this a 4th download had no playlist card until a slot freed up.
+ * @param onTaskAdded called with the magnet when [start] adds a task that does not run yet (queued or waiting for
+ * Wi-Fi). Such a task has not started its controller (which saves the link), so the playlist records it here; without
+ * this a 4th download had no playlist card until a slot freed up. A task that runs at once is not reported.
  */
 internal class DownloadManager(private val scope: CoroutineScope,
     private val createController: () -> DownloadController, private val limit: Int = 3,
@@ -87,8 +87,9 @@ internal class DownloadManager(private val scope: CoroutineScope,
         mutableError.value = null
         nodes[key] = Node(magnet, createController())
         update(DownloadEntry(key, if (mayRun(key)) DownloadPhase.QUEUED else DownloadPhase.WAITING_FOR_WIFI))
-        onTaskAdded(magnet)
         pump()
+        // A task that runs now is saved by its controller; tell only about one left waiting.
+        if (tasks.value[key]?.phase != DownloadPhase.RUNNING) onTaskAdded(magnet)
     }
     private fun pump() { DownloadQueuePlan.ready(tasks.value.values, limit).forEach { launch(it) } }
     private fun launch(key: String) {
