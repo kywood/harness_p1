@@ -18,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.example.torrentstreamplayer.ui.AppBackPolicy
 import com.example.torrentstreamplayer.ui.AppSnackbarPolicy
 import com.example.torrentstreamplayer.ui.DownloadPhase
@@ -97,7 +98,7 @@ internal fun AppRoot(
                         onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
                         onStopDownload = viewModel::stopDownloads, downloadJobs = downloadJobs,
                         onStopItem = viewModel::stopDownload, onStopItems = viewModel::stopDownloads,
-                        downloadError = downloadError,
+                        downloadError = downloadError?.let { stringResource(it) },
                         simple = simplePlaylist, onSimpleChange = { simplePlaylist = it },
                         downloadCount = downloadJobs.values.count { it.phase == DownloadPhase.RUNNING },
                         sort = playlistSort, onSortChange = { playlistSort = it },

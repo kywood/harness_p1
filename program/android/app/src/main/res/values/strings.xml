@@ -47,6 +47,44 @@
     <string name="failure_download_setup">다운로드 순서를 설정하지 못했습니다. 다시 시도해 주세요.</string>
     <string name="failure_engine">토렌트를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.</string>
     <string name="failure_unknown">알 수 없는 오류</string>
+    <string name="failure_input_length">입력 주소의 길이가 올바르지 않습니다.</string>
+    <string name="failure_input_unsupported">마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요.</string>
+    <string name="failure_input_https">보안 연결(HTTPS)을 지원하지 않는 주소입니다. https:// 주소를 입력하세요.</string>
+    <string name="failure_not_torrent">.torrent 파일이 아닙니다. 파일의 직접 다운로드 주소를 입력하세요.</string>
+    <string name="failure_redirect_missing">리디렉션 주소가 없습니다.</string>
+    <string name="failure_too_many_redirects">토렌트 주소의 리디렉션이 너무 많습니다.</string>
+    <string name="failure_torrent_http">토렌트 다운로드 실패 (HTTP %1$d)</string>
+    <string name="failure_torrent_too_large">토렌트 파일이 너무 큽니다.</string>
+    <string name="failure_already_downloading">재생 중인 영상은 이미 다운로드 중입니다.</string>
+    <string name="failure_task_unavailable">다운로드 작업을 연결하지 못했습니다.</string>
+    <string name="failure_file_in_use">다른 다운로드에서 사용 중인 파일입니다.</string>
+    <string name="failure_item_in_use">다른 항목에서 사용 중인 파일입니다.</string>
+    <string name="failure_stop_pending">다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요.</string>
+    <string name="failure_record_pending">다운로드 기록 저장이 끝나지 않았습니다. 잠시 후 다시 삭제해 주세요.</string>
+    <string name="failure_stop_downloads_first">파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요.</string>
+    <string name="failure_item_path">항목 저장 경로가 올바르지 않습니다.</string>
+    <string name="failure_outside_storage">파일이 앱 저장 공간 밖을 가리킵니다.</string>
+    <string name="failure_folder_delete">개별 파일 대신 폴더를 삭제할 수 없습니다.</string>
+    <string name="failure_symlink_delete">심볼릭 링크는 삭제하지 않습니다.</string>
+    <!-- 화면이 엔진 실패 문구를 얻지 못했을 때 쓰는 기본 문구(MainViewModel, DownloadController, DownloadManager) -->
+    <string name="error_download_start_plain">다운로드를 시작하지 못했습니다.</string>
+    <string name="error_magnet_required">유효한 마그넷 주소가 필요합니다.</string>
+    <string name="error_input_failed">주소를 처리하지 못했습니다.</string>
+    <string name="error_download_stopped">다운로드가 중지되었습니다.</string>
+
+    <!-- 준비 화면 세부 정보의 단계와 정보 출처 (meta/MetadataStage) -->
+    <string name="metadata_stage_resolving">주소 확인 중…</string>
+    <string name="metadata_stage_session">네트워크 세션 준비 중…</string>
+    <string name="metadata_stage_saved">저장된 토렌트 정보 확인 중…</string>
+    <string name="metadata_stage_connecting">피어 연결 및 토렌트 정보 수신 중…</string>
+    <!-- 120초는 MetadataFetch의 대기 시간이다. -->
+    <string name="metadata_stage_searching">피어 탐색 및 토렌트 정보 수신 중… %1$d초 / 120초</string>
+    <string name="metadata_stage_received">토렌트 정보 수신 완료 · 영상 준비 중</string>
+    <string name="metadata_stage_startup">초기 재생용 조각 확보 중…</string>
+    <string name="metadata_stage_downloading">파일 다운로드 중…</string>
+    <string name="metadata_stage_complete">다운로드 완료</string>
+    <string name="metadata_origin_network">네트워크</string>
+    <string name="metadata_origin_saved">저장된 메타데이터</string>
 
     <!-- Player -->
     <string name="player_error_playback">재생하지 못했습니다. 공유 중인 사용자를 확인하고 다시 시도해 주세요.</string>
@@ -63,6 +101,8 @@
     <string name="cd_zoom_out">축소</string>
     <string name="cd_zoom_reset">확대 배율 되돌리기</string>
     <string name="cd_more">더보기</string>
+    <string name="cd_orientation_landscape">가로 화면으로 전환</string>
+    <string name="cd_orientation_portrait">세로 화면으로 전환</string>
     <string name="player_restart">재생 위치 초기화 · 처음부터</string>
     <string name="player_stats">↓ %1$s · %2$d%% · 피어 %3$d명</string>
     <string name="player_downloaded">다운로드 %1$d%%</string>
@@ -100,6 +140,8 @@
     <string name="playlist_filter_empty">해당 조건의 영상이 없습니다.</string>
     <string name="playlist_added_at">받은 날짜 %1$s</string>
     <string name="playlist_resume">이어보기 %1$s</string>
+    <!-- 받은 크기 줄에서 전체 크기를 아직 모를 때 진행률 자리 (DownloadProgressLabel) -->
+    <string name="progress_unknown">확인 전</string>
     <string name="playlist_reset_failed">위치를 초기화하지 못했습니다.</string>
     <string name="playlist_sort">정렬: %1$s</string>
     <string name="playlist_filter">표시: %1$s</string>

@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -89,6 +90,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     onResetPosition: (suspend (String) -> Unit)? = null, onDownloadsStarted: () -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
+    val context = LocalContext.current
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var bulkBusy by remember { mutableStateOf(false) }
     var entries by remember { mutableStateOf(emptyList<SavedMagnet>()) }
@@ -219,7 +221,8 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                                 } catch (cancelled: CancellationException) {
                                     throw cancelled
                                 } catch (failure: Exception) {
-                                    error = failure.localizedMessage ?: resources.getString(R.string.playlist_reset_failed)
+                                    error = InputFailureText.ownMessage(failure, context)
+                                        ?: resources.getString(R.string.playlist_reset_failed)
                                 }
                             }
                         } }
@@ -241,7 +244,8 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                         withContext(Dispatchers.IO) { delete(entry.magnet) }
                         refresh++
                     } catch (e: Exception) {
-                        error = e.localizedMessage ?: resources.getString(R.string.playlist_delete_failed)
+                        error = InputFailureText.ownMessage(e, context)
+                            ?: resources.getString(R.string.playlist_delete_failed)
                     } finally {
                         bulkBusy = false
                     }
