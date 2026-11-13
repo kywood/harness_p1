@@ -137,7 +137,6 @@ internal fun VlcPlayerScreen(
     var bottomPanelHeight by remember { mutableIntStateOf(0) }
     // VLC events that change the track list; the subtitle session re-reads the tracks on each change.
     var trackChanges by remember { mutableIntStateOf(0) }
-    var playbackStarted by remember(torrentEngine) { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(VideoZoomState()) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
 
@@ -171,7 +170,7 @@ internal fun VlcPlayerScreen(
 
     val playerHolder = remember(torrentEngine) {
         try {
-            val options = VideoPlaybackPolicy.options(BuildConfig.DEBUG, Locale.getDefault().language)
+            val options = VideoPlaybackPolicy.options(BuildConfig.DEBUG)
             val vlc = LibVLC(context, options)
             val mp = MediaPlayer(vlc)
 
@@ -197,7 +196,6 @@ internal fun VlcPlayerScreen(
                     }
                     MediaPlayer.Event.Playing -> {
                         isPlaying = true
-                        playbackStarted = true
                     }
                     MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> trackChanges++
                     MediaPlayer.Event.Paused -> {
@@ -217,7 +215,8 @@ internal fun VlcPlayerScreen(
             null
         }
     }
-    val subtitles = rememberPlayerSubtitles(playerHolder?.mediaPlayer, subtitleOptions, playbackStarted, trackChanges)
+    val subtitles = rememberPlayerSubtitles(playerHolder?.mediaPlayer, subtitleOptions, isPlaying && !seekUi.waiting,
+        trackChanges)
 
     DisposableEffect(playerHolder, streamServer, lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->

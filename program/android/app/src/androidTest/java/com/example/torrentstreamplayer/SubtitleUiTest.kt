@@ -33,6 +33,7 @@ import com.example.torrentstreamplayer.ui.StreamUiState
 import com.example.torrentstreamplayer.ui.SubtitleSession
 import com.example.torrentstreamplayer.ui.VideoPlaybackPolicy
 import com.example.torrentstreamplayer.ui.player.SubtitleSheet
+import com.example.torrentstreamplayer.ui.player.SubtitleCopies
 import com.example.torrentstreamplayer.ui.player.VlcTrackPlayer
 import com.example.torrentstreamplayer.ui.SubtitleMenuPlan
 import com.example.torrentstreamplayer.ui.TrackOption
@@ -64,7 +65,7 @@ import java.util.concurrent.atomic.AtomicReference
  * - [sintelSubtitleCanBeOpenedAndTurnedOff]: 공개 영상 Sintel(Blender Foundation, CC BY)을 실제로 받는다. 피어나 웹 시드가
  *   필요하고, 네트워크가 없으면 건너뛴다(`assumeTrue`). 전체 대기는 120초까지. 설정·재생 목록·받은 파일은 `finally`에서
  *   되돌리고 지운다.
- * - [koreanSmiAndSrtOpenInVlc]: 직접 만든 한글 `.srt`(UTF-8)·`.smi`(CP949) 파일을 이미지 영상 위에 붙인다. 글자가 바르게
+ * - [koreanSmiAndSrtOpenInVlc]: 직접 만든 한글 `.srt`(UTF-8)·`.smi`(CP949, UTF-8 사본으로 바꿔) 파일을 이미지 영상 위에 붙인다. 글자가 바르게
  *   보이는지는 자동으로 판정하지 않는다. 저장한 화면 캡처를 사람이 본다(경로는 logcat `SubtitleUiTest`).
  */
 @RunWith(AndroidJUnit4::class)
@@ -173,9 +174,9 @@ class SubtitleUiTest {
             }
             val smi = File(dir, "frame.kor.smi").apply {
                 writeBytes(("<SAMI><BODY><SYNC Start=0><P Class=KRCC>한글 자막 SMI 확인</P></BODY></SAMI>\n")
-                    .toByteArray(Charset.forName(VideoPlaybackPolicy.KOREAN_SUBTITLE_ENCODING)))
+                    .toByteArray(Charset.forName("x-windows-949")))
             }
-            val vlc = LibVLC(context, VideoPlaybackPolicy.options(debug = false, deviceLanguage = "ko"))
+            val vlc = LibVLC(context, VideoPlaybackPolicy.options(debug = false))
             val player = MediaPlayer(vlc)
             val failed = AtomicBoolean(false)
             val playing = AtomicBoolean(false)
@@ -208,7 +209,10 @@ class SubtitleUiTest {
             await(15_000, "VLC could not play the still image") { playing.get() || failed.get() }
             assertFalse("VLC reported an error for the still image", failed.get())
             val tracks = VlcTrackPlayer(player)
-            val session = SubtitleSession(tracks, autoEnabled = true, preferredKey = "ko")
+            // The CP949 .smi goes through a UTF-8 copy, as on the player screen (SubtitleEncodingPolicy).
+            val copies = SubtitleCopies(File(dir, "copies"))
+            assertTrue("the .smi is re-encoded", copies.prepare(smi).readText(Charsets.UTF_8).contains("한글 자막 SMI"))
+            val session = SubtitleSession(tracks, autoEnabled = true, preferredKey = "ko", prepare = copies::prepare)
             session.start()
             val files = listOf(SubtitleFile(srt, SubtitleLanguage.KOREAN, true, true),
                 SubtitleFile(smi, SubtitleLanguage.KOREAN, true, true))

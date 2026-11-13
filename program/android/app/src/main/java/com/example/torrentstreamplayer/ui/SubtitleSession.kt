@@ -39,20 +39,25 @@ internal data class SubtitleSnapshot(
  *
  * The player names an added file's track nothing recognisable, so files are added one at a time: after adding one,
  * the next new subtitle track is that file's. A file whose track does not appear within
- * [PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS] (the player accepted it but could not read it) is marked failed, and the next
- * file is added. Files are added only after the player has listed the video's own tracks ([PlayerTracks.listed]).
+ * [PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS] of [now] is marked failed and kept as a late file, and the next file is
+ * added. A new track no file explains goes to the oldest late file first (its "받지 못함" is lifted), then to the
+ * waiting file. Files are added only after the player has listed the video's own tracks ([PlayerTracks.listed]).
  *
- * @param now clock in milliseconds; tests pass a fake one.
+ * @param prepare the file to hand to the player for a subtitle file (a UTF-8 copy of a CP949 file, `SubtitleCopies`).
+ * @param now clock in milliseconds that runs only while the video plays and is not buffering (`PlaybackClock`):
+ * VLC opens an added file between reads, so a stalled stream delays it. Tests pass a fake one.
  */
 internal class SubtitleSession(
     private val player: TrackPlayer,
     private val autoEnabled: Boolean,
     private val preferredKey: String?,
     private val now: () -> Long = System::currentTimeMillis,
+    private val prepare: (File) -> File = { it },
 ) {
     private var tracks: PlayerTracks? = null
     private val knownIds = mutableSetOf<Int>()
     private var awaiting: Pair<File, Long>? = null
+    private val late = ArrayDeque<File>()
     private val added = linkedMapOf<File, ExternalSubtitle>()
     private var ready: List<SubtitleFile> = emptyList()
     private var pending: List<File> = emptyList()
@@ -79,7 +84,7 @@ internal class SubtitleSession(
         if (tracks == null) knownIds += current.subtitles.map { it.id }
         val newIds = current.subtitles.map { it.id }.filter { it !in knownIds }
         knownIds += newIds
-        matchAwaitingFile(newIds)
+        matchNewTracks(newIds)
         if (current.listed) addNextFile()
         if (!settled && !autoEnabled && current.subtitleId != PlayerTracks.NO_TRACK &&
             player.selectSubtitle(PlayerTracks.NO_TRACK)) {
@@ -93,7 +98,7 @@ internal class SubtitleSession(
             current = current.copy(subtitleId = choice.trackId)
         }
         tracks = current
-        val sheet = SubtitleMenuPlan.build(current, externals())
+        val sheet = SubtitleMenuPlan.build(current.takeIf { it.listed }, externals())
         val pickedName = picked?.let { id -> sheet.subtitles.firstOrNull { it.id == id }?.name }
         return SubtitleSnapshot(sheet, pickedName, recheckAfterMs())
     }
@@ -102,7 +107,9 @@ internal class SubtitleSession(
         if (settled || !autoEnabled) null else SubtitleAutoPolicy.choose(preferredKey, embedded(current), externals())
 
     private fun recheckAfterMs(): Long? =
-        awaiting?.let { (_, since) -> (since + PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS - now()).coerceAtLeast(0) }
+        awaiting?.let { (_, since) ->
+            (since + PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS - now()).coerceAtLeast(PlayerSpec.SUBTITLE_RECHECK_MIN_MS)
+        }
 
     /** The viewer picked subtitle [id] (or [PlayerTracks.NO_TRACK]). No automatic pick follows. */
     fun selectSubtitle(id: Int): Boolean {
@@ -118,16 +125,16 @@ internal class SubtitleSession(
         return tracks?.subtitles?.firstOrNull { it.id == id }?.let(SubtitleTrackLabel::languageKey)
     }
 
-    /** Gives the waiting file the first new track, or marks it failed when its time is up. */
-    private fun matchAwaitingFile(newIds: List<Int>) {
-        val (file, since) = awaiting ?: return
-        val id = newIds.firstOrNull()
-        when {
-            id != null -> added[file] = added.getValue(file).copy(trackId = id)
-            now() - since >= PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS ->
-                added[file] = added.getValue(file).copy(state = ExternalSubtitleState.FAILED)
-            else -> return
+    /** Gives new tracks to late files first, then to the waiting file; a waiting file past its time becomes late. */
+    private fun matchNewTracks(newIds: List<Int>) {
+        for (id in newIds) {
+            val file = late.removeFirstOrNull() ?: awaiting?.first?.also { awaiting = null } ?: break
+            added[file] = added.getValue(file).copy(state = ExternalSubtitleState.ADDED, trackId = id)
         }
+        val (file, since) = awaiting ?: return
+        if (now() - since < PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS) return
+        added[file] = added.getValue(file).copy(state = ExternalSubtitleState.FAILED)
+        late.addLast(file)
         awaiting = null
     }
 
@@ -135,7 +142,7 @@ internal class SubtitleSession(
     private fun addNextFile() {
         while (awaiting == null) {
             val subtitle = ready.firstOrNull { it.file !in added } ?: return
-            val opened = player.addSubtitle(subtitle.file)
+            val opened = player.addSubtitle(prepare(subtitle.file))
             val state = if (opened) ExternalSubtitleState.ADDED else ExternalSubtitleState.FAILED
             added[subtitle.file] = ExternalSubtitle(subtitle.file, subtitle, state)
             if (opened) awaiting = subtitle.file to now()

@@ -16,8 +16,18 @@ internal sealed interface PlayerNotice {
 internal data class PlayerNoticeQueue(private val notices: List<PlayerNotice> = emptyList()) {
     val current: PlayerNotice? get() = notices.firstOrNull()
 
-    /** Adds [notice] after the waiting ones; a notice already waiting is not added twice. */
-    fun add(notice: PlayerNotice): PlayerNoticeQueue = if (notice in notices) this else copy(notices = notices + notice)
+    /**
+     * Adds [notice] after the waiting ones; a notice already waiting is not added twice. A subtitle notice replaces a
+     * waiting or shown one in place, so only the latest subtitle is announced.
+     */
+    fun add(notice: PlayerNotice): PlayerNoticeQueue {
+        if (notice in notices) return this
+        val subtitleAt = notices.indexOfFirst { it is PlayerNotice.SubtitleOn }
+        if (notice is PlayerNotice.SubtitleOn && subtitleAt >= 0) {
+            return copy(notices = notices.toMutableList().also { it[subtitleAt] = notice })
+        }
+        return copy(notices = notices + notice)
+    }
 
     /** The current notice's time is over. */
     fun next(): PlayerNoticeQueue = copy(notices = notices.drop(1))

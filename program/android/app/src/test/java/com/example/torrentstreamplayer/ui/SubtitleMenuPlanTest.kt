@@ -58,6 +58,23 @@ class SubtitleMenuPlanTest {
         assertEquals(AutoSubtitleChoice(10, final = true), SubtitleAutoPolicy.choose(null, emptyList(), listOf(fileEnglish)))
     }
 
+    @Test fun aPreferredEmbeddedStandInIsFinal() {
+        val koreanOnTheWay = ExternalSubtitle(File("m.ko.srt"), null, ExternalSubtitleState.DOWNLOADING)
+        assertEquals(AutoSubtitleChoice(1, final = true),
+            SubtitleAutoPolicy.choose(null, listOf(PlayerTrack(1, "Track 1 - [Korean]")), listOf(koreanOnTheWay)))
+    }
+
+    @Test fun aNewSubtitleNoticeReplacesTheOldOne() {
+        val english = PlayerNotice.SubtitleOn(TrackName.Language(TrackLanguage.ENGLISH))
+        val korean = PlayerNotice.SubtitleOn(TrackName.Language(TrackLanguage.KOREAN))
+        val shown = PlayerNoticeQueue().add(english).add(korean)
+        assertEquals(korean, shown.current)
+        assertNull(shown.next().current)
+        val waiting = PlayerNoticeQueue().add(PlayerNotice.MobileData).add(english).add(korean)
+        assertEquals(korean, waiting.next().current)
+        assertNull(waiting.next().next().current)
+    }
+
     @Test fun noticeQueueShowsOneAtATimeWithoutRepeats() {
         val korean = PlayerNotice.SubtitleOn(TrackName.Language(TrackLanguage.KOREAN))
         val queue = PlayerNoticeQueue().add(korean).add(PlayerNotice.MobileData).add(PlayerNotice.MobileData)

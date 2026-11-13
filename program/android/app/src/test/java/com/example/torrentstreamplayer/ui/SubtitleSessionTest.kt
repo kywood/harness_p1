@@ -48,13 +48,16 @@ class SubtitleSessionTest {
     private val audio = listOf(PlayerTrack(10, "Track 1 - [Japanese]"), PlayerTrack(11, "Track 2 - [Korean]"))
     private fun sub(name: String, language: SubtitleLanguage?) = SubtitleFile(File(name), language, true)
     private fun session(player: FakePlayer, auto: Boolean = true, preferred: String? = null) =
-        SubtitleSession(player, auto, preferred) { clock }
+        SubtitleSession(player, auto, preferred, now = { clock })
 
     @Test fun beforeStartTheSheetIsLoadingAndShowsDownloadingFiles() {
-        val session = session(FakePlayer(PlayerTracks()))
+        val player = FakePlayer(PlayerTracks())
+        val session = session(player)
         val sheet = session.updateFiles(emptyList(), listOf(File("Movie.ko.srt"))).sheet
         assertTrue(sheet.loading)
-        val started = session.start().sheet
+        assertTrue("still loading until the player lists the video's tracks", session.start().sheet.loading)
+        player.tracks = PlayerTracks(videoCount = 1)
+        val started = session.refresh().sheet
         assertFalse(started.loading)
         assertEquals(OptionTag.DOWNLOADING, started.subtitles.single().tag)
         assertFalse(started.subtitles.single().enabled)
@@ -78,23 +81,40 @@ class SubtitleSessionTest {
         assertEquals("ko", session.languageKeyOf(100))
     }
 
-    @Test fun filesAreAddedOneAtATimeAndAnUnreadableOneFailsAfterTheTimeout() {
+    @Test fun aLateTrackGoesToTheFileThatTimedOutAndLiftsItsFailure() {
         val player = FakePlayer(PlayerTracks(listOf(english), audio))
         val session = session(player, auto = false)
         session.start()
-        session.updateFiles(listOf(sub("unreadable.ko.smi", SubtitleLanguage.KOREAN),
+        val slow = TrackName.File("slow.ko.smi", TrackLanguage.KOREAN)
+        val movie = TrackName.File("Movie.en.srt", TrackLanguage.ENGLISH)
+        session.updateFiles(listOf(sub("slow.ko.smi", SubtitleLanguage.KOREAN),
             sub("Movie.en.srt", SubtitleLanguage.ENGLISH)), emptyList())
         assertEquals("the second file waits for the first one's track", 1, player.addedFiles.size)
+        assertEquals("no time passed while paused or buffering", 0, session.refresh().sheet.subtitles.count {
+            it.tag == OptionTag.FAILED })
         clock += PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS
         val afterTimeout = session.refresh().sheet
-        assertEquals(OptionTag.FAILED, afterTimeout.subtitles.first { it.name == TrackName.File("unreadable.ko.smi",
-            TrackLanguage.KOREAN) }.tag)
+        assertEquals(OptionTag.FAILED, afterTimeout.subtitles.first { it.name == slow }.tag)
         assertEquals(2, player.addedFiles.size)
         player.listAdded()
-        val sheet = session.refresh().sheet
-        val english = sheet.subtitles.single { it.name == TrackName.File("Movie.en.srt", TrackLanguage.ENGLISH) }
-        assertEquals("the English file keeps its own track", 100, english.id)
-        assertTrue(english.enabled)
+        val late = session.refresh().sheet
+        val slowRow = late.subtitles.single { it.name == slow }
+        assertEquals("the late track is the slow file's", 100, slowRow.id)
+        assertEquals(OptionTag.FILE, slowRow.tag)
+        assertTrue(slowRow.enabled)
+        player.listAdded()
+        assertEquals(101, session.refresh().sheet.subtitles.single { it.name == movie }.id)
+    }
+
+    @Test fun anUnreadableFileStaysFailed() {
+        val player = FakePlayer(PlayerTracks(listOf(english), audio))
+        val session = session(player, auto = false)
+        session.start()
+        session.updateFiles(listOf(sub("unreadable.ko.smi", SubtitleLanguage.KOREAN)), emptyList())
+        clock += PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS
+        val sheet = session.refresh()
+        assertEquals(OptionTag.FAILED, sheet.sheet.subtitles.last().tag)
+        assertNull("nothing waits any more", sheet.recheckAfterMs)
     }
 
     @Test fun aStandInPickGivesWayToThePreferredFileWhenItArrives() {

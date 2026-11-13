@@ -13,4 +13,10 @@ internal object PlayerSpec {
      * cannot read never gets a track; after this the file shows as "받지 못함" and the next file is added.
      */
     const val SUBTITLE_TRACK_TIMEOUT_MS = 5_000L
+
+    /** Shortest wait before checking a waiting subtitle file again (the clock stops while paused or buffering). */
+    const val SUBTITLE_RECHECK_MIN_MS = 500L
+
+    /** Largest subtitle file the player re-encodes to UTF-8 (`SubtitleEncodingPolicy`); larger ones go as they are. */
+    const val SUBTITLE_COPY_MAX_BYTES = 5L * 1024 * 1024
 }

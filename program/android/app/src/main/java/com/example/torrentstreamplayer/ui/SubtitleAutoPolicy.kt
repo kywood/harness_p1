@@ -36,8 +36,10 @@ internal object SubtitleAutoPolicy {
         val preferredOnTheWay = externals.any {
             it.trackId == null && it.state != ExternalSubtitleState.FAILED && it.language?.key == key
         }
-        val standIn = embedded.firstOrNull { SubtitleTrackLabel.languageKey(it) == key }?.id
-            ?: trackOf(SubtitleSelectionPolicy.preferred(files))
+        val preferredEmbedded = embedded.firstOrNull { SubtitleTrackLabel.languageKey(it) == key }?.id
+        // A stand-in already in the preferred language is kept: switching to the same language only flickers.
+        if (preferredEmbedded != null) return AutoSubtitleChoice(preferredEmbedded, final = true)
+        val standIn = trackOf(SubtitleSelectionPolicy.preferred(files))
             ?: embedded.firstOrNull { SubtitleTrackLabel.language(it) == TrackLanguage.KOREAN }?.id
             ?: return null
         return AutoSubtitleChoice(standIn, final = !preferredOnTheWay)
