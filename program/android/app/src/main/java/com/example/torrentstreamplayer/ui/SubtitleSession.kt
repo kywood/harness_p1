@@ -106,10 +106,18 @@ internal class SubtitleSession(
     private fun autoChoice(current: PlayerTracks): AutoSubtitleChoice? =
         if (settled || !autoEnabled) null else SubtitleAutoPolicy.choose(preference, embedded(current), externals())
 
-    private fun recheckAfterMs(): Long? =
-        awaiting?.let { (_, since) ->
+    /**
+     * When to read the tracks again without a VLC event: while an added file waits for its track, and while the player
+     * has not listed the video's tracks yet. VLC's track events alone left the sheet on "트랙을 확인하는 중…" when they
+     * came before the session started or were missed (issue seen on a finished Sintel, #125).
+     */
+    private fun recheckAfterMs(): Long? {
+        val waitingFile = awaiting?.let { (_, since) ->
             (since + PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS - now()).coerceAtLeast(PlayerSpec.SUBTITLE_RECHECK_MIN_MS)
         }
+        val unlisted = PlayerSpec.SUBTITLE_RECHECK_MIN_MS.takeIf { tracks?.listed != true }
+        return listOfNotNull(waitingFile, unlisted).minOrNull()
+    }
 
     /** The viewer picked subtitle [id] (or [PlayerTracks.NO_TRACK]). No automatic pick follows. */
     fun selectSubtitle(id: Int): Boolean {

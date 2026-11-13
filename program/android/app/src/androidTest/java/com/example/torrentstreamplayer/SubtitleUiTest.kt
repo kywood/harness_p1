@@ -26,6 +26,7 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModelProvider
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.engine.SubtitleFile
@@ -163,24 +164,33 @@ class SubtitleUiTest {
             sintelStage("Playing (needs Sintel peers or its web seed)", STAGE_PLAYING_MS) {
                 model.uiState.value is StreamUiState.Playing
             }
-            // Sintel has no Korean file, so the English file is picked: the button reads "자막, 켜짐: 영어(파일)".
             var lastTap = 0L
-            sintelStage("subtitle files downloaded and one turned on automatically", STAGE_SUBTITLE_ON_MS) {
-                model.subtitleFiles.value.isNotEmpty() && shown(onPrefix).also { on ->
-                    // Hidden controls leave the tree; a tap shows them (the button exists only while they are shown).
-                    // At most one tap a second, so a second tap does not hide them again before they draw.
-                    val now = System.currentTimeMillis()
-                    if (!on && !shown(offPrefix) && now - lastTap > 1_000) {
-                        lastTap = now
-                        compose.onRoot().performTouchInput { click(center) }
-                    }
+            // Hidden controls leave the tree; a tap shows them (the buttons exist only while they are shown).
+            // At most one tap a second, so a second tap does not hide them again before they draw.
+            fun showControls(visible: Boolean) {
+                val now = System.currentTimeMillis()
+                if (!visible && now - lastTap > 1_000) {
+                    lastTap = now
+                    compose.onRoot().performTouchInput { click(center) }
                 }
+            }
+            fun sintelRowShown() =
+                shown("Sintel.en.srt") || compose.onAllNodesWithText("Sintel.en.srt").fetchSemanticsNodes().isNotEmpty()
+            // The sheet opened right away must fill in while it stays open, without closing and reopening it
+            // (#125: it was seen stuck on "트랙을 확인하는 중…" on a finished Sintel).
+            val buttonPrefix = onPrefix.commonPrefixWith(offPrefix)
+            sintelStage("subtitle button shown", STAGE_OFF_MS) { shown(buttonPrefix).also(::showControls) }
+            compose.onAllNodes(hasDescriptionStarting(buttonPrefix), useUnmergedTree = true)[0].performClick()
+            sintelStage("open sheet lists Sintel.en.srt by itself", STAGE_SUBTITLE_ON_MS) { sintelRowShown() }
+            Espresso.pressBack()
+            // Sintel has no Korean file, so the English file is picked: the button reads "자막, 켜짐: 영어(파일)".
+            sintelStage("subtitle files downloaded and one turned on automatically", STAGE_SUBTITLE_ON_MS) {
+                model.subtitleFiles.value.isNotEmpty() &&
+                    shown(onPrefix).also { on -> showControls(on || shown(offPrefix)) }
             }
             compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true)[0].performClick()
             // The picked row is read only by its description ("Sintel.en.srt, 자막 파일"); RadioListItem clears its text.
-            sintelStage("sheet lists Sintel.en.srt", STAGE_OFF_MS) {
-                shown("Sintel.en.srt") || compose.onAllNodesWithText("Sintel.en.srt").fetchSemanticsNodes().isNotEmpty()
-            }
+            sintelStage("sheet lists Sintel.en.srt", STAGE_OFF_MS) { sintelRowShown() }
             compose.onNodeWithText(text(R.string.subtitle_off)).performClick()
             sintelStage("subtitles turned off", STAGE_OFF_MS) { shown(offPrefix) }
         } finally {

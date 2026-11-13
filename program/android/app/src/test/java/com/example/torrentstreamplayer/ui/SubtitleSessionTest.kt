@@ -144,6 +144,19 @@ class SubtitleSessionTest {
         assertEquals(1, player.tracks.subtitleId)
     }
 
+    @Test fun untilThePlayerListsTracksTheSessionAsksToLookAgain() {
+        val player = FakePlayer(PlayerTracks())
+        val session = session(player)
+        assertNull("not started: nothing to read yet", session.refresh().recheckAfterMs)
+        val waiting = session.start()
+        assertTrue(waiting.sheet.loading)
+        assertEquals(PlayerSpec.SUBTITLE_RECHECK_MIN_MS, waiting.recheckAfterMs)
+        player.tracks = PlayerTracks(listOf(english), audio)
+        val listed = session.refresh()
+        assertFalse("tracks show without any VLC event", listed.sheet.loading)
+        assertNull(listed.recheckAfterMs)
+    }
+
     @Test fun silentVideosStillGetTheirFiles() {
         val player = FakePlayer(PlayerTracks(videoCount = 1))
         val session = session(player)
