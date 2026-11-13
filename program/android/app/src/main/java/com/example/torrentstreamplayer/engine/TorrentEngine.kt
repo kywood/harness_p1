@@ -27,6 +27,8 @@ class TorrentEngine(private val context: Context) {
     private var sessionManager: SessionManager? = null
     @Volatile private var currentHandle: TorrentHandle? = null
     @Volatile private var activeRun = 0L
+    /** Run whose file and edge priorities are set; playback priorities set earlier would be overwritten by them. */
+    @Volatile private var prioritiesSetRun = -1L
     @Volatile var localVideo: File? = null
         private set
     private var worker: Thread? = null
@@ -298,6 +300,7 @@ class TorrentEngine(private val context: Context) {
                         handle.piecePriority(lastPieceIndex - 1, Priority.TOP_PRIORITY)
                     }
                     handle.piecePriority(lastPieceIndex, Priority.TOP_PRIORITY)
+                    prioritiesSetRun = run
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting piece priorities: ${EngineFailureLog.describe(t)}")
                     onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
@@ -500,6 +503,7 @@ class TorrentEngine(private val context: Context) {
     @Synchronized internal fun requestPlayback(): Boolean {
         StrictMode.noteSlowCall("TorrentEngine.requestPlayback")
         if (localVideo != null) return true
+        if (prioritiesSetRun != activeRun) return false
         val info = currentHandle?.torrentFile() ?: return false
         if (BuildConfig.DEBUG) startTrace?.let { Log.d(TAG, it.playbackRequested()) }
         currentHandle?.let { applyDownloadOrder(it, playbackFocused = true) }
