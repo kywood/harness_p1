@@ -502,6 +502,7 @@ class TorrentEngine(private val context: Context) {
         if (localVideo != null) return true
         val info = currentHandle?.torrentFile() ?: return false
         if (BuildConfig.DEBUG) startTrace?.let { Log.d(TAG, it.playbackRequested()) }
+        currentHandle?.let { applyDownloadOrder(it, playbackFocused = true) }
         startupPieces = StartupBufferPlan.required(selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
         startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
@@ -516,7 +517,9 @@ class TorrentEngine(private val context: Context) {
         startupPieces = emptySet(); startupIndex = null
         readDemands.clear()
         runCatching { currentHandle?.clearPieceDeadlines()
-            for (piece in firstPieceIndex..lastPieceIndex) currentHandle?.piecePriority(piece, Priority.DEFAULT) }
+            for (piece in firstPieceIndex..lastPieceIndex) currentHandle?.piecePriority(piece, Priority.DEFAULT)
+            currentHandle?.let { handle -> applyDownloadOrder(handle, playbackFocused = false)
+                DownloadOrderPolicy.edgePieces(firstPieceIndex, lastPieceIndex).forEach { handle.piecePriority(it, Priority.TOP_PRIORITY) } } }
         priorityWindow = IntRange.EMPTY; priorityPins = emptySet(); backgroundPiecePriority = -1
     }
     private fun playbackReady(): Boolean {
