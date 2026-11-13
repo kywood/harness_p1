@@ -49,6 +49,7 @@ class TorrentEngine(private val context: Context) {
     private var startupIndex: StartupIndexState? = null
     private val readDemands = ReadDemandRegistry()
     private var priorityPins: Set<Int> = emptySet()
+    @Volatile private var startTrace: PlaybackStartTrace? = null
     private val _pieceMap = MutableStateFlow(PieceMapSnapshot.EMPTY)
     val pieceMap = _pieceMap.asStateFlow()
     private val _metadataDetails = MutableStateFlow(MetadataDetails())
@@ -132,6 +133,7 @@ class TorrentEngine(private val context: Context) {
         catch (_: Exception) { onError(TorrentFailure.INVALID_MAGNET.text(context)); return }
         stop()
         val run = activeRun
+        startTrace = if (BuildConfig.DEBUG) PlaybackStartTrace(key) else null
         val cache = TorrentCache(stateRoot, key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
         activeCache = cache
         var downloadDir = File(downloadRoot, key)
@@ -315,6 +317,7 @@ class TorrentEngine(private val context: Context) {
                         updateStartupIndex()
                         advanceDownloadWindow()
                         val pieces = status.pieces()
+                        if (BuildConfig.DEBUG) startTrace?.observe(firstPieceIndex..lastPieceIndex) { it < pieces.size() && pieces.getBit(it) }?.let { Log.d(TAG, it) }
                         if (pieces.size() > lastPieceIndex)
                             _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex,
                                 havePiece = pieces::getBit)
@@ -494,6 +497,7 @@ class TorrentEngine(private val context: Context) {
         StrictMode.noteSlowCall("TorrentEngine.requestPlayback")
         if (localVideo != null) return true
         val info = currentHandle?.torrentFile() ?: return false
+        if (BuildConfig.DEBUG) startTrace?.let { Log.d(TAG, it.playbackRequested()) }
         startupPieces = StartupBufferPlan.required(selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
         startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
@@ -521,6 +525,7 @@ class TorrentEngine(private val context: Context) {
             if (required.isNotEmpty()) {
                 val ready = StartupBufferPlan.ready(required, handle::havePiece)
                 if (ready) { startupPieces = emptySet(); if (BuildConfig.DEBUG) Log.d(TAG, "Initial verified playback buffer ready") }
+                if (ready && BuildConfig.DEBUG) startTrace?.ready()?.let { Log.d(TAG, it) }
                 return ready
             }
             val info = handle.torrentFile() ?: return false
@@ -615,6 +620,7 @@ class TorrentEngine(private val context: Context) {
         startupIndex = null
         readDemands.clear()
         priorityPins = emptySet()
+        startTrace = null
         worker?.interrupt()
         retiredWorkers.removeAll { !it.isAlive }
         worker?.takeIf { it.isAlive }?.let { retiredWorkers.add(it) }
