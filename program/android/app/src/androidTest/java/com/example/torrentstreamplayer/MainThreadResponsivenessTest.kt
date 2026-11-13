@@ -53,7 +53,7 @@ class MainThreadResponsivenessTest {
 
     @Test fun buttonFlowsKeepEngineWorkOffMainThread() = withEngine { app ->
         lateinit var model: MainViewModel
-        instrumentation.runOnMainSync { model = MainViewModel(app) }
+        instrumentation.runOnMainSync { model = MainViewModel(app, FixedConnection()) }
         val stalls = linkedMapOf<String, Long>()
         try {
             val links = (1..3).map { largeTorrent(app, "movie-$it.mp4") }

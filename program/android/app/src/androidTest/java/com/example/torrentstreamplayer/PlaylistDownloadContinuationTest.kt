@@ -24,7 +24,7 @@ class PlaylistDownloadContinuationTest {
             override fun getCacheDir() = File(root, "cache").apply { mkdirs() }
             override fun getNoBackupFilesDir() = File(root, "private").apply { mkdirs() }
         }
-        val model = MainViewModel(app)
+        val model = MainViewModel(app, FixedConnection())
         fun seed(name: String, complete: Boolean = false): String {
             val bytes = ("d4:infod6:lengthi32768e4:name" + name.length + ":" + name +
                 "12:piece lengthi16384e6:pieces40:" + "\u0000".repeat(40) + "7:privatei1eee").toByteArray()
