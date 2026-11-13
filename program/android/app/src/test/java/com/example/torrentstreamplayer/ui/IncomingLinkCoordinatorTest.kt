@@ -128,6 +128,7 @@ class IncomingLinkCoordinatorTest {
         assertEquals(listOf(first), saved)
         assertNull(coordinator.state.value)
         assertEquals("", coordinator.mainInput.value?.text)
+        assertEquals("clears only an input that still holds the saved link", first, coordinator.mainInput.value?.replaces)
         val event = coordinator.notice.value!!
         assertEquals(IncomingLinkNotice.SAVED, event.notice)
         assertEquals("nothing plays: the snackbar offers the playlist", R.string.action_open_playlist, event.action)

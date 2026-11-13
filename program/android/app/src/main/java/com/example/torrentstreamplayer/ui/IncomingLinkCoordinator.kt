@@ -25,8 +25,14 @@ internal data class IncomingLinkNoticeEvent(val notice: IncomingLinkNotice, @Str
 /**
  * Text the main input should take once. [serial] grows with every fill, so the same text can be filled twice.
  * An empty [text] clears the input.
+ *
+ * @property replaces when set, the fill applies only while the input still holds this link (the one just saved):
+ * a link the user typed or pasted meanwhile is kept.
  */
-internal data class MainInputFill(val text: String, val serial: Long)
+internal data class MainInputFill(val text: String, val serial: Long, val replaces: String? = null) {
+    /** Whether the input holding [current] takes this fill. */
+    fun appliesTo(current: String): Boolean = replaces == null || current.trim() == replaces
+}
 
 /**
  * Leads the "link from another app → confirm → play or save" flow, so [MainViewModel] only wires it up.
@@ -98,7 +104,8 @@ internal class IncomingLinkCoordinator(
     /**
      * "받아 두기". The sheet is busy meanwhile, so a second press does nothing; "취소" still closes the sheet but does
      * not stop the save. Afterwards the sheet closes and [notice] tells the result. On success the main input is
-     * cleared (also when the sheet was cancelled meanwhile) so the saved link is not played by mistake. If a newer
+     * cleared if it still holds the saved link (also when the sheet was cancelled meanwhile), so the saved link is
+     * not played by mistake and nothing the user typed is lost. If a newer
      * link replaced the sheet meanwhile, that sheet and its input stay.
      */
     suspend fun save() {
@@ -118,7 +125,7 @@ internal class IncomingLinkCoordinator(
         mutableNotice.value = IncomingLinkNoticeEvent(notice,
             IncomingLinkPolicy.noticeAction(notice, isPlaybackActive()), ++serial)
         val now = mutableState.value
-        if (saved && (now === saving || now == null)) fillInput("")
+        if (saved && (now === saving || now == null)) fillInput("", replaces = pending.link.value)
         if (now === saving) close()
     }
 
@@ -146,8 +153,8 @@ internal class IncomingLinkCoordinator(
         null -> null
     }
 
-    private fun fillInput(text: String) {
-        mutableInput.value = MainInputFill(text, ++serial)
+    private fun fillInput(text: String, replaces: String? = null) {
+        mutableInput.value = MainInputFill(text, ++serial, replaces)
     }
 
     private fun close() {

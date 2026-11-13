@@ -59,16 +59,19 @@ class IncomingLinkSummaryTest {
         assertFalse(buttons(null, busy = true).enabled)
     }
 
-    @Test fun theSheetChipIsThePlaylistCardChipIncludingWaitingForWifi() {
-        assertEquals(PlaylistItemStatus.WAITING_FOR_WIFI,
-            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.WAITING_FOR_WIFI), playing = false, complete = false))
-        assertEquals(PlaylistItemStatus.QUEUED,
-            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.QUEUED), playing = false, complete = false))
-        assertEquals(PlaylistItemStatus.DOWNLOADING, PlaylistItemStatus.of(null, playing = true, complete = false))
-        assertEquals(PlaylistItemStatus.FAILED,
-            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.FAILED, error = "x"), playing = false, complete = false))
-        assertEquals(PlaylistItemStatus.COMPLETED, PlaylistItemStatus.of(null, playing = false, complete = true))
-        assertEquals(PlaylistItemStatus.INCOMPLETE, PlaylistItemStatus.of(null, playing = false, complete = false))
+    @Test fun aFailedSaveWaitsForTheSnackbarWhileASuccessIsDropped() {
+        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, snackbarVisible = true))
+        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, true))
+        assertEquals("the user must learn it was not saved",
+            NoticeTiming.WAIT, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, snackbarVisible = false))
+        assertEquals(NoticeTiming.DROP, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, snackbarVisible = false))
+    }
+
+    @Test fun clearingAfterSavingAppliesOnlyToTheSavedLink() {
+        val clear = MainInputFill("", 1, replaces = "magnet:?xt=a")
+        assertTrue(clear.appliesTo(" magnet:?xt=a "))
+        assertFalse("a link typed meanwhile stays", clear.appliesTo("magnet:?xt=b"))
+        assertTrue("a received link always fills", MainInputFill("magnet:?xt=a", 2).appliesTo("anything"))
     }
 
     @Test fun aSaveWhileDownloadsWaitForWifiAnnouncesTheWait() {

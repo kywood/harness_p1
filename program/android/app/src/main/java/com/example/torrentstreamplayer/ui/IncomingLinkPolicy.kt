@@ -46,6 +46,9 @@ internal sealed interface IncomingLinkState {
     data class Rejected(val reason: IncomingLinkError) : IncomingLinkState
 }
 
+/** What to do with a "받아 두기" notice now ([IncomingLinkPolicy.noticeTiming]). */
+internal enum class NoticeTiming { SHOW, WAIT, DROP }
+
 /** A button of the link sheet. Each registers its text. */
 internal enum class LinkSheetButton(@StringRes val label: Int) {
     PLAY_NOW(R.string.action_stream_play),
@@ -84,6 +87,17 @@ internal object IncomingLinkPolicy {
     @StringRes
     fun noticeAction(notice: IncomingLinkNotice, playbackActive: Boolean): Int? =
         if (playbackActive) null else notice.action
+
+    /**
+     * When to show [notice] given whether the shared snackbar is drawn now ([AppSnackbarPolicy]; not on the player or
+     * preparing screen). A failure must reach the user, or they would think the link was saved, so it waits until a
+     * screen with the snackbar; a success seen later would only confuse, so it is dropped.
+     */
+    fun noticeTiming(notice: IncomingLinkNotice, snackbarVisible: Boolean): NoticeTiming = when {
+        snackbarVisible -> NoticeTiming.SHOW
+        notice == IncomingLinkNotice.SAVE_FAILED -> NoticeTiming.WAIT
+        else -> NoticeTiming.DROP
+    }
 
     /**
      * After a successful "받아 두기" while new downloads wait for Wi-Fi, the snackbar says so (`info_waiting_for_wifi`,
