@@ -397,6 +397,8 @@ class TorrentEngine(private val context: Context) {
     /** Index checks outside the download loop: file or libtorrent errors are logged, never thrown to the caller. */
     private fun refreshStartupIndex() = runCatching { updateStartupIndex() }
         .onFailure { Log.w(TAG, "Startup index check failed: ${EngineFailureLog.describe(it)}") }
+    /** Under the engine lock, so a concurrent [updateStartupIndex] cannot bring the tail back. */
+    @Synchronized private fun clearPrefetch() { prefetchPieces = emptySet() }
     @Synchronized private fun updateStartupIndex() {
         val handle = currentHandle ?: return
         val index = startupIndex ?: return
@@ -549,7 +551,7 @@ class TorrentEngine(private val context: Context) {
             val required = startupPieces
             if (required.isNotEmpty()) {
                 val ready = StartupBufferPlan.ready(required, handle::havePiece)
-                if (ready) prefetchPieces = emptySet()
+                if (ready) clearPrefetch()
                 if (ready) { startupPieces = emptySet(); if (BuildConfig.DEBUG) Log.d(TAG, "Initial verified playback buffer ready") }
                 if (ready && BuildConfig.DEBUG) startTrace?.ready()?.let { Log.d(TAG, it) }
                 return ready
