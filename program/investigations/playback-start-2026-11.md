@@ -126,8 +126,66 @@
 
 ## 4. 실측
 
-(작성 중)
+### 조건
+
+- 에뮬레이터 emulator-5554(`Medium_Phone`, x86_64), 디버그 빌드(`origin/main` 73fc2e4), 앱 데이터를 지운 뒤 1회.
+- 입력: Sintel 공개 마그넷(info-hash `08ada5a7…5a10`, UDP 트래커 3개, webseed `ws=https://webtorrent.io/torrents/`). 링크 열기 인텐트로 메인 입력란에 넣고 [바로 재생]을 눌렀다.
+- 기록: logcat(디버그 로그), 측정 뒤 `run-as`로 받은 파일을 읽어 128KB 조각마다 0이 아닌 바이트가 있는지 확인했다(검증 여부가 아니라 디스크에 쓰인 조각이다).
+
+### 결과
+
+| 시각 | 경과 | 사건 |
+|---|---|---|
+| 11:36:50.4 | 0s | 엔진 시작("Fetching magnet metadata…") |
+| 11:36:54.65 | 4.2s | 메타데이터 수신(MetadataFetch 기준 3.0s, 앞의 0.5s sleep·세션 시작 포함). 조각 987개 × 128KB, 영상 129,241,752바이트, 영상 시작 오프셋 7,884 |
+| 11:36:54.78 | 4.4s | 영상 선택. 받기 전용 엔진이라 "Initial playback requires 0 verified pieces" |
+| 11:37:08.7 | 18.3s | **다른 작업이 같은 에뮬레이터에 앱을 다시 설치하며 프로세스가 종료됨.** Playing 로그("Initial verified playback buffer ready")는 그때까지 나오지 않았다 |
+
+종료 시점에 디스크에 있던 조각(영상 범위 0~986 중 14개, 약 1.8MB):
+
+```
+1-8, 29, 30, 43, 63, 494, 649
+```
+
+- 영상 첫 조각인 **0번이 없다.** 0번은 앞 파일(7,884바이트, `IGNORE`)과 걸치는 조각이다. 시작 구간(0~16번)과 MP4 헤더 확인이 모두 이 조각을 기다린다.
+- 1~8, 29, 30, 43, 63은 긴급 창(0~63번, 1MB/s 가정 30초 = 64조각 상한) 안이다. 창 안에서도 순서대로가 아니라 deadline이 가까운 것부터 가능한 피어에게 흩어져 요청된다.
+- 494, 649는 창 밖의 priority 1 조각이다(1.3). 재생과 무관한 조각이 처음 14초 안에 이미 받아진다.
+- 메타데이터 후 14초 동안 약 1.8MB(약 130KB/s). 이 토렌트의 스웜은 대부분 브라우저 WebTorrent(WebRTC) 피어라 libtorrent가 붙을 수 있는 피어가 적고, 실질 공급원은 webseed다. 일반 공개 토렌트보다 불리한 조건이다.
+
+### 측정의 한계
+
+- 측정 중 다른 작업이 에뮬레이터에 앱을 재설치·강제 종료해 **Playing까지 걸린 시간은 얻지 못했다.** 지시대로 측정은 한 번으로 끝냈고 다시 하지 않았다.
+- 1회·1토렌트 결과다. 메타데이터 핸들 재추가(2.1)의 비용, 업로드 0의 영향(2.3)은 이 측정으로 구분할 수 없다.
+- 0번 조각이 늦은 이유(다른 파일과 걸치는 조각의 webseed 요청, 또는 피어 부족)는 확인하지 못했다. 다음 측정에서 `piece_finished` 알림 시각을 기록해야 한다(개선안 I).
 
 ## 5. 개선안
 
-(작성 중)
+변경 크기는 `engine/` 한 파일·10줄 규칙 기준 단계 수다. 모든 단계는 JVM 단위 테스트를 함께 넣고, libtorrent 동작이 걸린 것은 에뮬레이터 테스트를 덧붙인다.
+
+| 안 | 내용 | 예상 효과 | 위험 | 변경 크기 | 필요한 테스트 |
+|---|---|---|---|---|---|
+| **A** | 받기 전용 작업도 앞에서부터 받기: `prioritizePlayback = false`일 때 네이티브 sequential을 끄지 않고(`TorrentEngine.kt:266`), 첫·끝 조각 TOP을 유지. `requestPlayback`에서 sequential을 끄고, `releasePlaybackPriority`에서 다시 켬 | 받아 두던 영상을 재생하면 앞부분이 이미 있어 바로 Playing. 피스 맵이 왼쪽부터 찬다(보고 1·2 모두) | 스웜 전체에는 rarest-first가 낫지만 이 앱은 업로드하지 않아 손해가 거의 없다. 드문 조각이 끝에 몰리면 완료 시간이 조금 늘 수 있다 | 순수 정책 1개 새 파일(`DownloadOrderPolicy`) + `TorrentEngine` 3단계 | 정책 단위 테스트, androidTest: 받기 전용 시작 후 flag 확인, 재생 전환·해제 때 flag 전환 |
+| **B** | 메타데이터 핸들 재사용: `MetadataFetch`가 메타데이터를 받으면 핸들을 지우지 않고 넘기고, `TorrentCheckpoint.restore`가 같은 info-hash 핸들이 있으면 새로 추가하지 않고 플래그·파일 우선순위만 바꾼다 | 마그넷 첫 재생에서 피어 재탐색·재연결 시간 절약(추정 수 초~십수 초, 미측정) | 취소·실패 때 핸들 정리 누락, 다른 엔진이 같은 hash를 받는 경우(`session.find` 공유), UPLOAD_MODE·STOP_WHEN_READY 해제 누락 | `MetadataFetch` 1단계, `TorrentCheckpoint` 1~2단계, `TorrentEngine` 1단계 | androidTest(네이티브): 메타데이터 후 같은 핸들 유지·피어 수 유지, 취소 시 핸들 제거. 단위: 소유권 결정 로직을 작은 정책으로 빼서 테스트 |
+| **C** | 끝부분 선행 요청을 pins에 넣기: 형식별 끝부분(MP4는 마지막 1~2조각, MKV는 끝 N MB)을 Playing 조건이 아닌 "미리 받기" 집합으로 계산(`StartupBufferPlan.required`의 쓰지 않는 `extension` 인자를 쓰거나 새 `StartupPrefetchPlan`), `prioritizeOffset`의 pins에 포함 | moov가 끝인 MP4에서 왕복 1회+폴링 1초 절약. MKV는 VLC가 Cues를 읽을 때 기다리지 않음 | moov가 앞에 있는 파일은 1~2조각을 헛받음. pins가 Playing 조건과 섞이지 않게 분리 필요 | 새 파일 1개 + `TorrentEngine` 1단계 | 계획 단위 테스트(MP4/MKV/조각 크기별), 기존 `StartupBufferPlan` 테스트 유지 |
+| **D** | 인덱스 탐색 간격 단축: Playing 전에는 `updateStartupIndex`/`playbackReady` 확인을 1초 대신 250ms로, 또는 `piece_finished` 알림에서 바로 | moov 탐색 단계마다 최대 1초 절약(끝 moov면 최대 2초) | 폴링 증가로 잠금 경합(`@Synchronized`)이 늘어 `MainThreadResponsivenessTest` 확인 필요 | `TorrentEngine` 1단계 | 간격 결정 정책 단위 테스트, `MainThreadResponsivenessTest` |
+| **E** | 재생 중 다른 다운로드 억제: 재생에 빌려 준 작업이 있으면 나머지 실행 중 작업의 속도를 제한하거나 일시정지 | 다른 작업이 있을 때 시작 시간 크게 단축 | 받기 속도 저하를 사용자가 원하지 않을 수 있음(기획 결정 필요) | `DownloadManager`(ui) 1~2단계 + 엔진에 속도 제한 진입점 1단계 | `DownloadManagerTest`에 빌림/반납 시 억제·해제 |
+| **F** | 업로드 정책 재검토(예: 재생 중에만 작은 unchoke 슬롯과 업로드 속도 상한) | leecher 위주 스웜에서 unchoke를 더 빨리 얻음 | 제품 약속("올려 보내지 않음"), 이용 안내·개인정보 문서, 데이터 사용, 법적 위험. **PM·launch 결정 사항** | `DownloadOnlyPolicy` 1단계 + 문서 | 정책 단위 테스트, 업로드 바이트 확인 androidTest |
+| **G** | 피스 맵 표시 보완: 재생 위치·긴급 창 또는 "처음부터 이어서 받은 구간"을 함께 표시 | "랜덤으로 받는다"는 인상 완화, 재생 가능 여부를 알 수 있음 | 표시 요소 추가(design 소유 색·문구 필요) | planning·design 산출물 후 program 1~2단계 | 스냅샷 계산 단위 테스트 |
+| **H** | 경합(2.8) 막기: 파일 우선순위를 매긴 뒤 `currentHandle`을 공개하거나, `requestPlayback`에서 `backgroundPiecePriority = -1`로 다시 매기게 함 | 드문 경우의 "재생 우선순위가 안 걸림" 제거 | 낮음 | `TorrentEngine` 1단계 | 순서 확인 단위 테스트는 어렵다. androidTest로 확인 |
+| **I** | 측정 도구: 디버그 빌드에서만 `requestPlayback` → Playing 경과, 조각 완료 순서(처음 N개)를 로그로 남김(파일 이름·마그넷 없이) | A~E 효과를 수치로 비교 가능 | 릴리스 로그에 남지 않도록 `BuildConfig.DEBUG` 확인 | `TorrentEngine` 1단계(또는 새 리스너 파일) | 로그 문구 계산을 순수 객체로 빼서 단위 테스트 |
+
+### 권하는 순서
+
+1. **I**(측정 도구) → 같은 조건으로 기준값 측정
+2. **A**(사용자 보고와 가장 직접 맞음, 작고 위험 낮음)
+3. **C + D**(moov가 끝인 MP4, MKV)
+4. **B**(효과 크지만 수명 관리 위험이 있어 네이티브 테스트와 함께)
+5. **E, F, G**는 기획·정책 결정 뒤
+6. **H**는 A를 넣을 때 함께
+
+## 확인하지 못한 것
+
+- Playing까지 걸린 시간(측정 중단). 0번 조각이 늦은 이유.
+- VLC가 HTTP로 MKV를 열 때 끝부분 Cues를 바로 읽는지.
+- 메타데이터 핸들 재추가(2.1)의 실제 비용, 업로드 0(2.3)의 실제 영향. 개선안 I로 측정 도구를 넣은 뒤 seed가 많은 토렌트와 leecher가 많은 토렌트에서 비교해야 한다.
+- 실기기(Wi-Fi·모바일 데이터)에서의 수치.
