@@ -58,7 +58,12 @@ internal fun AppRoot(
     // 호스트가 없는 재생·준비 화면에서는 안내를 쌓아 두지 않는다(나중에 다른 화면에서 늦게 뜨지 않게).
     val announceWifiWait = rememberWifiWaitAnnouncer(snackbar, waitsForWifi && snackbarVisible)
     // 화면이 바뀌면(예: 재생 목록 → 재생) 떠 있던 공용 스낵바를 닫는다. 재생·준비 화면은 호스트도 그리지 않는다.
-    LaunchedEffect(screen::class) { snackbar.currentSnackbarData?.dismiss() }
+    // 닫은 뒤에 전환이 끝난 화면을 알린다. 링크 시트의 미뤄 둔 알림은 이 값을 보고 띄워, 이 닫기에 지워지지 않는다.
+    var settledScreen by remember { mutableStateOf<AppScreen?>(null) }
+    LaunchedEffect(screen::class) {
+        snackbar.currentSnackbarData?.dismiss()
+        settledScreen = screen
+    }
     if (showDownloadDialog) QuickDownloadDialog(onDismiss = { showDownloadDialog = false }, submit = {
         viewModel.queueDownload(it)
         announceWifiWait()
@@ -146,7 +151,7 @@ internal fun AppRoot(
                 }
             }
             // 다른 앱에서 받은 링크의 확인 시트. 어느 화면 위에서든 뜬다(#127).
-            OpenLinkHost(viewModel, downloadJobs, snackbar, snackbarVisible, waitsForWifi, announceWifiWait)
+            OpenLinkHost(viewModel, downloadJobs, snackbar, snackbarVisible, waitsForWifi, announceWifiWait, settledScreen)
         }
     }
 }

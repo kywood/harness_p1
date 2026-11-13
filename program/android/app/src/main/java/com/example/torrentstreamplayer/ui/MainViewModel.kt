@@ -66,8 +66,11 @@ class MainViewModel @JvmOverloads internal constructor(
     val resumePositionMs: Long get() = resume.positionMs
     fun savedMagnets(): List<SavedMagnet> = playlist.savedMagnets()
     fun storedFiles(): List<StoredTorrentFile> = torrentEngine.storedFiles()
-    /** Stops [magnet] on the main thread, then waits for its writes and deletes its files on [Dispatchers.IO]. */
-    suspend fun deleteSavedMagnet(magnet: String) {
+    /**
+     * Holds [playlistWrites] so a late queued-link record cannot bring the card back.
+     * Stops [magnet] on the main thread, then waits for its writes and deletes its files on [Dispatchers.IO].
+     */
+    suspend fun deleteSavedMagnet(magnet: String): Unit = playlistWrites.delete {
         val key = MagnetIdentity.key(magnet)
         val (protectedFiles, writers) = withContext(Dispatchers.Main.immediate) {
             if (_activeKey.value == key) stopStream()
@@ -90,7 +93,24 @@ class MainViewModel @JvmOverloads internal constructor(
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { playlist.add(it) }; Unit },
         { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit },
-        describeFailure = { InputFailureText.message(it, application) }) })
+        describeFailure = { InputFailureText.message(it, application) }) }, onTaskAdded = ::saveQueuedLink)
+
+
+    /** 대기 작업 기록과 재생 목록 삭제의 순서. 작업이 살았는지는 메인 스레드에서 본다([DownloadManager]는 메인 전용). */
+    private val playlistWrites = PlaylistWriteGate { key -> downloads.entry(key)?.phase?.stoppable == true }
+
+    /**
+     * 대기열·Wi-Fi 대기로 남은 작업을 재생 목록에 바로 보이게 기록한다. 바로 실행되는 작업은 컨트롤러가 기록한다.
+     * 차례가 왔을 때 작업이 이미 멈췄으면(삭제·중지) 쓰지 않아, 지운 카드가 다시 생기지 않는다.
+     */
+    private fun saveQueuedLink(magnet: String) {
+        val key = MagnetIdentity.key(magnet)
+        viewModelScope.launch {
+            try { playlistWrites.recordIfAlive(key) { withContext(Dispatchers.IO) { playlist.add(magnet) } } }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { Log.w("Playlist", "Unable to save: ${EngineFailureLog.describe(failure)}") }
+        }
+    }
     /** Stopped downloads may still be writing their files; waits for them on [Dispatchers.IO] before deleting. */
     suspend fun deleteStoredFile(path: String): Boolean {
         val writers = withContext(Dispatchers.Main.immediate) {

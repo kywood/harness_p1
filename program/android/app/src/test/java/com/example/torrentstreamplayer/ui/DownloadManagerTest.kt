@@ -182,4 +182,43 @@ class DownloadManagerTest {
         assertEquals("a stopped task forgets its permission", DownloadPhase.WAITING_FOR_WIFI, phases(manager)[first])
         scope.cancel()
     }
+
+    @Test fun queuedAndWifiWaitingTasksReachThePlaylistBeforeTheyRun() {
+        val scope = CoroutineScope(SupervisorJob() + held)
+        val added = mutableListOf<String>()
+        val manager = DownloadManager(scope, {
+            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> })
+        }, limit = 3, onTaskAdded = { added += it })
+        val magnets = listOf('1', '2', '3', '4').map(::magnet)
+        magnets.forEach { manager.start(it) { true } }
+
+        val fourth = MagnetIdentity.key(magnets.last())
+        assertEquals(DownloadPhase.QUEUED, phases(manager)[fourth])
+        assertEquals("only the queued 4th link is reported; running ones are saved by their controllers",
+            listOf(magnets.last()), added)
+        val queued = PlaylistItemStatus.of(manager.entry(fourth), playing = false, complete = false)
+        assertEquals(PlaylistItemStatus.QUEUED, queued)
+
+        manager.applyNetwork(NetworkConditions(wifiOnly = true, connection = ConnectionType.MOBILE))
+        manager.start(magnet('5')) { true }
+        assertEquals(magnet('5'), added.last())
+        val waiting = PlaylistItemStatus.of(manager.entry(MagnetIdentity.key(magnet('5'))), playing = false,
+            complete = false)
+        assertEquals("Wi-Fi 대기 wins over 다운로드 대기", PlaylistItemStatus.WAITING_FOR_WIFI, waiting)
+        scope.cancel()
+    }
+
+    @Test fun eachWaitingTaskIsReportedOnce() {
+        val scope = CoroutineScope(SupervisorJob() + held)
+        val added = mutableListOf<String>()
+        val manager = DownloadManager(scope, {
+            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> })
+        }, limit = 1, onTaskAdded = { added += it })
+        manager.start(magnet('1')) { true }
+        assertEquals("a task that runs at once is not reported", emptyList<String>(), added)
+        manager.start(magnet('2')) { true }
+        manager.start(magnet('2')) { true }
+        assertEquals("starting a waiting task again reports nothing more", listOf(magnet('2')), added)
+        scope.cancel()
+    }
 }

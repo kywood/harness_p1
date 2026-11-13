@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.ui
 
+import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -59,16 +60,27 @@ class IncomingLinkSummaryTest {
         assertFalse(buttons(null, busy = true).enabled)
     }
 
-    @Test fun theSheetChipIsThePlaylistCardChipIncludingWaitingForWifi() {
-        assertEquals(PlaylistItemStatus.WAITING_FOR_WIFI,
-            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.WAITING_FOR_WIFI), playing = false, complete = false))
-        assertEquals(PlaylistItemStatus.QUEUED,
-            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.QUEUED), playing = false, complete = false))
-        assertEquals(PlaylistItemStatus.DOWNLOADING, PlaylistItemStatus.of(null, playing = true, complete = false))
-        assertEquals(PlaylistItemStatus.FAILED,
-            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.FAILED, error = "x"), playing = false, complete = false))
-        assertEquals(PlaylistItemStatus.COMPLETED, PlaylistItemStatus.of(null, playing = false, complete = true))
-        assertEquals(PlaylistItemStatus.INCOMPLETE, PlaylistItemStatus.of(null, playing = false, complete = false))
+    @Test fun aFailedSaveDuringPlaybackWaitsWhileASuccessIsDropped() {
+        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, playbackActive = false))
+        assertEquals(NoticeTiming.SHOW, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, false))
+        assertEquals("the user must learn it was not saved",
+            NoticeTiming.WAIT, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVE_FAILED, playbackActive = true))
+        assertEquals(NoticeTiming.DROP, IncomingLinkPolicy.noticeTiming(IncomingLinkNotice.SAVED, playbackActive = true))
+    }
+
+    @Test fun aWaitingNoticeShowsOnlyAfterSettlingOnAScreenWithTheSnackbar() {
+        assertFalse("nothing settled yet", IncomingLinkPolicy.waitingNoticeMayShow(null))
+        assertFalse(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Player("a.mkv")))
+        assertFalse(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Preparing.FetchingMetadata))
+        assertTrue(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Main()))
+        assertTrue(IncomingLinkPolicy.waitingNoticeMayShow(AppScreen.Playlist))
+    }
+
+    @Test fun clearingAfterSavingAppliesOnlyToTheSavedLink() {
+        val clear = MainInputFill("", 1, replaces = "magnet:?xt=a")
+        assertTrue(clear.appliesTo(" magnet:?xt=a "))
+        assertFalse("a link typed meanwhile stays", clear.appliesTo("magnet:?xt=b"))
+        assertTrue("a received link always fills", MainInputFill("magnet:?xt=a", 2).appliesTo("anything"))
     }
 
     @Test fun aSaveWhileDownloadsWaitForWifiAnnouncesTheWait() {

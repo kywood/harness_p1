@@ -9,12 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.ui.components.ConfirmDialog
 import com.example.torrentstreamplayer.ui.components.LinkTextField
+import com.example.torrentstreamplayer.ui.components.PasteButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -56,6 +58,11 @@ internal fun QuickDownloadDialog(onDismiss: () -> Unit, submit: suspend (String)
             input = it
             error = null
         }, error, enabled = !busy, label = stringResource(R.string.label_link_input_short))
+        // 메인 입력 카드와 같은 [붙여넣기]: 입력란 아래 오른쪽(#148).
+        PasteButton({
+            input = it
+            error = null
+        }, Modifier.align(Alignment.End), enabled = !busy)
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.tertiary,
             trackColor = MaterialTheme.colorScheme.outline)
     }
