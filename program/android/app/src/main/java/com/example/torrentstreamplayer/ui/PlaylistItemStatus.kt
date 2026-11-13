@@ -38,5 +38,20 @@ internal enum class PlaylistItemStatus(
             failed -> FAILED
             else -> INCOMPLETE
         }
+
+        /**
+         * 재생 목록 항목 하나의 칩. 재생 목록 카드와 링크 확인 시트가 같이 쓴다.
+         *
+         * @param task 그 항목의 다운로드 작업(없으면 null).
+         * @param playing 지금 재생 중인 항목이면 true(작업이 없어도 받는 중으로 본다).
+         * @param complete 다 받은 항목.
+         */
+        fun of(task: DownloadEntry?, playing: Boolean, complete: Boolean): PlaylistItemStatus = of(
+            active = task?.phase == DownloadPhase.RUNNING || playing,
+            queued = task?.phase == DownloadPhase.QUEUED,
+            failed = task?.error != null,
+            complete = complete,
+            waitingForWifi = task?.phase == DownloadPhase.WAITING_FOR_WIFI,
+        )
     }
 }

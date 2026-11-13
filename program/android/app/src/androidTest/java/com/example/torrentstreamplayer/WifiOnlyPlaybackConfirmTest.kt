@@ -2,6 +2,7 @@ package com.example.torrentstreamplayer
 
 import android.app.Application
 import android.os.SystemClock
+import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,6 +38,9 @@ import org.libtorrent4j.AddTorrentParams
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.swig.libtorrent
 import java.io.File
+
+/** 바깥 누름 위치: 화면 왼쪽 가장자리에서 조금 안쪽(px). */
+private const val OUTSIDE_TAP_X_PX = 8f
 
 /**
  * Wi-Fi 전용 + 모바일 데이터에서 덜 받은 영상을 메인에서 재생하면 확인 창이 뜨고(`design/specs/settings-wifi.md` 5절),
@@ -135,12 +139,15 @@ class WifiOnlyPlaybackConfirmTest {
 
     @Test fun tapOutsideDismissesWithoutStarting() {
         askFromMain()
-        // 확인 창 바깥(화면 왼쪽 위 모서리)을 누른다. 새 의존성(UiAutomator) 없이 터치를 주입한다.
-        val time = SystemClock.uptimeMillis()
+        // 앱 창 안이면서 확인 창 밖(왼쪽 가장자리, 세로 가운데)을 누른다. 새 의존성(UiAutomator) 없이 터치스크린
+        // 입력으로 주입한다(PlayerOverlayGestureTest와 같은 방식). 확인 창은 가운데에 있고 가장자리까지 닿지 않는다.
+        val x = OUTSIDE_TAP_X_PX
+        val y = instrumentation.targetContext.resources.displayMetrics.heightPixels / 2f
+        val down = SystemClock.uptimeMillis()
         listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP).forEach { action ->
-            val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, 1f, 1f, 0)
-            instrumentation.uiAutomation.injectInputEvent(event, true)
-            event.recycle()
+            val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
+            event.source = InputDevice.SOURCE_TOUCHSCREEN
+            try { instrumentation.uiAutomation.injectInputEvent(event, true) } finally { event.recycle() }
         }
         compose.waitUntil(5_000) { model.mobilePlaybackConfirm.value == null }
         compose.runOnIdle { assertEquals(AppScreen.Main(), model.screen.value) }

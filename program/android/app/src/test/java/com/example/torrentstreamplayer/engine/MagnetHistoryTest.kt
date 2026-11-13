@@ -39,6 +39,34 @@ class MagnetHistoryTest {
         assertEquals(42000L, history().list().single().lastPositionMs)
         assertEquals(10L, history().list().single().addedAt)
     }
+    @Test fun aBrokenEntrySkipsOnlyItself() {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { out ->
+            out.writeInt(-3); out.writeInt(2)
+            listOf(magnet(1), "magnet:?xt=urn:btih:broken").forEachIndexed { index, link ->
+                out.writeUTF(link); out.writeUTF("T$index"); out.writeLong(10L + index); out.writeLong(0); out.writeLong(0)
+            }
+        }
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).write("links", bytes.toByteArray())
+        assertEquals(listOf(magnet(1)), history().list().map { it.magnet })
+        history().add(magnet(2), 20)
+        history().savePosition(magnet(1), 42000, 120000)
+        assertEquals("writing again keeps the good entries", setOf(magnet(1), magnet(2)),
+            history().list().map { it.magnet }.toSet())
+        assertEquals(42000L, history().list().first { it.magnet == magnet(1) }.lastPositionMs)
+    }
+    @Test fun aBrokenEntryInThePositiveVersionFormatSkipsOnlyItself() {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { out ->
+            out.writeInt(2) // the oldest format: the count, then link and date without a title
+            out.writeUTF("magnet:?xt=urn:btih:broken"); out.writeLong(5)
+            out.writeUTF(magnet(1)); out.writeLong(6)
+        }
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).write("links", bytes.toByteArray())
+        val entry = history().list().single()
+        assertEquals(magnet(1), entry.magnet)
+        assertEquals(6L, entry.addedAt)
+    }
     @Test fun versionOneHistoryMigratesWithoutInventingPlaybackDate() {
         val buffer = java.io.ByteArrayOutputStream()
         java.io.DataOutputStream(buffer).use { it.writeInt(-1); it.writeInt(1); it.writeUTF(magnet(1)); it.writeUTF("Old"); it.writeLong(12) }

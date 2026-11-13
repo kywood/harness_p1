@@ -193,8 +193,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                     val task = downloadJobs[key]
                     val active = task?.phase == DownloadPhase.RUNNING || activeKey == key
                     val queued = task?.phase == DownloadPhase.QUEUED
-                    val status = PlaylistItemStatus.of(active, queued, task?.error != null, PlaylistOrdering.complete(entry),
-                        waitingForWifi = task?.phase == DownloadPhase.WAITING_FOR_WIFI)
+                    val status = PlaylistItemStatus.of(task, playing = activeKey == key, PlaylistOrdering.complete(entry))
                     PlaylistItemCard(
                         entry = entry,
                         active = active,

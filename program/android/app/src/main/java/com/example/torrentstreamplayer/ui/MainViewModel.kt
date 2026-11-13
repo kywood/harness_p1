@@ -385,12 +385,10 @@ class MainViewModel @JvmOverloads internal constructor(
     /** 다른 앱 링크 → 확인 → 재생/받기 흐름. ViewModel은 참여 함수만 넘긴다. */
     private val incomingLinks = IncomingLinkCoordinator(
         scope = viewModelScope,
-        playlistKeys = {
-            try { withContext(Dispatchers.IO) { playlist.keys() } }
-            catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) {
-                Log.w("IncomingLink", "Unable to read playlist: ${EngineFailureLog.describe(failure)}")
-                emptySet()
+        // 읽기 실패는 코디네이터가 "재생 목록에 없음"으로 처리한다.
+        findInPlaylist = { key ->
+            withContext(Dispatchers.IO) { playlist.find(key) }?.let { entry ->
+                PlaylistMatch(entry.magnet, entry.title, entry.lastPositionMs, PlaylistOrdering.complete(entry))
             }
         },
         isPlaybackActive = { _uiState.value !is StreamUiState.Idle && _uiState.value !is StreamUiState.Error },
@@ -408,11 +406,23 @@ class MainViewModel @JvmOverloads internal constructor(
     /** 시트의 "바로 재생". 재생·준비 중이면 허용되지 않아 무시하고 false를 돌려준다. */
     fun playIncomingLink(): Boolean = incomingLinks.play()
 
-    /** 시트의 "받아 두기". `.torrent` 주소 처리에 실패하면 예외를 던지고 시트는 남는다([IncomingLinkCoordinator.save]). */
-    suspend fun saveIncomingLink() = incomingLinks.save()
+    /** 시트의 "받아 두기". 끝나면 시트를 닫고 결과를 [incomingLinkNotice]로 알린다([IncomingLinkCoordinator.save]). */
+    fun saveIncomingLink() {
+        viewModelScope.launch { incomingLinks.save() }
+    }
 
-    /** 시트의 "취소"·오류 시트의 "확인". */
-    fun dismissIncomingLink() = incomingLinks.dismiss()
+    /** 시트의 "취소"·오류 시트의 "확인". [shown]이 아직 시트의 링크일 때만 닫는다(닫는 애니메이션 중 새 링크 보호). */
+    internal fun dismissIncomingLink(shown: IncomingLinkState) = incomingLinks.dismiss(shown)
+
+    /** "받아 두기" 뒤 한 번 보일 스낵바. 스낵바가 끝난 뒤 [incomingLinkNoticeShown]을 부른다. */
+    internal val incomingLinkNotice: StateFlow<IncomingLinkNoticeEvent?> get() = incomingLinks.notice
+
+    internal fun incomingLinkNoticeShown(event: IncomingLinkNoticeEvent) = incomingLinks.noticeShown(event)
+
+    /** 들어온 링크로 메인 입력란을 채우거나, 받아 둔 뒤 비운다. 메인이 반영한 뒤 [mainInputFilled]를 부른다. */
+    internal val mainInputFill: StateFlow<MainInputFill?> get() = incomingLinks.mainInput
+
+    internal fun mainInputFilled(fill: MainInputFill) = incomingLinks.inputFilled(fill)
 
     /** 오류가 남은 메인에서 열면 오류 상태를 정리한 뒤 연다. */
     fun openPlaylist() {
