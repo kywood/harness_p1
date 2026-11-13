@@ -63,6 +63,12 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         }
         cache.write("links", buffer.toByteArray())
     }
-    private fun title(magnet: String): String =
-        MagnetDisplayName.of(magnet) ?: "토렌트 " + MagnetIdentity.key(magnet).take(8)
+    private fun title(magnet: String): String = MagnetDisplayName.of(magnet) ?: PLACEHOLDER + MagnetIdentity.key(magnet).take(8)
+    companion object {
+        /** 이름 없는 마그넷의 저장된 자리 표시 제목 앞부분. 이미 저장된 값과 맞춰야 해 번역하지 않는다. */
+        private const val PLACEHOLDER = "토렌트 "
+        /** [title]이 [magnet]의 자리 표시 제목이면 그 짧은 식별자(키 앞 8자리), 아니면 null. 화면이 문구를 바꿔 보인다. */
+        fun placeholderId(magnet: String, title: String): String? =
+            runCatching { MagnetIdentity.key(magnet).take(8) }.getOrNull()?.takeIf { title == PLACEHOLDER + it }
+    }
 }
