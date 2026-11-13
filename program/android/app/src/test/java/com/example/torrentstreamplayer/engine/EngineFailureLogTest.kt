@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.engine
 
 import com.example.torrentstreamplayer.BuildConfig
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -28,6 +29,11 @@ class EngineFailureLogTest {
     @Test fun releaseLogKeepsOnlyTheExceptionType() {
         val error = IllegalStateException("Previous download is still stopping")
         assertEquals("IllegalStateException", EngineFailureLog.describe(error, debug = false))
+    }
+
+    @Test fun registeredFailureLogsItsNameButNoArguments() {
+        val error = TorrentFailure.TORRENT_HTTP.blocked(404)
+        assertEquals("BlockedFailure(TORRENT_HTTP)", EngineFailureLog.describe(error, debug = false))
     }
 
     @Test fun releaseLogNamesTheCauseChain() {
