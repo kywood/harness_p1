@@ -390,6 +390,9 @@ class TorrentEngine(private val context: Context) {
         if (DownloadOrderPolicy.order(playbackFocused).sequential) handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
         else handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
     }
+    /** Index checks outside the download loop: file or libtorrent errors are logged, never thrown to the caller. */
+    private fun refreshStartupIndex() = runCatching { updateStartupIndex() }
+        .onFailure { Log.w(TAG, "Startup index check failed: ${EngineFailureLog.describe(it)}") }
     @Synchronized private fun updateStartupIndex() {
         val handle = currentHandle ?: return
         val index = startupIndex ?: return
@@ -516,7 +519,7 @@ class TorrentEngine(private val context: Context) {
             info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
         startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile!!.extension)
-        updateStartupIndex()
+        refreshStartupIndex()
         beginSeek(0, 1)
         return true
     }
@@ -536,7 +539,7 @@ class TorrentEngine(private val context: Context) {
         val handle = currentHandle ?: return false
         if (firstPieceIndex < 0 || lastPieceIndex < 0) return false
         // Polled every 250 ms: finding the index here, not in the 1 s loop, saves up to a second per step.
-        if (startupIndex?.ready == false) updateStartupIndex()
+        if (startupIndex?.ready == false) refreshStartupIndex()
         if (startupIndex?.ready == false) return false
         return try {
             val required = startupPieces
