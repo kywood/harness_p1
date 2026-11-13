@@ -73,13 +73,14 @@
     <string name="failure_stop_pending">Waiting for the download to stop. Try deleting again in a moment.</string>
     <string name="failure_record_pending">Still saving the download record. Try deleting again in a moment.</string>
     <string name="failure_stop_downloads_first">To delete files, first stop the downloads in your Playlist.</string>
+    <string name="failure_stop_playback_first">You can\'t delete a video while it\'s playing. Stop playback and try again.</string>
     <string name="failure_item_path">The item\'s storage path isn\'t valid.</string>
     <string name="failure_outside_storage">The file points outside the app\'s storage.</string>
-    <string name="failure_folder_delete">A folder can\'t be deleted in place of a single file.</string>
+    <string name="failure_folder_delete">Folders can\'t be deleted here.</string>
     <string name="failure_symlink_delete">Symbolic links aren\'t deleted.</string>
     <!-- 화면이 엔진 실패 문구를 얻지 못했을 때 쓰는 기본 문구(MainViewModel, DownloadController, DownloadManager) -->
     <string name="error_download_start_plain">Couldn\'t start the download.</string>
-    <string name="error_magnet_required">A valid magnet address is required.</string>
+    <string name="error_magnet_required">A valid magnet link is required.</string>
     <string name="error_input_failed">Couldn\'t process the address.</string>
     <string name="error_download_stopped">The download was stopped.</string>
 
@@ -106,8 +107,8 @@
     <string name="cd_back">Back</string>
     <string name="cd_play">Play</string>
     <string name="cd_pause">Pause</string>
-    <string name="cd_rewind_10">Back 10 seconds</string>
-    <string name="cd_forward_10">Forward 10 seconds</string>
+    <string name="cd_rewind_10">Rewind 10 seconds</string>
+    <string name="cd_forward_10">Skip forward 10 seconds</string>
     <string name="cd_zoom_in">Zoom in</string>
     <string name="cd_zoom_out">Zoom out</string>
     <string name="cd_zoom_reset">Reset zoom</string>
@@ -117,7 +118,7 @@
     <string name="player_restart">Reset position · Play from start</string>
     <string name="player_stats">↓ %1$s · %2$d%% · Peers: %3$d</string>
     <string name="player_downloaded">Downloaded %1$d%%</string>
-    <string name="player_time_label">Current %1$s / Total %2$s</string>
+    <string name="player_time_label">%1$s / %2$s</string>
     <string name="player_waiting_seek">Preparing the part you jumped to…</string>
     <string name="player_waiting_buffering">Buffering playback data…</string>
     <!-- Common actions and states -->
@@ -140,7 +141,7 @@
     <string name="action_detailed">Detailed</string>
     <string name="action_stop_download">Stop download</string>
     <string name="action_stop_all">Stop all</string>
-    <string name="action_cancel_queue">Cancel waiting</string>
+    <string name="action_cancel_queue">Remove from queue</string>
     <string name="action_delete_with_file">Delete with file</string>
     <string name="action_reset_position">Reset position</string>
     <string name="playlist_summary">Downloading: %1$d</string>
@@ -251,7 +252,7 @@ If you delete it, you may need to download it again.</string>
     <string name="guide_storage_title">Stored only on this device</string>
     <string name="guide_storage_body">Downloaded videos and your Playlist are stored only on this device and are never sent anywhere. Your Playlist and resume data are kept encrypted. Everything is deleted when you delete it in Stored files or uninstall the app.</string>
     <string name="guide_data_title">Uses a lot of data</string>
-    <string name="guide_data_body">Playing uses as much data as the video\'s size. Mobile data charges may apply, so we recommend turning on Wi-Fi only in Settings.</string>
+    <string name="guide_data_body">Playing uses as much data as the video\'s size. Mobile data charges may apply, so we recommend turning on \"Wi-Fi only\" in Settings.</string>
     <string name="guide_ads_title">Ads</string>
     <string name="guide_ads_body">Banner ads appear on the home screen and in your Playlist, and a full-screen ad sometimes appears after you finish watching. No ads appear during playback.</string>
 
@@ -307,13 +308,13 @@ If you delete it, you may need to download it again.</string>
     <string name="settings_wifi_only_desc">Pause downloads on mobile data.</string>
     <string name="settings_wifi_paused_notice">Downloads paused on mobile data. They\'ll continue when you connect to Wi-Fi.</string>
     <string name="settings_auto_subtitles">Show subtitles automatically</string>
-    <string name="settings_auto_subtitles_desc">Turn on Korean subtitles when playback starts, if available.</string>
+    <string name="settings_auto_subtitles_desc">Turn on subtitles in your language when available.</string>
     <string name="settings_version">Version</string>
     <string name="settings_save_failed">Couldn\'t save the setting. Tap again.</string>
     <string name="status_wifi_waiting">Waiting for Wi-Fi</string>
     <string name="playlist_summary_wifi_waiting">Waiting for Wi-Fi: %1$d</string>
     <string name="info_waiting_for_wifi">Downloading starts when you connect to Wi-Fi.</string>
     <string name="mobile_play_confirm_title">Play on mobile data this time?</string>
-    <string name="mobile_play_confirm_message">Wi-Fi only is on. Playing may use as much mobile data as the video\'s size.</string>
+    <string name="mobile_play_confirm_message">\"Wi-Fi only\" is on. Playing may use as much mobile data as the video\'s size.</string>
     <string name="action_play_once">Play this time</string>
 </resources>

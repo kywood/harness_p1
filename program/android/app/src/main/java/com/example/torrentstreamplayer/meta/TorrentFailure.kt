@@ -41,13 +41,15 @@ internal enum class TorrentFailure(@StringRes val message: Int) {
     STOP_PENDING(R.string.failure_stop_pending),
     RECORD_PENDING(R.string.failure_record_pending),
     STOP_DOWNLOADS_FIRST(R.string.failure_stop_downloads_first),
+    STOP_PLAYBACK_FIRST(R.string.failure_stop_playback_first),
     ITEM_PATH(R.string.failure_item_path),
     OUTSIDE_STORAGE(R.string.failure_outside_storage),
     FOLDER_DELETE(R.string.failure_folder_delete),
     SYMLINK_DELETE(R.string.failure_symlink_delete);
 
     /** 등록된 문구만 돌려준다. 예외 원문은 사용자에게 보이지 않게 받지 않는다. [args]는 문구의 포맷 인자다. */
-    fun text(context: Context, vararg args: Any): String = context.getString(message, *args)
+    fun text(context: Context, vararg args: Any): String =
+        if (args.isEmpty()) context.getString(message) else context.getString(message, *args)
 
     /** `require` 대신 던지는 실패(입력이 잘못됨). */
     fun invalid(cause: Throwable? = null): IllegalArgumentException = InvalidInputFailure(this, cause)

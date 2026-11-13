@@ -68,6 +68,7 @@
     <string name="failure_stop_pending">다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요.</string>
     <string name="failure_record_pending">다운로드 기록 저장이 끝나지 않았습니다. 잠시 후 다시 삭제해 주세요.</string>
     <string name="failure_stop_downloads_first">파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요.</string>
+    <string name="failure_stop_playback_first">재생 중인 영상은 삭제할 수 없습니다. 재생을 멈춘 뒤 다시 삭제해 주세요.</string>
     <string name="failure_item_path">항목 저장 경로가 올바르지 않습니다.</string>
     <string name="failure_outside_storage">파일이 앱 저장 공간 밖을 가리킵니다.</string>
     <string name="failure_folder_delete">개별 파일 대신 폴더를 삭제할 수 없습니다.</string>
@@ -290,7 +291,7 @@
     <string name="settings_wifi_only_desc">모바일 데이터에서는 다운로드를 멈춥니다.</string>
     <string name="settings_wifi_paused_notice">모바일 데이터에 연결되어 다운로드를 멈췄습니다. Wi-Fi에 연결되면 이어서 받습니다.</string>
     <string name="settings_auto_subtitles">자막 자동 표시</string>
-    <string name="settings_auto_subtitles_desc">한국어 자막이 있으면 재생할 때 바로 켭니다.</string>
+    <string name="settings_auto_subtitles_desc">내 언어 자막이 있으면 재생할 때 바로 켭니다.</string>
     <string name="settings_version">버전</string>
     <string name="settings_save_failed">설정을 저장하지 못했습니다. 다시 눌러 주세요.</string>
     <string name="status_wifi_waiting">Wi-Fi 대기</string>

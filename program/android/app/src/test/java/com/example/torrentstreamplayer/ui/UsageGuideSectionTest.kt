@@ -1,21 +1,15 @@
 package com.example.torrentstreamplayer.ui
 
+import com.example.torrentstreamplayer.StringsXml
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class UsageGuideSectionTest {
-    private val strings: Map<String, String> by lazy { read("values-ko") }
-    private val english: Map<String, String> by lazy { read("values") }
-
-    private fun read(folder: String): Map<String, String> {
-        val xml = File("src/main/res/$folder/strings.xml").readText()
-        return Regex("<string name=\"([^\"]+)\">([^<]*)</string>").findAll(xml)
-            .associate { it.groupValues[1] to it.groupValues[2] }
-    }
+    private val strings: Map<String, String> by lazy { StringsXml.texts("values-ko") }
+    private val english: Map<String, String> by lazy { StringsXml.texts(StringsXml.DEFAULT) }
 
     @Test fun sectionsFollowTheSpecOrder() {
         assertEquals(
