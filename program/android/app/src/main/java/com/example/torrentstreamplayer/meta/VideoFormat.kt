@@ -17,13 +17,18 @@ internal enum class VideoFormat(
     val mimeType: String,
     /** True when playback must wait for the MP4 `moov` index (see `StartupIndexState`). */
     val needsMoovIndex: Boolean = false,
+    /**
+     * Bytes at the end of the file fetched together with the startup buffer, because the container often keeps
+     * its index there (MP4 `moov`, Matroska `Cues`). Playback does not wait for them (see `StartupPrefetchPlan`).
+     */
+    val tailPrefetchBytes: Long = 0,
 ) {
-    MP4("mp4", "video/mp4", needsMoovIndex = true),
-    MKV("mkv", "video/x-matroska"),
+    MP4("mp4", "video/mp4", needsMoovIndex = true, tailPrefetchBytes = EngineSpec.MOOV_TAIL_PREFETCH_BYTES),
+    MKV("mkv", "video/x-matroska", tailPrefetchBytes = EngineSpec.CUES_TAIL_PREFETCH_BYTES),
     AVI("avi", "video/x-msvideo"),
-    WEBM("webm", "video/webm"),
-    MOV("mov", "video/quicktime", needsMoovIndex = true),
-    M4V("m4v", FALLBACK_MIME_TYPE, needsMoovIndex = true),
+    WEBM("webm", "video/webm", tailPrefetchBytes = EngineSpec.CUES_TAIL_PREFETCH_BYTES),
+    MOV("mov", "video/quicktime", needsMoovIndex = true, tailPrefetchBytes = EngineSpec.MOOV_TAIL_PREFETCH_BYTES),
+    M4V("m4v", FALLBACK_MIME_TYPE, needsMoovIndex = true, tailPrefetchBytes = EngineSpec.MOOV_TAIL_PREFETCH_BYTES),
     TS("ts", FALLBACK_MIME_TYPE),
     FLV("flv", FALLBACK_MIME_TYPE),
     ;
