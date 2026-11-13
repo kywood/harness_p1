@@ -46,7 +46,8 @@ internal object SubtitleFilePlan {
         val others = files.filter { other ->
             other.index != videoIndex && folder(other.path) == videoFolder && TorrentPlayback.isVideo(other.path, other.size)
         }
-        val otherEpisodes = others.mapNotNull { episode(nameWords(SubtitleLanguage.baseName(it.path))) }
+        val otherEpisodes = others.filter { it.size >= video.size * SubtitleSpec.PACK_EPISODE_MIN_PERCENT / 100 }
+            .mapNotNull { episode(nameWords(SubtitleLanguage.baseName(it.path))) }
         val singleVideo = otherEpisodes.none { it != episode(videoWords) } &&
             others.count { it.size >= packMinBytes } < SubtitleSpec.PACK_MIN_BIG_VIDEOS
         val found = files.asSequence()
@@ -83,9 +84,9 @@ internal object SubtitleFilePlan {
         singleVideo: Boolean,
         pieceLength: Long,
     ): SubtitleCandidate {
-        // In a season pack a name without an episode marker (`Show.srt`) matches every episode: not a match.
+        // In a season pack a name shorter than the video's (`Show.srt`) starts every episode's name: not a match.
         val names = listOf(nameWords(SubtitleLanguage.baseName(file.path)), episodeFolder?.let(::nameWords).orEmpty())
-        val matches = names.any { namesMatch(it, videoWords) && (singleVideo || episode(it) != null) }
+        val matches = names.any { namesMatch(it, videoWords) && (singleVideo || it.size >= videoWords.size) }
         val first = (file.offset / pieceLength).toInt()
         val last = ((file.offset + file.size - 1) / pieceLength).toInt()
         return SubtitleCandidate(file.index, file.path, file.size, SubtitleLanguage.of(file.path),

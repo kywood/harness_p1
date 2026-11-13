@@ -24,6 +24,13 @@ internal object SubtitleSpec {
      */
     const val PACK_VIDEO_MIN_PERCENT = 25L
 
+    /**
+     * Smallest other video, in percent of the selected video's size, whose episode marker counts for a season pack.
+     * Lower than [PACK_VIDEO_MIN_PERCENT] so a 0.9 GB episode next to a 4 GB special still counts (#138), while a
+     * small extra (`Featurettes.E01.mkv`, 50 MB next to a 2 GB movie) does not (PR #142 review).
+     */
+    const val PACK_EPISODE_MIN_PERCENT = 10L
+
     /** Other large videos (see [PACK_VIDEO_MIN_PERCENT]) that make a folder without episode markers a season pack. */
     const val PACK_MIN_BIG_VIDEOS = 2
 

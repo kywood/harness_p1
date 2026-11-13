@@ -117,6 +117,25 @@ class SubtitleFilePlanTest {
         assertTrue(plan.single().fallbackAllowed)
     }
 
+    @Test fun seasonPacksKeepSubtitlesNamedExactlyLikeTheVideo() {
+        val anime = files("S/[Grp] Show - 01 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 02 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 03 [1080p].mkv" to 500_000_000, "S/[Grp] Show - 01 [1080p].ass" to 10,
+            "S/[Grp] Show - 02 [1080p].ass" to 10)
+        assertEquals(listOf("S/[Grp] Show - 01 [1080p].ass"), chosen(anime))
+        val drama = files("D/드라마 1회.mp4" to 500_000_000, "D/드라마 2회.mp4" to 500_000_000,
+            "D/드라마 3회.mp4" to 500_000_000, "D/드라마 1회.smi" to 10, "D/드라마.smi" to 10)
+        assertEquals(listOf("D/드라마 1회.smi"), chosen(drama))
+    }
+
+    @Test fun aSmallExtraWithAnEpisodeMarkerDoesNotMakeASeasonPack() {
+        val torrent = files("M/Movie.2020.1080p.mkv" to 2_000_000_000, "M/Featurettes.E01.mkv" to 50_000_000,
+            "M/Movie.2020.1080p.ko.srt" to 10)
+        val plan = SubtitleFilePlan.select(torrent, 0, pieceLength)
+        assertEquals(listOf("M/Movie.2020.1080p.ko.srt"), plan.map { it.path })
+        assertTrue(plan.single().fallbackAllowed)
+    }
+
     @Test fun aSampleOfTheSameEpisodeIsNotAnotherEpisode() {
         val torrent = files("S/Show.S01E01.mkv" to 900_000_000, "S/Show.S01E01.sample.mkv" to 30_000_000,
             "S/Korean.srt" to 10)
