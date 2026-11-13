@@ -10,15 +10,23 @@ import com.example.torrentstreamplayer.engine.SubtitleSelectionPolicy
 internal data class AutoSubtitleChoice(val trackId: Int, val final: Boolean)
 
 /**
- * Which subtitle to turn on by itself when "자막 자동 표시" is on. The preferred language is the last language the
- * viewer picked (PM decision, PR #131); before any pick it is Korean.
+ * Which subtitle to turn on by itself when "show subtitles automatically" is on. The preferred language is the last
+ * language the viewer picked (PM decision, PR #131); before any pick it is the device language ([preferredKey], #161).
  *
  * Order: an external file in the preferred language (among [SubtitleSelectionPolicy.pool]), an embedded track in
  * that language, the external file [SubtitleSelectionPolicy] picks (Korean, English, then a lone file without a
  * language), an embedded Korean track. Null when none fits.
  */
 internal object SubtitleAutoPolicy {
+    /** Used only when neither a saved pick nor the device language gives a language key. */
     val DEFAULT_LANGUAGE_KEY: String = TrackLanguage.KOREAN.key
+
+    /**
+     * The language to prefer: the viewer's saved pick ([saved]) first, else the device language ([deviceLanguage],
+     * e.g. `Locale.language` "ko", "en"), else [DEFAULT_LANGUAGE_KEY]. A Korean device prefers Korean as before.
+     */
+    fun preferredKey(saved: String?, deviceLanguage: String?): String =
+        saved?.takeIf { it.isNotBlank() } ?: TrackLanguage.keyOf(deviceLanguage) ?: DEFAULT_LANGUAGE_KEY
 
     fun choose(
         preferredKey: String?,

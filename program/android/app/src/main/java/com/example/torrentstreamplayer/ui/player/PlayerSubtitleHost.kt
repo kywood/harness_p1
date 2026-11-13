@@ -9,9 +9,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import com.example.torrentstreamplayer.engine.SubtitleFile
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import com.example.torrentstreamplayer.ui.EngineCommandQueue
 import com.example.torrentstreamplayer.ui.PlaybackClock
+import com.example.torrentstreamplayer.ui.SubtitleAutoPolicy
 import com.example.torrentstreamplayer.ui.SubtitleSession
 import com.example.torrentstreamplayer.ui.SubtitleSheetState
 import org.videolan.libvlc.MediaPlayer
@@ -19,7 +21,8 @@ import java.io.File
 
 /**
  * 자막 시트에 필요한 값(`design/specs/subtitles.md`). [files]·[pending]은 엔진이 받은(검증된)·받는 중인 자막 파일,
- * [autoSelect]는 설정 "자막 자동 표시", [preferredLanguage]는 기억한 선호 언어. 고른 언어는 [onLanguageChosen]으로 알린다.
+ * [autoSelect]는 설정 "자막 자동 표시", [preferredLanguage]는 기억한 선호 언어
+ * (없으면 기기 언어, [SubtitleAutoPolicy.preferredKey]). 고른 언어는 [onLanguageChosen]으로 알린다.
  */
 internal data class PlayerSubtitleOptions(
     val files: List<SubtitleFile> = emptyList(),
@@ -46,11 +49,13 @@ internal fun rememberPlayerSubtitles(
     val scope = rememberCoroutineScope()
     val languageChosen by rememberUpdatedState(options.onLanguageChosen)
     val cacheDir = LocalContext.current.cacheDir
+    val deviceLanguage = LocalConfiguration.current.locales[0]?.language
     val clock = remember(player) { PlaybackClock() }
     val copies = remember(player) { SubtitleCopies(File(cacheDir, COPY_DIR)) }
     val subtitles = remember(player) {
         player?.let {
-            val session = SubtitleSession(VlcTrackPlayer(it), options.autoSelect, options.preferredLanguage,
+            val preferredKey = SubtitleAutoPolicy.preferredKey(options.preferredLanguage, deviceLanguage)
+            val session = SubtitleSession(VlcTrackPlayer(it), options.autoSelect, preferredKey,
                 clock::elapsedMs, copies::copyOf)
             PlayerSubtitles(session, scope, EngineCommandQueue.shared.dispatcher, copies) { key ->
                 languageChosen(key)
