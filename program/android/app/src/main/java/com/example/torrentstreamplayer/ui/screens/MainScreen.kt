@@ -6,8 +6,6 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -59,6 +57,7 @@ import com.example.torrentstreamplayer.ui.components.LinkTextField
 import com.example.torrentstreamplayer.ui.components.PasteButton
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
 import com.example.torrentstreamplayer.ui.components.SectionCard
+import com.example.torrentstreamplayer.ui.components.SeparatedFlowRow
 import com.example.torrentstreamplayer.ui.components.TextAction
 import com.example.torrentstreamplayer.ui.components.TextActionTone
 import com.example.torrentstreamplayer.ui.theme.BrandColors
@@ -208,7 +207,6 @@ private fun ShortcutCard(icon: ImageVector, title: String, hint: String, onClick
  * 메인 하단 법적 진입점(`design/specs/main-legal-footer.md`): 저작권 안내 한 줄, 링크 묶음, 버전.
  * 아래 여백은 바깥 스크롤의 `Spacing.xl`이 맡는다(배너와 24dp 이상, 잘못 누르기 방지).
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Footer(versionName: String?, actions: LegalLinkActions) {
     // 바깥 Column의 spacedBy(lg)에 더해 바로가기 카드와 Spacing.xl만큼 띄운다.
@@ -219,18 +217,16 @@ private fun Footer(versionName: String?, actions: LegalLinkActions) {
     ) {
         Text(stringResource(R.string.main_rights_notice), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
-        val links = actions.links
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            itemVerticalAlignment = Alignment.CenterVertically
-        ) {
-            links.forEachIndexed { index, link ->
-                if (index > 0) Text(stringResource(R.string.separator_dot), style = MaterialTheme.typography.labelLarge,
+        // 링크마다 줄을 바꾸고, 구분점은 같은 줄 링크 사이에만 둔다(줄 끝에 구분점만 남지 않게).
+        val links = actions.links.filter { actions.onClickFor(it) != null }
+        SeparatedFlowRow(
+            count = links.size,
+            separator = {
+                Text(stringResource(R.string.separator_dot), style = MaterialTheme.typography.labelLarge,
                     color = BrandColors.Separator, modifier = Modifier.clearAndSetSemantics {})
-                FooterLink(link, actions)
-            }
-        }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) { index -> FooterLink(links[index], actions) }
         LegalFooterPolicy.versionLabel(versionName)?.let { version ->
             Text(stringResource(R.string.main_version, version), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall)
