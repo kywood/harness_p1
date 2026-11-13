@@ -25,7 +25,8 @@ internal enum class SubtitleEncoding {
  *
  * CP949 means: not valid UTF-8, every non-ASCII byte forms a CP949 pair, and at least half of the pairs are Hangul
  * syllables of KS X 1001 (lead `0xB0..0xC8`, trail `0xA1..0xFE`), which Korean text is made of. A CP1252 quote
- * followed by a letter is a valid CP949 pair, but not one of those syllables. Pure: no files.
+ * followed by a letter is a valid CP949 pair, but not one of those syllables. A lead byte cut off at the very end
+ * of the file is allowed (a truncated download or copy). Pure: no files.
  */
 internal object SubtitleEncodingPolicy {
     private val UTF8_BOM = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
@@ -39,19 +40,23 @@ internal object SubtitleEncodingPolicy {
         else -> SubtitleEncoding.OTHER
     }
 
-    /** [bytes] decoded as CP949, or null when this device has no CP949 decoder or a byte does not decode. */
+    /**
+     * [bytes] decoded as CP949, or null when this device has no CP949 decoder. Called once [detect] said CP949, so a
+     * byte that does not decode (a broken pair, a cut-off last byte) becomes U+FFFD instead of failing the whole file.
+     * When only `EUC-KR` is available, UHC syllables outside KS X 1001 become U+FFFD too.
+     */
     fun decodeCp949(bytes: ByteArray): String? {
         val charset = CP949_NAMES.firstOrNull { runCatching { Charset.isSupported(it) }.getOrDefault(false) }
             ?.let(Charset::forName) ?: return null
-        return strictDecode(charset, bytes)
+        return decode(charset, bytes, CodingErrorAction.REPLACE)
     }
 
-    private fun isUtf8(bytes: ByteArray): Boolean = strictDecode(Charsets.UTF_8, bytes) != null
+    private fun isUtf8(bytes: ByteArray): Boolean = decode(Charsets.UTF_8, bytes, CodingErrorAction.REPORT) != null
 
-    private fun strictDecode(charset: Charset, bytes: ByteArray): String? = runCatching {
+    private fun decode(charset: Charset, bytes: ByteArray, onError: CodingErrorAction): String? = runCatching {
         charset.newDecoder()
-            .onMalformedInput(CodingErrorAction.REPORT)
-            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .onMalformedInput(onError)
+            .onUnmappableCharacter(onError)
             .decode(ByteBuffer.wrap(bytes)).toString()
     }.getOrNull()
 
@@ -65,7 +70,7 @@ internal object SubtitleEncodingPolicy {
                 i++
                 continue
             }
-            val trail = bytes.getOrNull(i + 1)?.toInt()?.and(0xFF) ?: return false
+            val trail = bytes.getOrNull(i + 1)?.toInt()?.and(0xFF) ?: break
             if (lead !in 0x81..0xFE || !isCp949Trail(trail)) return false
             pairs++
             if (lead in 0xB0..0xC8 && trail in 0xA1..0xFE) hangul++
