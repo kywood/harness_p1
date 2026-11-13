@@ -63,7 +63,7 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * - [sheetListsTracksAndStaysOpenAfterAPick]: 네트워크 없이 시트만 그린다.
  * - [sintelSubtitleCanBeOpenedAndTurnedOff]: 공개 영상 Sintel(Blender Foundation, CC BY)을 실제로 받는다. 피어나 웹 시드가
- *   필요하고, 네트워크가 없으면 건너뛴다(`assumeTrue`). 전체 대기는 120초까지. 설정·재생 목록·받은 파일은 `finally`에서
+ *   필요하고, 네트워크가 없으면 건너뛴다(`assumeTrue`). 전체 대기는 240초까지(공개 스웜이라 편차가 크다). 설정·재생 목록·받은 파일은 `finally`에서
  *   되돌리고 지운다.
  * - [koreanSmiAndSrtOpenInVlc]: 직접 만든 한글 `.srt`(UTF-8)·`.smi`(CP949, UTF-8 사본으로 바꿔) 파일을 이미지 영상 위에 붙인다. 글자가 바르게
  *   보이는지는 자동으로 판정하지 않는다. 저장한 화면 캡처를 사람이 본다(경로는 logcat `SubtitleUiTest`).
@@ -263,6 +263,6 @@ class SubtitleUiTest {
         const val SINTEL = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel" +
             "&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337" +
             "&tr=wss%3A%2F%2Ftracker.webtorrent.dev&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F"
-        const val PLAYBACK_TIMEOUT_MS = 120_000L
+        const val PLAYBACK_TIMEOUT_MS = 240_000L
     }
 }
