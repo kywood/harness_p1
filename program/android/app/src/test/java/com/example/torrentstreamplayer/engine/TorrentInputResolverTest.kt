@@ -89,7 +89,7 @@ class TorrentInputResolverTest {
             TorrentInputResolver({ magnet }, { throw java.net.ConnectException("refused") })
                 .resolve("http://example.test/a.torrent")
         }
-        assertTrue(error.message!!.contains("HTTPS"))
+        assertEquals(TorrentFailure.INPUT_HTTPS, (error as UserFacingFailure).failure)
     }
     @Test fun networkSecurityConfigAllowsExactlyTheRegisteredCleartextHosts() {
         val xml = java.io.File("src/main/res/xml/network_security_config.xml").readText()
@@ -102,9 +102,11 @@ class TorrentInputResolverTest {
         server.createContext("/missing") { it.sendResponseHeaders(404, -1); it.close() }
         server.start()
         try {
-            assertThrows(IllegalStateException::class.java) {
+            val error = assertThrows(IllegalStateException::class.java) {
                 TorrentInputResolver({ magnet }).resolve("http://127.0.0.1:" + server.address.port + "/missing")
             }
+            assertEquals(TorrentFailure.TORRENT_HTTP, (error as UserFacingFailure).failure)
+            assertEquals(listOf<Any>(404), error.args)
         } finally { server.stop(0) }
     }
     @Test fun webAddressAcceptsOnlyHttpOrHttpsWithAHost() {

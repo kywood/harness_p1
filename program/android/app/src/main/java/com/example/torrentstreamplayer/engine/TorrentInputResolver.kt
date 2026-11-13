@@ -46,16 +46,16 @@ internal class TorrentInputResolver(
                     connection.setRequestProperty("Accept", "application/x-bittorrent, application/octet-stream")
                     val code = connection.responseCode
                     if (code in listOf(301, 302, 303, 307, 308)) {
-                        url = NetworkSpec.secure(URL(url, connection.getHeaderField("Location") ?: error("리디렉션 주소가 없습니다.")))
+                        url = NetworkSpec.secure(URL(url, connection.getHeaderField("Location") ?: throw TorrentFailure.REDIRECT_MISSING.blocked()))
                     } else {
-                        check(code in 200..299) { "토렌트 다운로드 실패 (HTTP " + code + ")" }
-                        require(connection.contentLengthLong <= MAX_BYTES) { "토렌트 파일이 너무 큽니다." }
+                        if (code !in 200..299) throw TorrentFailure.TORRENT_HTTP.blocked(code)
+                        if (connection.contentLengthLong > MAX_BYTES) throw TorrentFailure.TORRENT_TOO_LARGE.invalid()
                         return connection.inputStream.use { input ->
                             val output = java.io.ByteArrayOutputStream()
                             val buffer = ByteArray(8192)
                             var count = input.read(buffer)
                             while (count >= 0) {
-                                require(output.size() + count <= MAX_BYTES) { "토렌트 파일이 너무 큽니다." }
+                                if (output.size() + count > MAX_BYTES) throw TorrentFailure.TORRENT_TOO_LARGE.invalid()
                                 output.write(buffer, 0, count); count = input.read(buffer)
                             }
                             output.toByteArray()
@@ -63,7 +63,7 @@ internal class TorrentInputResolver(
                     }
                 } finally { connection.disconnect() }
             }
-            error("토렌트 주소의 리디렉션이 너무 많습니다.")
+            throw TorrentFailure.TOO_MANY_REDIRECTS.blocked()
         }
     }
 }
