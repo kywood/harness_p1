@@ -294,7 +294,6 @@ class TorrentEngine(private val context: Context) {
                     // Prioritize first and last pieces for video header / index metadata
                     DownloadOrderPolicy.edgePieces(firstPieceIndex, lastPieceIndex)
                         .forEach { handle.piecePriority(it, Priority.TOP_PRIORITY) }
-                    prioritiesSetRun = run
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting piece priorities: ${EngineFailureLog.describe(t)}")
                     onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
@@ -303,6 +302,7 @@ class TorrentEngine(private val context: Context) {
 
                 if (prioritizePlayback) prioritizeOffset(0L)
                 startupPieces.filterNot { it in priorityWindow }.forEach { handle.setPieceDeadline(it, 5000) }
+                prioritiesSetRun = run
                 onMetadataReceived(selectedVideoFile?.name ?: "Video", selectedFileLength)
                 _metadataDetails.value = _metadataDetails.value.copy(phase = if (prioritizePlayback)
                     "초기 재생용 조각 확보 중…" else "파일 다운로드 중…")
