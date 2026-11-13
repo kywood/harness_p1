@@ -23,6 +23,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /**
  * 고르기 목록의 행 하나(`design/specs/subtitles.md` 5절). 행 전체가 터치 영역(`selectable`, 라디오 버튼 역할)이고
@@ -86,10 +88,10 @@ fun RadioListItem(
 private fun RadioListItemPreview() {
     TorrentStreamPlayerTheme {
         Column(Modifier.selectableGroup()) {
-            RadioListItem("끄기", selected = false, onClick = {})
-            RadioListItem("한국어", selected = true, onClick = {})
-            RadioListItem("Movie.Name.2024.ko.srt", selected = false, onClick = {}, tag = "파일")
-            RadioListItem("Movie.Name.2024.en.smi", selected = false, onClick = {}, enabled = false, tag = "받는 중")
+            RadioListItem(stringResource(R.string.subtitle_off), selected = false, onClick = {})
+            RadioListItem(stringResource(R.string.lang_ko), selected = true, onClick = {})
+            RadioListItem("Movie.Name.2024.ko.srt", selected = false, onClick = {}, tag = stringResource(R.string.tag_subtitle_file))
+            RadioListItem("Movie.Name.2024.en.smi", selected = false, onClick = {}, enabled = false, tag = stringResource(R.string.tag_downloading))
         }
     }
 }

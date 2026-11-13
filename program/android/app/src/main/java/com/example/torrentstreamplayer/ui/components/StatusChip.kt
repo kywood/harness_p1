@@ -21,6 +21,8 @@ import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /**
  * 상태 칩의 종류. 종류마다 점(또는 아이콘) 색을 등록한다. 글자는 색만으로 상태를 전하지 않도록 호출하는 쪽이 넘긴다.
@@ -61,9 +63,9 @@ fun StatusChip(label: String, tone: StatusTone, modifier: Modifier = Modifier, i
 private fun StatusChipPreview() {
     TorrentStreamPlayerTheme {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            StatusChip("다운로드 중", StatusTone.DOWNLOADING)
-            StatusChip("완료", StatusTone.COMPLETED)
-            StatusChip("실패", StatusTone.FAILED)
+            StatusChip(stringResource(R.string.status_downloading), StatusTone.DOWNLOADING)
+            StatusChip(stringResource(R.string.label_complete), StatusTone.COMPLETED)
+            StatusChip(stringResource(R.string.status_failed), StatusTone.FAILED)
         }
     }
 }

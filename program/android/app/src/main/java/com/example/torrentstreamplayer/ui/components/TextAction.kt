@@ -19,6 +19,8 @@ import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /** 비활성 글자 버튼의 투명도(Material 기본값과 같다). */
 private const val DISABLED_ALPHA = 0.38f
@@ -76,9 +78,9 @@ fun TextAction(
 private fun TextActionPreview() {
     TorrentStreamPlayerTheme {
         Row {
-            TextAction("링크 추가", {})
-            TextAction("삭제", {}, tone = TextActionTone.DESTRUCTIVE)
-            TextAction("다운로드", {}, enabled = false)
+            TextAction(stringResource(R.string.action_add_link), {})
+            TextAction(stringResource(R.string.action_delete), {}, tone = TextActionTone.DESTRUCTIVE)
+            TextAction(stringResource(R.string.action_download), {}, enabled = false)
         }
     }
 }
