@@ -621,15 +621,19 @@ class TorrentEngine(private val context: Context) {
         TorrentRemoval(downloadRoot, stateRoot).delete(key, legacy + listOfNotNull(remembered), protectedFiles)
     }
     internal fun awaitStoppedWrites() {
-        check(teardown.await()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
-        retiredWorkers.toList().forEach { it.join(5000); check(!it.isAlive) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }; retiredWorkers.remove(it) }
+        if (!teardown.await()) throw TorrentFailure.STOP_PENDING.blocked()
+        retiredWorkers.toList().forEach {
+            it.join(5000)
+            if (it.isAlive) throw TorrentFailure.STOP_PENDING.blocked()
+            retiredWorkers.remove(it)
+        }
         closingCheckpoints.toList().forEach { it.awaitClosed(); closingCheckpoints.remove(it) }
     }
     @Synchronized fun deleteStoredFile(path: String): Boolean {
         check(currentHandle == null && localVideo == null && worker?.isAlive != true) {
             "Stop streaming before deleting stored files"
         }
-        check(teardown.await()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
+        if (!teardown.await()) throw TorrentFailure.STOP_PENDING.blocked()
         return diskStore.delete(path)
     }
 
