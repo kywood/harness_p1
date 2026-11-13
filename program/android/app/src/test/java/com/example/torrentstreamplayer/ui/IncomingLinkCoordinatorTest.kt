@@ -128,6 +128,7 @@ class IncomingLinkCoordinatorTest {
         assertEquals(listOf(first), saved)
         assertNull(coordinator.state.value)
         assertEquals("", coordinator.mainInput.value?.text)
+        assertEquals("clears only an input that still holds the saved link", first, coordinator.mainInput.value?.replaces)
         val event = coordinator.notice.value!!
         assertEquals(IncomingLinkNotice.SAVED, event.notice)
         assertEquals("nothing plays: the snackbar offers the playlist", R.string.action_open_playlist, event.action)
@@ -135,12 +136,25 @@ class IncomingLinkCoordinatorTest {
         assertNull(coordinator.notice.value)
     }
 
-    @Test fun savingDuringPlaybackShowsTheSnackbarWithoutThePlaylistButton() = runBlocking {
+    @Test fun aSuccessDuringPlaybackIsDroppedWhenRaisedEvenIfCollectedLater() = runBlocking {
         playing = true
         coordinator.receive(valid(first))
         coordinator.save()
-        assertEquals(IncomingLinkNotice.SAVED, coordinator.notice.value?.notice)
-        assertNull("leaving the player is not offered", coordinator.notice.value?.action)
+        playing = false // playback ended before the screen collected the notice
+        val event = coordinator.notice.value!!
+        assertEquals(IncomingLinkNotice.SAVED, event.notice)
+        assertEquals(NoticeTiming.DROP, event.timing)
+        assertNull("leaving the player is not offered", event.action)
+    }
+
+    @Test fun aFailureDuringPlaybackWaitsAndStaysUntilConfirmed() = runBlocking {
+        playing = true
+        coordinator.receive(valid(first))
+        saveFailure = IllegalStateException("x")
+        coordinator.save()
+        val event = coordinator.notice.value!!
+        assertEquals(NoticeTiming.WAIT, event.timing)
+        assertEquals(R.string.action_confirm, event.action)
     }
 
     @Test fun aNoticeRaisedWhileTheLastOneShowsIsKept() = runBlocking {

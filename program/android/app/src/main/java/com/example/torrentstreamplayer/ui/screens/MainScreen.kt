@@ -83,7 +83,7 @@ internal fun MagnetLinkInputScreen(
     var magnetLink by remember { mutableStateOf("") }
     LaunchedEffect(inputFill) {
         inputFill?.let {
-            magnetLink = it.text
+            if (it.appliesTo(magnetLink)) magnetLink = it.text
             onInputFilled(it)
         }
     }

@@ -42,4 +42,20 @@ class PlaylistItemStatusTest {
         assertEquals(PlaylistItemStatus.FAILED, PlaylistItemStatus.of(active = false, queued = false, failed = true, complete = false))
         assertEquals(PlaylistItemStatus.INCOMPLETE, PlaylistItemStatus.of(active = false, queued = false, failed = false, complete = false))
     }
+
+    /** The playlist card and the link sheet share this one ([PlaylistItemStatus.of] with a task). */
+    @Test fun aTaskGivesTheSameChipForCardAndSheet() {
+        assertEquals(PlaylistItemStatus.WAITING_FOR_WIFI,
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.WAITING_FOR_WIFI), playing = false, complete = false))
+        assertEquals(PlaylistItemStatus.QUEUED,
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.QUEUED), playing = false, complete = false))
+        assertEquals(PlaylistItemStatus.DOWNLOADING,
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.RUNNING), playing = false, complete = false))
+        assertEquals("the playing video counts as downloading without a task",
+            PlaylistItemStatus.DOWNLOADING, PlaylistItemStatus.of(null, playing = true, complete = false))
+        assertEquals(PlaylistItemStatus.FAILED,
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.FAILED, error = "x"), playing = false, complete = false))
+        assertEquals(PlaylistItemStatus.COMPLETED, PlaylistItemStatus.of(null, playing = false, complete = true))
+        assertEquals(PlaylistItemStatus.INCOMPLETE, PlaylistItemStatus.of(null, playing = false, complete = false))
+    }
 }
