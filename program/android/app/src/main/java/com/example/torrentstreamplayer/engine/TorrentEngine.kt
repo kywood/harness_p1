@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer.engine
 import android.content.Context
 import android.os.StrictMode
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import com.example.torrentstreamplayer.BuildConfig
 import org.libtorrent4j.Priority
 import org.libtorrent4j.SessionManager
@@ -40,13 +41,13 @@ class TorrentEngine(private val context: Context) {
     internal val isSharingTorrent: Boolean get() = runCatching {
         currentHandle?.let { !it.flags.and_(TorrentFlags.PAUSED).non_zero() } ?: false }.getOrDefault(false)
     /** For tests: whether the selected torrent downloads in native sequential order ([DownloadOrderPolicy]). */
-    internal val sequentialDownload: Boolean get() = runCatching {
+    @VisibleForTesting internal val sequentialDownload: Boolean get() = runCatching {
         currentHandle?.let { it.flags.and_(TorrentFlags.SEQUENTIAL_DOWNLOAD).non_zero() } ?: false }.getOrDefault(false)
-    /** For tests: the native priority (0-7) of [piece], or null without a torrent. */
     /** For tests: file-end pieces still fetched early ([StartupPrefetchPlan]) and the currently pinned pieces. */
-    internal val tailPrefetchPieces: Set<Int> get() = prefetchPieces
-    internal val pinnedPieces: Set<Int> @Synchronized get() = priorityPins
-    internal fun piecePriorityOf(piece: Int): Int? = runCatching { currentHandle?.piecePriority(piece)?.swig()?.toInt() }.getOrNull()
+    @VisibleForTesting internal val tailPrefetchPieces: Set<Int> get() = prefetchPieces
+    @VisibleForTesting internal val pinnedPieces: Set<Int> @Synchronized get() = priorityPins
+    /** For tests: the native priority (0-7) of [piece], or null without a torrent. */
+    @VisibleForTesting internal fun piecePriorityOf(piece: Int): Int? = runCatching { currentHandle?.piecePriority(piece)?.swig()?.toInt() }.getOrNull()
     internal val uploadedBytes: Long get() = runCatching { currentHandle?.status()?.allTimeUpload() ?: 0L }.getOrDefault(0L)
     private var checkpoint: TorrentCheckpoint? = null
     private var activeCache: TorrentCache? = null
