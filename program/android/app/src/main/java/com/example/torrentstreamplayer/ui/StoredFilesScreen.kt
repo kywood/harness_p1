@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,7 +108,7 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
             ) {
                 item(key = "summary") {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        Text(stringResource(R.string.stored_files_summary, visibleFiles.size,
+                        Text(pluralStringResource(R.plurals.stored_files_summary, visibleFiles.size, visibleFiles.size,
                             Formatter.formatFileSize(context, visibleFiles.sumOf { it.size })),
                             style = MaterialTheme.typography.headlineSmall)
                         Text(stringResource(R.string.stored_files_note), style = MaterialTheme.typography.bodySmall,

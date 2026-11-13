@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -155,7 +156,7 @@ private fun ProgressCard(buffering: StreamUiState.Buffering?, metadata: Metadata
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             if (buffering != null) StatusChip(speedText(buffering.downloadSpeedBytes), StatusTone.DOWNLOADING)
-            StatusChip(stringResource(R.string.label_peers, metadata.peers),
+            StatusChip(pluralStringResource(R.plurals.label_peers, metadata.peers, metadata.peers),
                 if (metadata.peers > 0) StatusTone.COMPLETED else StatusTone.NEUTRAL)
         }
         if (buffering == null) {

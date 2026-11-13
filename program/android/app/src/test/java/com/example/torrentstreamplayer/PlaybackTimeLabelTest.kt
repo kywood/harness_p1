@@ -4,9 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 class PlaybackTimeLabelTest {
-    /** The player's time label template from strings.xml, formatted as the screen does. */
+    /** The player's Korean time label template (values-ko), formatted as the screen does. */
     private fun label(currentMs: Long, durationMs: Long): String {
-        val xml = File("src/main/res/values/strings.xml").readText()
+        val xml = File("src/main/res/values-ko/strings.xml").readText()
         val template = Regex("<string name=\"player_time_label\">([^<]*)</string>").find(xml)!!.groupValues[1]
         return String.format(template, formatTime(currentMs), formatTime(durationMs))
     }

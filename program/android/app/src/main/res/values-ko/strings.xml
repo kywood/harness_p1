@@ -1,0 +1,302 @@
+<!-- 한국어 문구. 키 집합과 포맷 인자는 values/strings.xml과 같아야 한다(StringResourceLocalesTest). -->
+<resources>
+
+    <!-- Main screen -->
+    <string name="action_stream_play">바로 재생</string>
+    <string name="error_empty_link">마그넷 또는 토렌트 파일 링크를 입력하세요.</string>
+    <!-- design/specs/error-recovery.md 2-1 -->
+    <string name="error_link_generic">링크를 열지 못했습니다. 주소를 확인하고 다시 시도해 주세요.</string>
+    <string name="error_invalid_magnet">올바른 마그넷 링크가 아닙니다. 링크를 다시 확인해 주세요.</string>
+    <string name="label_buffering">버퍼링</string>
+    <string name="label_downloading">다운로드</string>
+    <string name="action_ad_privacy">광고 개인정보 설정</string>
+    <string name="cd_app_logo">PiecePlay 로고</string>
+    <string name="label_link_input">마그넷 또는 .torrent 다운로드 링크</string>
+    <string name="label_link_input_short">마그넷 또는 .torrent 링크</string>
+    <string name="action_open_playlist">재생 목록</string>
+    <string name="action_open_stored_files">저장 파일 관리</string>
+    <string name="main_tagline">받으면서 바로 재생</string>
+    <string name="action_paste">붙여넣기</string>
+    <string name="main_playlist_hint">받은 영상 모아 보기</string>
+    <string name="main_files_hint">저장 용량 정리</string>
+    <string name="action_go_main">메인</string>
+
+    <!-- Preparing screen -->
+    <string name="title_metadata_fetching">토렌트 정보 가져오는 중…</string>
+    <string name="title_metadata_received">토렌트 정보 수신 완료</string>
+    <string name="subtitle_metadata_fetching">파일 정보와 연결 상태를 확인합니다.</string>
+    <string name="preparing_name_pending">파일 이름 확인 중</string>
+    <string name="preparing_step_info">정보</string>
+    <string name="preparing_step_connect">연결</string>
+    <plurals name="label_peers">
+        <item quantity="other">피어 %1$d명</item>
+    </plurals>
+    <string name="preparing_details">세부 정보</string>
+    <string name="cd_expand">펼치기</string>
+    <string name="cd_collapse">접기</string>
+    <string name="metadata_source">정보 출처: %1$s · 연결 피어: %2$d명</string>
+    <plurals name="metadata_files">
+        <item quantity="other">파일 %1$d개 · %2$s</item>
+    </plurals>
+    <plurals name="metadata_pieces">
+        <item quantity="other">전체 피스 %1$d개 · 피스당 %2$s</item>
+    </plurals>
+    <string name="metadata_unknown">메타데이터 수신 전에는 파일 크기와 피스 배치를 알 수 없습니다.</string>
+    <string name="metadata_received_video">받은 영상: %1$s / %2$s</string>
+    <string name="metadata_received_video_pending">받은 영상: %1$s · 크기 확인 중</string>
+
+    <!-- Torrent engine failures (meta/TorrentFailure) -->
+    <string name="failure_invalid_magnet">올바른 마그넷 링크가 아닙니다. 링크를 다시 확인해 주세요.</string>
+    <string name="failure_metadata_timeout">토렌트 정보를 가져오지 못했습니다. 네트워크 연결과 공유 중인 사용자가 있는지 확인해 주세요.</string>
+    <string name="failure_metadata_decode">토렌트 정보를 읽지 못했습니다.</string>
+    <string name="failure_no_video">토렌트에 재생할 수 있는 영상 파일이 없습니다.</string>
+    <string name="failure_download_setup">다운로드 순서를 설정하지 못했습니다. 다시 시도해 주세요.</string>
+    <string name="failure_engine">토렌트를 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.</string>
+    <string name="failure_unknown">알 수 없는 오류</string>
+    <string name="failure_input_length">입력 주소의 길이가 올바르지 않습니다.</string>
+    <string name="failure_input_unsupported">마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요.</string>
+    <string name="failure_input_https">보안 연결(HTTPS)을 지원하지 않는 주소입니다. https:// 주소를 입력하세요.</string>
+    <string name="failure_not_torrent">.torrent 파일이 아닙니다. 파일의 직접 다운로드 주소를 입력하세요.</string>
+    <string name="failure_redirect_missing">리디렉션 주소가 없습니다.</string>
+    <string name="failure_too_many_redirects">토렌트 주소의 리디렉션이 너무 많습니다.</string>
+    <string name="failure_torrent_http">토렌트 다운로드 실패 (HTTP %1$d)</string>
+    <string name="failure_torrent_too_large">토렌트 파일이 너무 큽니다.</string>
+    <string name="failure_already_downloading">재생 중인 영상은 이미 다운로드 중입니다.</string>
+    <string name="failure_task_unavailable">다운로드 작업을 연결하지 못했습니다.</string>
+    <string name="failure_file_in_use">다른 다운로드에서 사용 중인 파일입니다.</string>
+    <string name="failure_item_in_use">다른 항목에서 사용 중인 파일입니다.</string>
+    <string name="failure_stop_pending">다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요.</string>
+    <string name="failure_record_pending">다운로드 기록 저장이 끝나지 않았습니다. 잠시 후 다시 삭제해 주세요.</string>
+    <string name="failure_stop_downloads_first">파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요.</string>
+    <string name="failure_item_path">항목 저장 경로가 올바르지 않습니다.</string>
+    <string name="failure_outside_storage">파일이 앱 저장 공간 밖을 가리킵니다.</string>
+    <string name="failure_folder_delete">개별 파일 대신 폴더를 삭제할 수 없습니다.</string>
+    <string name="failure_symlink_delete">심볼릭 링크는 삭제하지 않습니다.</string>
+    <!-- 화면이 엔진 실패 문구를 얻지 못했을 때 쓰는 기본 문구(MainViewModel, DownloadController, DownloadManager) -->
+    <string name="error_download_start_plain">다운로드를 시작하지 못했습니다.</string>
+    <string name="error_magnet_required">유효한 마그넷 주소가 필요합니다.</string>
+    <string name="error_input_failed">주소를 처리하지 못했습니다.</string>
+    <string name="error_download_stopped">다운로드가 중지되었습니다.</string>
+
+    <!-- 준비 화면 세부 정보의 단계와 정보 출처 (meta/MetadataStage) -->
+    <string name="metadata_stage_resolving">주소 확인 중…</string>
+    <string name="metadata_stage_session">네트워크 세션 준비 중…</string>
+    <string name="metadata_stage_saved">저장된 토렌트 정보 확인 중…</string>
+    <string name="metadata_stage_connecting">피어 연결 및 토렌트 정보 수신 중…</string>
+    <!-- 120초는 MetadataFetch의 대기 시간이다. -->
+    <string name="metadata_stage_searching">피어 탐색 및 토렌트 정보 수신 중… %1$d초 / 120초</string>
+    <string name="metadata_stage_received">토렌트 정보 수신 완료 · 영상 준비 중</string>
+    <string name="metadata_stage_startup">초기 재생용 조각 확보 중…</string>
+    <string name="metadata_stage_downloading">파일 다운로드 중…</string>
+    <string name="metadata_stage_complete">다운로드 완료</string>
+    <string name="metadata_origin_network">네트워크</string>
+    <string name="metadata_origin_saved">저장된 메타데이터</string>
+
+    <!-- Player -->
+    <string name="player_error_playback">재생하지 못했습니다. 공유 중인 사용자를 확인하고 다시 시도해 주세요.</string>
+    <string name="player_error_init">플레이어를 시작하지 못했습니다: %1$s</string>
+    <string name="player_error_file_missing">영상 파일을 찾을 수 없습니다.</string>
+    <string name="player_error_start">영상을 열지 못했습니다: %1$s</string>
+    <string name="action_go_back">돌아가기</string>
+    <string name="cd_back">뒤로</string>
+    <string name="cd_play">재생</string>
+    <string name="cd_pause">일시 정지</string>
+    <string name="cd_rewind_10">10초 뒤로</string>
+    <string name="cd_forward_10">10초 앞으로</string>
+    <string name="cd_zoom_in">확대</string>
+    <string name="cd_zoom_out">축소</string>
+    <string name="cd_zoom_reset">확대 배율 되돌리기</string>
+    <string name="cd_more">더보기</string>
+    <string name="cd_orientation_landscape">가로 화면으로 전환</string>
+    <string name="cd_orientation_portrait">세로 화면으로 전환</string>
+    <string name="player_restart">재생 위치 초기화 · 처음부터</string>
+    <string name="player_stats">↓ %1$s · %2$d%% · 피어 %3$d명</string>
+    <string name="player_downloaded">다운로드 %1$d%%</string>
+    <string name="player_time_label">현재 %1$s / 전체 %2$s</string>
+    <string name="player_waiting_seek">이동한 구간을 준비하고 있습니다…</string>
+    <string name="player_waiting_buffering">재생 데이터를 버퍼링하고 있습니다…</string>
+    <!-- Common actions and states -->
+    <string name="action_close">닫기</string>
+    <string name="action_cancel">취소</string>
+    <string name="action_delete">삭제</string>
+    <string name="action_deleting">삭제 중…</string>
+    <string name="action_download">다운로드</string>
+    <string name="action_stop">중지</string>
+    <string name="action_play">재생</string>
+    <string name="action_retry">다시 시도</string>
+    <string name="action_refresh">새로고침</string>
+    <string name="action_add_link">링크 추가</string>
+    <string name="label_complete">완료</string>
+    <string name="label_incomplete">미완료</string>
+    <string name="filter_all">전체</string>
+
+    <!-- Playlist -->
+    <string name="action_simple">간단히</string>
+    <string name="action_detailed">자세히</string>
+    <string name="action_stop_download">다운로드 중지</string>
+    <string name="action_stop_all">전체 중지</string>
+    <string name="action_cancel_queue">대기 취소</string>
+    <string name="action_delete_with_file">파일과 함께 삭제</string>
+    <string name="action_reset_position">위치 초기화</string>
+    <string name="playlist_summary">다운로드 중 %1$d개</string>
+    <string name="playlist_summary_queued">다운로드 중 %1$d개 · 대기 %2$d개</string>
+    <string name="playlist_storage_note">최근 50개를 암호화해 보관합니다.</string>
+    <string name="playlist_load_error">목록을 읽지 못했습니다.</string>
+    <string name="playlist_empty">재생 목록이 비어 있습니다.</string>
+    <string name="playlist_filter_empty">해당 조건의 영상이 없습니다.</string>
+    <string name="playlist_added_at">받은 날짜 %1$s</string>
+    <string name="playlist_resume">이어보기 %1$s</string>
+    <!-- 이름 없는 마그넷의 제목. %1$s는 해시 앞 8자리 (ui/PlaylistTitle) -->
+    <string name="playlist_untitled">토렌트 %1$s</string>
+    <!-- 받은 크기 줄에서 전체 크기를 아직 모를 때 진행률 자리 (DownloadProgressLabel) -->
+    <string name="progress_unknown">확인 전</string>
+    <string name="playlist_reset_failed">위치를 초기화하지 못했습니다.</string>
+    <string name="playlist_sort">정렬: %1$s</string>
+    <string name="playlist_filter">표시: %1$s</string>
+    <string name="sort_recent_play">최근 재생순</string>
+    <string name="sort_received">받은 날짜순</string>
+    <string name="filter_complete">다운로드 완료</string>
+    <string name="filter_incomplete">다운로드 미완료</string>
+    <string name="status_downloading">다운로드 중</string>
+    <string name="status_queued">다운로드 대기 중</string>
+    <string name="status_failed">실패</string>
+    <string name="playlist_delete_title">영상 파일과 함께 삭제할까요?</string>
+    <string name="playlist_delete_message">이 항목의 다운로드를 중지하고 영상·메타데이터·이어받기 기록을 모두 삭제합니다. 복구할 수 없습니다.</string>
+    <string name="playlist_delete_failed">관련 파일을 삭제하지 못했습니다.</string>
+    <string name="playlist_bulk_delete_message">선택한 항목의 다운로드를 중지하고 영상·메타데이터·이어받기 기록을 함께 삭제합니다. 복구할 수 없습니다.</string>
+
+    <!-- Bulk selection -->
+    <string name="bulk_select_all">전체 선택</string>
+    <string name="bulk_delete_selected">선택 삭제 (%1$d)</string>
+    <plurals name="bulk_delete_title">
+        <item quantity="other">%1$d개 항목을 삭제할까요?</item>
+    </plurals>
+    <plurals name="bulk_delete_partial">
+        <item quantity="other">%1$d개 삭제 실패. 실패한 항목은 선택을 유지합니다.</item>
+    </plurals>
+
+    <!-- Quick download (링크 추가) -->
+    <string name="quick_download_invalid">주소를 확인해 주세요.</string>
+
+    <!-- Stored files -->
+    <string name="stored_files_note">다운로드 파일과 암호화된 진행 정보</string>
+    <plurals name="stored_files_summary">
+        <item quantity="other">%1$d개 · %2$s</item>
+    </plurals>
+    <string name="stored_files_no_extension">확장자 없음</string>
+    <string name="stored_files_empty">저장된 파일이 없습니다.</string>
+    <string name="stored_files_filter_empty">해당 확장자의 파일이 없습니다.</string>
+    <string name="stored_files_load_error">파일 목록을 읽지 못했습니다.</string>
+    <string name="stored_files_bulk_delete_message">선택한 실제 파일을 삭제합니다. 재생 중인 파일은 재생이 중단될 수 있으며 다시 받아야 할 수 있습니다.</string>
+    <string name="stored_files_delete_title">이 파일을 삭제할까요?</string>
+    <string name="stored_files_delete_message">%1$s
+
+삭제하면 해당 파일을 다시 받아야 할 수 있습니다.</string>
+    <string name="stored_files_delete_missing">파일이 없거나 삭제할 수 없습니다.</string>
+    <string name="stored_files_delete_failed">삭제하지 못했습니다.</string>
+
+    <!-- Piece map -->
+    <string name="piece_map_title">다운로드 조각 · 파일 용량 기준</string>
+    <string name="piece_map_pending">피스 정보 확인 전</string>
+    <string name="piece_map_inline">피스 %1$d/%2$d · 파일 용량 기준</string>
+    <string name="piece_map_info">파일 앞 → 뒤 · 피스 %1$d / %2$d</string>
+    <string name="piece_map_info_grouped">파일 앞 → 뒤 · 피스 %1$d / %2$d · 한 칸에 여러 피스</string>
+
+    <!-- Open source licenses (design/specs/open-source-licenses.md 4절, main-legal-footer.md) -->
+    <string name="action_open_source_licenses">오픈소스 라이선스</string>
+    <string name="licenses_intro">PiecePlay는 아래 오픈소스 소프트웨어를 사용합니다. 항목을 누르면 라이선스 전문을 볼 수 있습니다.</string>
+    <string name="licenses_license_or_later">%1$s 이상</string>
+    <string name="licenses_version_bundled">%1$s 포함</string>
+    <string name="licenses_version_and_more">%1$s 등</string>
+    <string name="licenses_name_kotlin">Kotlin 표준 라이브러리, kotlinx.coroutines</string>
+    <string name="licenses_name_material_icons">Material 아이콘</string>
+    <string name="licenses_source_available">소스 코드를 받을 수 있습니다.</string>
+    <string name="licenses_lgpl_notice">LibVLC는 GNU LGPL 2.1 이상으로 배포됩니다. 소스 코드는 아래 주소에서 받을 수 있으며, 라이선스에 따라 이 라이브러리를 수정하거나 다른 버전으로 바꿔 쓸 수 있습니다.</string>
+    <string name="licenses_source_code">소스 코드</string>
+    <string name="licenses_others_title">그 밖의 구성요소</string>
+    <string name="licenses_others_body">Google 모바일 광고 SDK와 사용자 메시지 플랫폼(UMP)은 오픈소스가 아니며 Google 약관을 따릅니다.</string>
+    <string name="licenses_load_error">라이선스 문서를 열지 못했습니다. 앱을 다시 열어 주세요.</string>
+    <string name="error_browser_unavailable">웹 브라우저를 열지 못했습니다. 브라우저 앱이 켜져 있는지 확인해 주세요.</string>
+
+    <!-- Main legal footer (design/specs/main-legal-footer.md 4절) -->
+    <string name="main_rights_notice">이용할 권리가 있는 콘텐츠만 재생하세요.</string>
+    <string name="action_privacy_policy">개인정보처리방침</string>
+    <string name="main_version">버전 %1$s</string>
+    <string name="cd_opens_in_browser">브라우저에서 열림</string>
+    <!-- Play Console 등록정보의 개인정보처리방침 URL과 같아야 한다. -->
+
+    <!-- Usage guide sheet (design/specs/usage-guide.md 2절) -->
+    <string name="action_usage_guide">이용 안내</string>
+    <string name="action_confirm">확인</string>
+    <string name="guide_rights_body">PiecePlay는 콘텐츠를 제공하거나 찾아 주지 않습니다. 재생할 링크는 직접 고르며, 저작권을 침해하는 이용에 대한 책임은 사용자에게 있습니다.</string>
+    <string name="guide_what_title">영상과 그 자막만 받습니다</string>
+    <string name="guide_what_body">마그넷 링크나 .torrent 파일 주소를 넣으면, 다 받기 전에 앞부분부터 받아 바로 재생합니다. 토렌트 안에서 가장 큰 영상 파일 하나와 그 영상의 자막 파일만 받고, 나머지 파일은 받지 않습니다.</string>
+    <string name="guide_upload_title">올려 보내지 않습니다</string>
+    <string name="guide_upload_body">받기만 하고 다른 사람에게 올려 보내지 않습니다. 다 받으면 바로 연결을 멈춥니다. 다만 토렌트 방식의 특성상, 연결된 사용자에게 이 기기의 IP 주소가 보입니다.</string>
+    <string name="guide_storage_title">기기 안에만 저장합니다</string>
+    <string name="guide_storage_body">받은 영상과 재생 목록은 이 기기에만 저장되고 어디로도 보내지 않습니다. 재생 목록과 이어받기 정보는 암호화해 보관합니다. 저장 파일 관리에서 지우거나 앱을 삭제하면 모두 지워집니다.</string>
+    <string name="guide_data_title">데이터를 많이 씁니다</string>
+    <string name="guide_data_body">영상 크기만큼 데이터를 씁니다. 모바일 데이터에서는 요금이 나올 수 있으니, 설정에서 Wi-Fi 전용을 켜 두는 것을 권합니다.</string>
+    <string name="guide_ads_title">광고</string>
+    <string name="guide_ads_body">메인과 재생 목록에 배너 광고가 나오고, 재생을 마친 뒤 가끔 전면 광고가 나옵니다. 재생하는 동안에는 광고가 나오지 않습니다.</string>
+
+    <!-- 자막 (design/specs/subtitles.md 4절) -->
+    <string name="label_subtitles">자막</string>
+    <string name="label_audio">음성</string>
+    <string name="subtitle_off">끄기</string>
+    <string name="subtitle_none">자막 없음</string>
+    <string name="track_untitled">트랙 %1$d</string>
+    <string name="tag_subtitle_file">파일</string>
+    <string name="tag_downloading">받는 중</string>
+    <string name="tag_download_failed">받지 못함</string>
+    <string name="tracks_loading">트랙을 확인하는 중…</string>
+    <string name="subtitle_auto_notice">자막: %1$s</string>
+    <string name="subtitle_file_suffix">%1$s(파일)</string>
+    <string name="lang_ko">한국어</string>
+    <string name="lang_en">영어</string>
+    <string name="lang_ja">일본어</string>
+    <string name="lang_zh">중국어</string>
+    <string name="error_track_select">트랙을 바꾸지 못했습니다. 다시 골라 주세요.</string>
+    <string name="cd_subtitles_on">자막, 켜짐: %1$s</string>
+    <string name="cd_subtitles_off">자막, 꺼짐</string>
+    <string name="cd_subtitle_file">%1$s, 자막 파일</string>
+    <string name="player_zoom">화면 확대</string>
+    <!-- 배율 칩·더보기 시트의 배율 버튼 읽기 이름(리뷰 14). 보이는 배율 글자는 따로 읽지 않는다. -->
+    <string name="cd_zoom_reset_value">확대 배율 되돌리기, 지금 %1$s</string>
+    <!-- PM 결정 5(PR #131): Wi-Fi 전용인데 모바일 데이터로 이어 재생할 때 한 번 보이는 알림 칩. 문구는 PM 지시 그대로. -->
+    <string name="notice_mobile_playback">모바일 데이터로 재생 중</string>
+    <!-- 링크: 다른 앱에서 받은 링크 확인 시트 (design/specs/open-link-sheet.md 3절, 오류 문구는 error-recovery.md 2-1) -->
+    <string name="open_link_title">이 링크를 열까요?</string>
+    <string name="open_link_kind_magnet">마그넷 링크</string>
+    <string name="open_link_kind_torrent">.torrent 파일 주소</string>
+    <string name="open_link_magnet_short">마그넷 링크 · %1$s…</string>
+    <string name="open_link_in_playlist">재생 목록에 있는 영상입니다.</string>
+    <string name="open_link_keep_playing">지금 재생은 그대로 이어집니다.</string>
+    <string name="open_link_saved">재생 목록에 추가했습니다.</string>
+    <string name="open_link_error_title">링크를 열 수 없습니다</string>
+    <string name="action_resume_play">이어서 재생</string>
+    <string name="action_save_for_later">받아 두기</string>
+    <string name="cd_save_for_later">받아 두기, 재생 목록에 추가하고 다운로드</string>
+    <string name="error_unsupported_link">마그넷 링크나 .torrent 파일 주소만 열 수 있습니다. 주소를 확인해 주세요.</string>
+    <string name="error_link_length">링크가 비어 있거나 너무 깁니다. 링크를 다시 복사해 붙여넣어 주세요.</string>
+    <string name="error_https_required">보안 연결(https)을 쓰지 않는 주소입니다. https:// 주소를 넣어 주세요.</string>
+    <string name="error_download_start">다운로드를 시작하지 못했습니다. 다시 시도해 주세요.</string>
+    <!-- 설정 (design/specs/settings-wifi.md 6절) -->
+    <string name="title_settings">설정</string>
+    <string name="settings_section_download">다운로드</string>
+    <string name="settings_section_playback">재생</string>
+    <string name="settings_section_about">정보</string>
+    <string name="settings_wifi_only">Wi-Fi 전용</string>
+    <string name="settings_wifi_only_desc">모바일 데이터에서는 다운로드를 멈춥니다.</string>
+    <string name="settings_wifi_paused_notice">모바일 데이터에 연결되어 다운로드를 멈췄습니다. Wi-Fi에 연결되면 이어서 받습니다.</string>
+    <string name="settings_auto_subtitles">자막 자동 표시</string>
+    <string name="settings_auto_subtitles_desc">한국어 자막이 있으면 재생할 때 바로 켭니다.</string>
+    <string name="settings_version">버전</string>
+    <string name="settings_save_failed">설정을 저장하지 못했습니다. 다시 눌러 주세요.</string>
+    <string name="status_wifi_waiting">Wi-Fi 대기</string>
+    <string name="playlist_summary_wifi_waiting">Wi-Fi 대기 %1$d개</string>
+    <string name="info_waiting_for_wifi">Wi-Fi에 연결되면 받기 시작합니다.</string>
+    <string name="mobile_play_confirm_title">이번만 모바일 데이터로 재생할까요?</string>
+    <string name="mobile_play_confirm_message">Wi-Fi 전용이 켜져 있습니다. 영상 크기만큼 모바일 데이터를 쓸 수 있습니다.</string>
+    <string name="action_play_once">이번만 재생</string>
+</resources>

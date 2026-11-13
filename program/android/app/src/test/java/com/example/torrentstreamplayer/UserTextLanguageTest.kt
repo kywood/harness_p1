@@ -11,16 +11,25 @@ import org.junit.Test
 import java.io.File
 
 class UserTextLanguageTest {
-    private val strings: Map<String, String> by lazy {
-        val xml = File("src/main/res/values/strings.xml").readText()
-        Regex("<string name=\"([^\"]+)\">([^<]*)</string>").findAll(xml)
-            .associate { it.groupValues[1] to it.groupValues[2] }
-    }
+    /** 기본(영어) 문구. 번역하지 않는 값(속성이 붙은 항목)은 빠진다. */
+    private val strings: Map<String, String> by lazy { read("values") }
+    private val korean: Map<String, String> by lazy { read("values-ko") }
     private val hangul = Regex("[가-힣]")
 
-    @Test fun everyUserStringExceptTheBrandNameIsKorean() {
-        val english = strings.filterKeys { it != "app_name" }.filterValues { !hangul.containsMatchIn(it) }
-        assertEquals("strings without Korean text", emptyMap<String, String>(), english)
+    private fun read(folder: String): Map<String, String> {
+        val xml = File("src/main/res/$folder/strings.xml").readText()
+        return Regex("<string name=\"([^\"]+)\">([^<]*)</string>").findAll(xml)
+            .associate { it.groupValues[1] to it.groupValues[2] }
+    }
+
+    @Test fun everyKoreanStringIsKorean() {
+        val notKorean = korean.filterValues { !hangul.containsMatchIn(it) }
+        assertEquals("values-ko strings without Korean text", emptyMap<String, String>(), notKorean)
+    }
+
+    @Test fun defaultStringsAreEnglishWithoutHangul() {
+        val withHangul = strings.filterValues { hangul.containsMatchIn(it) }
+        assertEquals("values strings with Korean text", emptyMap<String, String>(), withHangul)
     }
 
     @Test fun everyRegisteredTorrentFailureHasAString() {

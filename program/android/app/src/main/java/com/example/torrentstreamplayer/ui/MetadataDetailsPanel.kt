@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.MetadataDetails
@@ -24,8 +25,10 @@ internal fun MetadataDetailsPanel(details: MetadataDetails) {
         details.origin?.let { DetailLine(stringResource(R.string.metadata_source, stringResource(it.label), details.peers)) }
         if (details.hasMetadata) {
             Text(details.name.orEmpty(), style = MaterialTheme.typography.titleMedium, maxLines = 2)
-            DetailLine(stringResource(R.string.metadata_files, details.fileCount, size(details.totalSize)))
-            DetailLine(stringResource(R.string.metadata_pieces, details.pieceCount, size(details.pieceSize)))
+            DetailLine(pluralStringResource(R.plurals.metadata_files, details.fileCount, details.fileCount,
+                size(details.totalSize)))
+            DetailLine(pluralStringResource(R.plurals.metadata_pieces, details.pieceCount, details.pieceCount,
+                size(details.pieceSize)))
             DetailLine(
                 if (details.videoSize > 0) {
                     stringResource(R.string.metadata_received_video, size(details.downloadedBytes), size(details.videoSize))
