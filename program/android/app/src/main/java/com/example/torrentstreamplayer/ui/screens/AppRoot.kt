@@ -2,6 +2,7 @@ package com.example.torrentstreamplayer.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -76,7 +77,8 @@ internal fun AppRoot(
         snackbarHost = { if (snackbarVisible) SnackbarHost(snackbar) },
         bottomBar = { if (TestAdPolicy.visible(screen)) Box(Modifier.navigationBarsPadding()) { TestBannerAd() } }
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        // 패딩으로 쓴 시스템 바·배너 높이를 인셋에서 빼, 화면의 imePadding이 키보드 위에 그만큼 빈칸을 더 두지 않게 한다(#148).
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding).consumeWindowInsets(innerPadding)) {
             when (val current = screen) {
                 AppScreen.StoredFiles -> StoredFilesScreen(viewModel::storedFiles, viewModel::deleteStoredFile,
                     onBack = viewModel::closeList)
