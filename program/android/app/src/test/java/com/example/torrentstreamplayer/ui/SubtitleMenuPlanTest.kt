@@ -43,7 +43,7 @@ class SubtitleMenuPlanTest {
         val fileEnglish = added("m.en.srt", 10, SubtitleLanguage.ENGLISH)
         val fileKorean = added("m.ko.srt", 11, SubtitleLanguage.KOREAN)
         fun pick(key: String?, embedded: List<PlayerTrack>, externals: List<ExternalSubtitle>) =
-            SubtitleAutoPolicy.choose(key, embedded, externals)?.trackId
+            SubtitleAutoPolicy.choose(SubtitlePreference.saved(key), embedded, externals)?.trackId
         assertEquals("preferred-language file first", 11,
             pick(null, listOf(embeddedKorean), listOf(fileEnglish, fileKorean)))
         assertEquals("then a preferred-language embedded track", 1, pick(null, listOf(embeddedKorean), listOf(fileEnglish)))
@@ -54,14 +54,16 @@ class SubtitleMenuPlanTest {
         assertNull("a file the plan does not allow is skipped", pick(null, emptyList(), listOf(otherEpisode)))
         val koreanOnTheWay = ExternalSubtitle(File("m.ko.srt"), null, ExternalSubtitleState.DOWNLOADING)
         assertEquals("a stand-in while the preferred file downloads", AutoSubtitleChoice(10, final = false),
-            SubtitleAutoPolicy.choose(null, emptyList(), listOf(fileEnglish, koreanOnTheWay)))
-        assertEquals(AutoSubtitleChoice(10, final = true), SubtitleAutoPolicy.choose(null, emptyList(), listOf(fileEnglish)))
+            SubtitleAutoPolicy.choose(SubtitlePreference.saved(null), emptyList(), listOf(fileEnglish, koreanOnTheWay)))
+        assertEquals(AutoSubtitleChoice(10, final = true),
+            SubtitleAutoPolicy.choose(SubtitlePreference.saved(null), emptyList(), listOf(fileEnglish)))
     }
 
     @Test fun aPreferredEmbeddedStandInIsFinal() {
         val koreanOnTheWay = ExternalSubtitle(File("m.ko.srt"), null, ExternalSubtitleState.DOWNLOADING)
         assertEquals(AutoSubtitleChoice(1, final = true),
-            SubtitleAutoPolicy.choose(null, listOf(PlayerTrack(1, "Track 1 - [Korean]")), listOf(koreanOnTheWay)))
+            SubtitleAutoPolicy.choose(SubtitlePreference.saved(null), listOf(PlayerTrack(1, "Track 1 - [Korean]")),
+                listOf(koreanOnTheWay)))
     }
 
     @Test fun aNewSubtitleNoticeReplacesTheOldOne() {

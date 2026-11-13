@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.ui
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.*
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 /**
@@ -25,7 +26,7 @@ internal enum class DownloadPhase(
     WAITING_FOR_WIFI(stoppable = true, networkGated = false),
 }
 internal data class DownloadEntry(val key: String, val phase: DownloadPhase = DownloadPhase.QUEUED,
-    val snapshot: DownloadSnapshot? = null, val speed: Long = 0, val error: String? = null)
+    val snapshot: DownloadSnapshot? = null, val speed: Long = 0, val error: DownloadFailure? = null)
 internal object DownloadQueuePlan {
     fun ready(entries: Collection<DownloadEntry>, limit: Int): List<String> {
         require(limit > 0)
@@ -83,7 +84,7 @@ internal class DownloadManager(private val scope: CoroutineScope,
         val key = try { MagnetIdentity.key(magnet) } catch (_: Exception) {
             mutableError.value = R.string.error_magnet_required; return
         }
-        if (!canStart(key)) { mutableError.value = R.string.failure_already_downloading; return }
+        if (!canStart(key)) { mutableError.value = TorrentFailure.ALREADY_DOWNLOADING.message; return }
         if (tasks.value[key]?.phase?.stoppable == true) return
         nodes.remove(key)?.let { retire(it) }
         mutableError.value = null

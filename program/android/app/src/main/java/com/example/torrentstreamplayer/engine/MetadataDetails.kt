@@ -12,6 +12,6 @@ internal data class MetadataDetails(
     val hasMetadata: Boolean get() = name != null && fileCount > 0 && pieceCount > 0
     fun connected(count: Int): MetadataDetails = copy(peers = count.coerceAtLeast(0))
     fun received(name: String, files: Int, bytes: Long, pieces: Int, pieceBytes: Long) =
-        copy(stage =MetadataStage.RECEIVED, name = name, fileCount = files,
+        copy(stage = MetadataStage.RECEIVED, name = name, fileCount = files,
             totalSize = bytes, pieceCount = pieces, pieceSize = pieceBytes)
 }

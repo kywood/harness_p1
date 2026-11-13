@@ -28,7 +28,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -88,7 +88,7 @@ internal fun OpenLinkHost(
     val settled by rememberUpdatedState(settledScreen)
     val state by viewModel.incomingLink.collectAsState()
     val activeKey by viewModel.activeKey.collectAsState()
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val visible by rememberUpdatedState(snackbarVisible)
     val wifiWait by rememberUpdatedState(waitsForWifi)
     val announce by rememberUpdatedState(announceWifiWait)
@@ -101,15 +101,15 @@ internal fun OpenLinkHost(
                 NoticeTiming.WAIT -> {
                     // AppRoot이 앞 화면의 스낵바를 닫은 뒤에 알리는 전환 완료 화면을 기다린다(프레임 순서에 기대지 않는다).
                     snapshotFlow { settled }.first(IncomingLinkPolicy::waitingNoticeMayShow)
-                    snackbar.showSnackbar(context.getString(event.notice.message),
-                        actionLabel = event.action?.let(context::getString), duration = SnackbarDuration.Indefinite)
+                    snackbar.showSnackbar(resources.getString(event.notice.message),
+                        actionLabel = event.action?.let(resources::getString), duration = SnackbarDuration.Indefinite)
                 }
                 NoticeTiming.SHOW -> when {
                     !visible -> Unit
                     IncomingLinkPolicy.announcesWifiWait(event.notice, wifiWait) -> announce()
                     else -> {
-                        val result = snackbar.showSnackbar(context.getString(event.notice.message),
-                            actionLabel = event.action?.let(context::getString))
+                        val result = snackbar.showSnackbar(resources.getString(event.notice.message),
+                            actionLabel = event.action?.let(resources::getString))
                         if (result == SnackbarResult.ActionPerformed) viewModel.openPlaylist()
                     }
                 }

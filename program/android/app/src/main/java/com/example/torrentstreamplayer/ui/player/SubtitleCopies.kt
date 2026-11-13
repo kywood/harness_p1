@@ -98,6 +98,6 @@ internal class SubtitleCopies(
         const val TAG = "SubtitleCopies"
 
         /** Marks the copy as UTF-8 for the player. */
-        const val BYTE_ORDER_MARK = "﻿"
+        const val BYTE_ORDER_MARK = "\uFEFF"
     }
 }

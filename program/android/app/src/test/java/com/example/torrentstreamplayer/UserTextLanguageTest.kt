@@ -11,25 +11,22 @@ import org.junit.Test
 import java.io.File
 
 class UserTextLanguageTest {
-    /** 기본(영어) 문구. 번역하지 않는 값(속성이 붙은 항목)은 빠진다. */
-    private val strings: Map<String, String> by lazy { read("values") }
-    private val korean: Map<String, String> by lazy { read("values-ko") }
+    /** 기본(영어) 문구. plurals는 `other` 항목. */
+    private val strings: Map<String, String> by lazy { StringsXml.texts(StringsXml.DEFAULT) }
     private val hangul = Regex("[가-힣]")
 
-    private fun read(folder: String): Map<String, String> {
-        val xml = File("src/main/res/$folder/strings.xml").readText()
-        return Regex("<string name=\"([^\"]+)\">([^<]*)</string>").findAll(xml)
-            .associate { it.groupValues[1] to it.groupValues[2] }
+    @Test fun everyKoreanStringAndPluralItemIsKorean() {
+        val notKorean = StringsXml.read("values-ko").filterValues { entry ->
+            entry.variants.any { !hangul.containsMatchIn(it) }
+        }.keys
+        assertEquals("values-ko strings without Korean text", emptySet<String>(), notKorean)
     }
 
-    @Test fun everyKoreanStringIsKorean() {
-        val notKorean = korean.filterValues { !hangul.containsMatchIn(it) }
-        assertEquals("values-ko strings without Korean text", emptyMap<String, String>(), notKorean)
-    }
-
-    @Test fun defaultStringsAreEnglishWithoutHangul() {
-        val withHangul = strings.filterValues { hangul.containsMatchIn(it) }
-        assertEquals("values strings with Korean text", emptyMap<String, String>(), withHangul)
+    @Test fun defaultStringsAndPluralItemsAreEnglishWithoutHangul() {
+        val withHangul = StringsXml.read(StringsXml.DEFAULT).filterValues { entry ->
+            entry.variants.any { hangul.containsMatchIn(it) }
+        }.keys
+        assertEquals("values strings with Korean text", emptySet<String>(), withHangul)
     }
 
     @Test fun everyRegisteredTorrentFailureHasAString() {

@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.engine
 
 import com.example.torrentstreamplayer.BuildConfig
+import com.example.torrentstreamplayer.meta.UserFacingFailure
 
 /**
  * 엔진 예외를 로그용 한 줄로 바꾼다. 예외 메시지에는 영상 제목·경로·해시가 들어갈 수 있어서
@@ -14,12 +15,16 @@ internal object EngineFailureLog {
     fun describe(error: Throwable, debug: Boolean): String {
         val types = generateSequence(error) { it.cause?.takeIf { cause -> cause !== it } }
             .take(MAX_CAUSES)
-            .joinToString(" <- caused by ") { it.javaClass.simpleName.ifEmpty { it.javaClass.name } }
+            .joinToString(" <- caused by ") { it.javaClass.simpleName.ifEmpty { it.javaClass.name } + registered(it) }
         if (!debug) return types
         val frames = error.stackTrace.take(MAX_FRAMES)
             .joinToString(" < ") { "${it.className}.${it.methodName}:${it.lineNumber}" }
         return if (frames.isEmpty()) types else "$types at $frames"
     }
+
+    /** 앱이 등록한 실패([UserFacingFailure])면 항목 이름(`(STOP_PENDING)`). 문구·인자는 넣지 않는다. */
+    private fun registered(error: Throwable): String =
+        (error as? UserFacingFailure)?.let { "(${it.failure.name})" }.orEmpty()
 
     /** 현재 빌드 종류(`BuildConfig.DEBUG`)에 맞춰 [describe]한다. 엔진 `Log` 호출은 Throwable 대신 이 값을 넘긴다. */
     fun describe(error: Throwable): String = describe(error, BuildConfig.DEBUG)

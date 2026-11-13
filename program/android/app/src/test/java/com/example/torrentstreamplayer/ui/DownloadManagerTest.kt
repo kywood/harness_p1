@@ -23,7 +23,7 @@ class DownloadManagerTest {
     @Test fun deleteWaitsOnASnapshotTakenBeforeLaterQueueChanges() {
         val scope = CoroutineScope(SupervisorJob() + held)
         val manager = DownloadManager(scope, {
-            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> }, describeFailure = { "failed" })
+            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> })
         })
         manager.start(magnet('1')) { true }
         manager.stop()
@@ -40,7 +40,7 @@ class DownloadManagerTest {
 
     private fun manager(scope: CoroutineScope, created: MutableList<DownloadController> = mutableListOf()) =
         DownloadManager(scope, {
-            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> }, describeFailure = { "failed" }).also { created += it }
+            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> }).also { created += it }
         })
 
     private fun phases(manager: DownloadManager) = manager.tasks.value.mapValues { it.value.phase }
@@ -187,7 +187,7 @@ class DownloadManagerTest {
         val scope = CoroutineScope(SupervisorJob() + held)
         val added = mutableListOf<String>()
         val manager = DownloadManager(scope, {
-            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> }, describeFailure = { "failed" })
+            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> })
         }, limit = 3, onTaskAdded = { added += it })
         val magnets = listOf('1', '2', '3', '4').map(::magnet)
         magnets.forEach { manager.start(it) { true } }
@@ -212,7 +212,7 @@ class DownloadManagerTest {
         val scope = CoroutineScope(SupervisorJob() + held)
         val added = mutableListOf<String>()
         val manager = DownloadManager(scope, {
-            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> }, describeFailure = { "failed" })
+            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> })
         }, limit = 1, onTaskAdded = { added += it })
         manager.start(magnet('1')) { true }
         assertEquals("a task that runs at once is not reported", emptyList<String>(), added)

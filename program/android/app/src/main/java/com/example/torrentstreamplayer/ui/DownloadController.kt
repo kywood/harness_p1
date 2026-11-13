@@ -7,16 +7,14 @@ import com.example.torrentstreamplayer.meta.TorrentFailure
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 internal data class DownloadTaskState(val key: String? = null, val speed: Long = 0,
-    val error: String? = null, val title: String? = null, val complete: Boolean = false) {
+    val error: DownloadFailure? = null, val title: String? = null, val complete: Boolean = false) {
     val activeCount: Int get() = if (key != null && !complete && error == null) 1 else 0
 }
 internal class DownloadController(private val scope: CoroutineScope,
     private val createEngine: () -> TorrentEngine,
     private val save: suspend (String) -> Unit,
     private val title: suspend (String, String) -> Unit,
-    private val commands: EngineCommandQueue = EngineCommandQueue.shared,
-    /** Text for a failed start, from registered strings only. Never show raw library messages. */
-    private val describeFailure: (Throwable) -> String) {
+    private val commands: EngineCommandQueue = EngineCommandQueue.shared) {
     private val lazyEngine = lazy(createEngine)
     val engine get() = lazyEngine.value
     private val mutableState = MutableStateFlow(DownloadTaskState())
@@ -56,7 +54,7 @@ internal class DownloadController(private val scope: CoroutineScope,
                     scope.launch {
                         if (request == generation) {
                             stopEngine()
-                            mutableState.value = DownloadTaskState(error = error)
+                            mutableState.value = DownloadTaskState(error = DownloadFailure.Reported(error))
                         }
                     }
                 }, prioritizePlayback = false) }
@@ -64,7 +62,7 @@ internal class DownloadController(private val scope: CoroutineScope,
             catch (error: Exception) {
                 if (request == generation) {
                     stopEngine()
-                    mutableState.value = DownloadTaskState(error = describeFailure(error))
+                    mutableState.value = DownloadTaskState(error = DownloadFailure.of(error))
                 }
             }
         }

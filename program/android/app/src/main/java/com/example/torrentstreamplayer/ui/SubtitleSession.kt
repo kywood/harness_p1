@@ -50,7 +50,7 @@ internal data class SubtitleSnapshot(
 internal class SubtitleSession(
     private val player: TrackPlayer,
     private val autoEnabled: Boolean,
-    private val preferredKey: String?,
+    private val preference: SubtitlePreference,
     private val now: () -> Long = System::currentTimeMillis,
     private val prepare: (File) -> File = { it },
 ) {
@@ -104,7 +104,7 @@ internal class SubtitleSession(
     }
 
     private fun autoChoice(current: PlayerTracks): AutoSubtitleChoice? =
-        if (settled || !autoEnabled) null else SubtitleAutoPolicy.choose(preferredKey, embedded(current), externals())
+        if (settled || !autoEnabled) null else SubtitleAutoPolicy.choose(preference, embedded(current), externals())
 
     private fun recheckAfterMs(): Long? =
         awaiting?.let { (_, since) ->

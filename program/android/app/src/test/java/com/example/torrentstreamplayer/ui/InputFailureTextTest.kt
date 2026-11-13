@@ -35,7 +35,7 @@ class InputFailureTextTest {
         assertEquals("메시지에는 항목 이름만 담는다", "TORRENT_HTTP", blocked.message)
     }
 
-    @Test fun plainExceptionsWithKoreanTextAreNotRegistered() {
+    @Test fun plainExceptionsAreNotRegisteredWhateverTheirMessage() {
         assertNull(InputFailureText.failure(IllegalArgumentException("토렌트 파일이 너무 큽니다.")))
         assertNull(InputFailureText.failure(IllegalStateException("Failed requirement.")))
     }

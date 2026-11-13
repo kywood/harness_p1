@@ -630,9 +630,8 @@ class TorrentEngine(private val context: Context) {
         closingCheckpoints.toList().forEach { it.awaitClosed(); closingCheckpoints.remove(it) }
     }
     @Synchronized fun deleteStoredFile(path: String): Boolean {
-        check(currentHandle == null && localVideo == null && worker?.isAlive != true) {
-            "Stop streaming before deleting stored files"
-        }
+        if (currentHandle != null || localVideo != null || worker?.isAlive == true)
+            throw TorrentFailure.STOP_PLAYBACK_FIRST.blocked()
         if (!teardown.await()) throw TorrentFailure.STOP_PENDING.blocked()
         return diskStore.delete(path)
     }
