@@ -54,7 +54,8 @@ class PlaylistItemStatusTest {
         assertEquals("the playing video counts as downloading without a task",
             PlaylistItemStatus.DOWNLOADING, PlaylistItemStatus.of(null, playing = true, complete = false))
         assertEquals(PlaylistItemStatus.FAILED,
-            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.FAILED, error = "x"), playing = false, complete = false))
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.FAILED, error = DownloadFailure.StartFailed),
+                playing = false, complete = false))
         assertEquals(PlaylistItemStatus.COMPLETED, PlaylistItemStatus.of(null, playing = false, complete = true))
         assertEquals(PlaylistItemStatus.INCOMPLETE, PlaylistItemStatus.of(null, playing = false, complete = false))
     }

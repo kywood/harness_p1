@@ -94,9 +94,8 @@ class MainViewModel @JvmOverloads internal constructor(
     }
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { playlist.add(it) }; Unit },
-        { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit },
-        describeFailure = { InputFailureText.message(it, application)
-            ?: application.getString(R.string.error_download_start_plain) }) }, onTaskAdded = ::saveQueuedLink)
+        { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit }) },
+        onTaskAdded = ::saveQueuedLink)
 
 
     /** 대기 작업 기록과 재생 목록 삭제의 순서. 작업이 살았는지는 메인 스레드에서 본다([DownloadManager]는 메인 전용). */
@@ -228,8 +227,9 @@ class MainViewModel @JvmOverloads internal constructor(
             while (request == requestVersion) {
                 val task = _activeKey.value?.let { downloads.entry(it) }
                 if (task == null || task.phase == DownloadPhase.FAILED) {
-                    setStream(StreamUiState.Error(task?.error
-                        ?: getApplication<Application>().getString(R.string.error_download_stopped)))
+                    val app = getApplication<Application>()
+                    val message = task?.error?.text(app) ?: app.getString(R.string.error_download_stopped)
+                    setStream(StreamUiState.Error(message))
                     break
                 }
                 // requestPlayback/isPlaybackReady take the engine lock and query libtorrent synchronously.

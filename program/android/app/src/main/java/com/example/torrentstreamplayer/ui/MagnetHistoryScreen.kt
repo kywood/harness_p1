@@ -201,7 +201,7 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                         status = status,
                         speedBytes = if (active && status.showsSpeed && !PlaylistOrdering.complete(entry))
                             task?.speed ?: downloadSpeedBytes else null,
-                        errorMessage = task?.error,
+                        errorMessage = task?.error?.text(context),
                         simple = simple,
                         checked = entry.magnet in selected,
                         checkEnabled = !bulkBusy && deleting == null,
