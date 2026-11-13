@@ -99,11 +99,26 @@ class SubtitleUiTest {
             compose.waitUntil(name, limitMs, done)
         } catch (e: ComposeTimeoutException) {
             val spent = (System.currentTimeMillis() - start) / 1000
-            // What was on screen, for the failure report.
+            // What was on screen, for the failure report: the compose tree, a screenshot, the view hierarchy outside
+            // compose and the app's windows (files under the app's external files folder, paths in logcat).
             runCatching { compose.onAllNodes(isRoot(), useUnmergedTree = true).printToLog("SubtitleUiTest") }
+            runCatching { saveFailureState(name) }
             throw IllegalStateException("Sintel stage '$name' did not finish in ${spent}s (limit ${limitMs / 1000}s)", e)
         }
         Log.i("SubtitleUiTest", "Sintel stage '$name' took ${System.currentTimeMillis() - start}ms")
+    }
+
+    private fun saveFailureState(stage: String) {
+        val dir = File(context.getExternalFilesDir(null), "sintel-failure").apply { mkdirs() }
+        instrumentation.uiAutomation.takeScreenshot()?.let { shot ->
+            File(dir, "screen.png").outputStream().use { shot.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
+        fun shell(command: String) = instrumentation.uiAutomation.executeShellCommand(command)
+            .let { fd -> android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().use { it.readText() } }
+        shell("uiautomator dump ${File(dir, "views.xml").absolutePath}")
+        File(dir, "windows.txt").writeText(shell("dumpsys window windows").lines()
+            .filter { it.contains("pieceplay", ignoreCase = true) || it.contains("Window #") }.joinToString("\n"))
+        Log.i("SubtitleUiTest", "Sintel stage '$stage' failure state saved in ${dir.absolutePath}")
     }
 
     private fun hasDescriptionStarting(prefix: String) = SemanticsMatcher("description starts with $prefix") { node ->
@@ -161,8 +176,9 @@ class SubtitleUiTest {
                 }
             }
             compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true)[0].performClick()
+            // The picked row is read only by its description ("Sintel.en.srt, 자막 파일"); RadioListItem clears its text.
             sintelStage("sheet lists Sintel.en.srt", STAGE_OFF_MS) {
-                compose.onAllNodesWithText("Sintel.en.srt").fetchSemanticsNodes().isNotEmpty()
+                shown("Sintel.en.srt") || compose.onAllNodesWithText("Sintel.en.srt").fetchSemanticsNodes().isNotEmpty()
             }
             compose.onNodeWithText(text(R.string.subtitle_off)).performClick()
             sintelStage("subtitles turned off", STAGE_OFF_MS) { shown(offPrefix) }
