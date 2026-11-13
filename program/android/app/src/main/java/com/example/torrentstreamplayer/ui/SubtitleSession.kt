@@ -62,6 +62,8 @@ internal class SubtitleSession(
     private var ready: List<SubtitleFile> = emptyList()
     private var pending: List<File> = emptyList()
     private var started = false
+    private var everListed = false
+    private var unlistedRechecks = 0
     private var settled = false
 
     /** The player started playing: reads its tracks and adds the subtitle files that are ready. */
@@ -106,10 +108,22 @@ internal class SubtitleSession(
     private fun autoChoice(current: PlayerTracks): AutoSubtitleChoice? =
         if (settled || !autoEnabled) null else SubtitleAutoPolicy.choose(preference, embedded(current), externals())
 
-    private fun recheckAfterMs(): Long? =
-        awaiting?.let { (_, since) ->
+    /**
+     * When to read the tracks again without a VLC event: while an added file waits for its track, and before the
+     * player has listed the video's tracks for the first time. VLC's track events alone left the sheet on
+     * "트랙을 확인하는 중…" when they came before the session started or were missed (finished Sintel, #125).
+     * Once the tracks were listed, only events refresh them; before that, at most
+     * [PlayerSpec.SUBTITLE_UNLISTED_RECHECK_MAX] rechecks, so a player that failed to open stops being polled.
+     */
+    private fun recheckAfterMs(): Long? {
+        val waitingFile = awaiting?.let { (_, since) ->
             (since + PlayerSpec.SUBTITLE_TRACK_TIMEOUT_MS - now()).coerceAtLeast(PlayerSpec.SUBTITLE_RECHECK_MIN_MS)
         }
+        if (tracks?.listed == true) everListed = true
+        val unlisted = if (everListed || unlistedRechecks >= PlayerSpec.SUBTITLE_UNLISTED_RECHECK_MAX) null
+        else PlayerSpec.SUBTITLE_RECHECK_MIN_MS.also { unlistedRechecks++ }
+        return listOfNotNull(waitingFile, unlisted).minOrNull()
+    }
 
     /** The viewer picked subtitle [id] (or [PlayerTracks.NO_TRACK]). No automatic pick follows. */
     fun selectSubtitle(id: Int): Boolean {

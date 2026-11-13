@@ -48,7 +48,8 @@ internal class PlayerSubtitles(
     private val mutableSheet = MutableStateFlow(SubtitleSheetState())
     private val autoPicks = Channel<TrackName>(Channel.BUFFERED)
     private val failures = Channel<Unit>(Channel.CONFLATED)
-    private val refreshes = Channel<Unit>(Channel.CONFLATED)
+    /** A refresh is waiting for the engine command queue; requests until its block starts merge into it. */
+    private val refreshQueued = AtomicBoolean(false)
     private var recheck: Job? = null
 
     val sheet: StateFlow<SubtitleSheetState> = mutableSheet.asStateFlow()
@@ -59,16 +60,23 @@ internal class PlayerSubtitles(
     /** A pick the player refused while the sheet is open, for the "다시 골라 주세요" message. */
     val selectFailed: Flow<Unit> = failures.receiveAsFlow()
 
-    init {
-        scope.launch { refreshes.receiveAsFlow().collect { run { session.refresh() } } }
-    }
-
     /** VLC started playing. */
     fun start() = launchRun { session.start() }
 
-    /** VLC added, removed or switched a track; requests are merged while one is running. */
+    /**
+     * Reads the tracks again (VLC added, removed or switched one, the sheet opened, or a recheck is due). Requests
+     * merge while one waits for the engine command queue: the flag drops as the first step of the queued block, so a
+     * request made while a refresh is already reading still gets its own refresh. Launched when called, never during
+     * composition (the old collector was started from the constructor, which runs inside `remember`).
+     */
     fun refresh() {
-        refreshes.trySend(Unit)
+        if (!refreshQueued.compareAndSet(false, true)) return
+        scope.launch {
+            run {
+                refreshQueued.set(false)
+                session.refresh()
+            }
+        }
     }
 
     fun updateFiles(ready: List<SubtitleFile>, pending: List<File>) {
@@ -82,7 +90,7 @@ internal class PlayerSubtitles(
     /** The sheet opened or closed. A failure still on its way when the sheet closes is dropped, not shown later. */
     fun sheetShown(open: Boolean) {
         sheetOpen.set(open)
-        if (!open) while (failures.tryReceive().isSuccess) Unit
+        if (open) refresh() else while (failures.tryReceive().isSuccess) Unit
     }
 
     fun selectSubtitle(id: Int) = scope.launch {
@@ -104,7 +112,6 @@ internal class PlayerSubtitles(
     /** Call before releasing the player; later calls do nothing. The copies are removed on [io]. */
     fun close() {
         closed.set(true)
-        refreshes.close()
         // Not on [scope], which is cancelled with the screen: a plain task on the shared IO pool.
         copies?.let { store -> io.asExecutor().execute { store.clear() } }
     }

@@ -144,6 +144,36 @@ class SubtitleSessionTest {
         assertEquals(1, player.tracks.subtitleId)
     }
 
+    @Test fun untilThePlayerListsTracksTheSessionAsksToLookAgain() {
+        val player = FakePlayer(PlayerTracks())
+        val session = session(player)
+        assertNull("not started: nothing to read yet", session.refresh().recheckAfterMs)
+        val waiting = session.start()
+        assertTrue(waiting.sheet.loading)
+        assertEquals(PlayerSpec.SUBTITLE_RECHECK_MIN_MS, waiting.recheckAfterMs)
+        player.tracks = PlayerTracks(listOf(english), audio)
+        val listed = session.refresh()
+        assertFalse("tracks show without any VLC event", listed.sheet.loading)
+        assertNull(listed.recheckAfterMs)
+    }
+
+    @Test fun onceListedOnlyEventsRefreshEvenIfTheTracksGoAway() {
+        val player = FakePlayer(PlayerTracks(listOf(english), audio))
+        val session = session(player)
+        assertNull(session.start().recheckAfterMs)
+        player.tracks = PlayerTracks()
+        assertNull("a playback error that empties the list is not polled", session.refresh().recheckAfterMs)
+    }
+
+    @Test fun rechecksBeforeTheFirstListStopAfterTheLimit() {
+        val session = session(FakePlayer(PlayerTracks()))
+        val rechecks = (0 until PlayerSpec.SUBTITLE_UNLISTED_RECHECK_MAX + 5).map {
+            (if (it == 0) session.start() else session.refresh()).recheckAfterMs
+        }
+        assertEquals(PlayerSpec.SUBTITLE_UNLISTED_RECHECK_MAX, rechecks.count { it != null })
+        assertNull(rechecks.last())
+    }
+
     @Test fun silentVideosStillGetTheirFiles() {
         val player = FakePlayer(PlayerTracks(videoCount = 1))
         val session = session(player)

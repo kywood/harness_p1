@@ -17,6 +17,12 @@ internal object PlayerSpec {
     /** Shortest wait before checking a waiting subtitle file again (the clock stops while paused or buffering). */
     const val SUBTITLE_RECHECK_MIN_MS = 500L
 
+    /**
+     * Rechecks while the player has not listed the video's tracks yet (about a minute at [SUBTITLE_RECHECK_MIN_MS]).
+     * After that only VLC's track events refresh the sheet, so a playback error does not keep polling.
+     */
+    const val SUBTITLE_UNLISTED_RECHECK_MAX = 120
+
     /** Largest subtitle file the player re-encodes to UTF-8 (`SubtitleEncodingPolicy`); larger ones go as they are. */
     const val SUBTITLE_COPY_MAX_BYTES = 5L * 1024 * 1024
 }
