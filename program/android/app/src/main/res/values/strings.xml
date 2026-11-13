@@ -187,7 +187,7 @@
     <string name="guide_storage_title">기기 안에만 저장합니다</string>
     <string name="guide_storage_body">받은 영상과 재생 목록은 이 기기에만 저장되고 어디로도 보내지 않습니다. 재생 목록과 이어받기 정보는 암호화해 보관합니다. 저장 파일 관리에서 지우거나 앱을 삭제하면 모두 지워집니다.</string>
     <string name="guide_data_title">데이터를 많이 씁니다</string>
-    <string name="guide_data_body">영상 크기만큼 데이터를 씁니다. 모바일 데이터에서는 요금이 나올 수 있으니 Wi-Fi에서 쓰는 것을 권합니다.</string>
+    <string name="guide_data_body">영상 크기만큼 데이터를 씁니다. 모바일 데이터에서는 요금이 나올 수 있으니, 설정에서 Wi-Fi 전용을 켜 두는 것을 권합니다.</string>
     <string name="guide_ads_title">광고</string>
     <string name="guide_ads_body">메인과 재생 목록에 배너 광고가 나오고, 재생을 마친 뒤 가끔 전면 광고가 나옵니다. 재생하는 동안에는 광고가 나오지 않습니다.</string>
 
@@ -207,4 +207,22 @@
     <string name="error_link_length">링크가 비어 있거나 너무 깁니다. 링크를 다시 복사해 붙여넣어 주세요.</string>
     <string name="error_https_required">보안 연결(https)을 쓰지 않는 주소입니다. https:// 주소를 넣어 주세요.</string>
     <string name="error_download_start">다운로드를 시작하지 못했습니다. 다시 시도해 주세요.</string>
+    <!-- 설정 (design/specs/settings-wifi.md 6절) -->
+    <string name="title_settings">설정</string>
+    <string name="settings_section_download">다운로드</string>
+    <string name="settings_section_playback">재생</string>
+    <string name="settings_section_about">정보</string>
+    <string name="settings_wifi_only">Wi-Fi 전용</string>
+    <string name="settings_wifi_only_desc">모바일 데이터에서는 다운로드를 멈춥니다.</string>
+    <string name="settings_wifi_paused_notice">모바일 데이터에 연결되어 다운로드를 멈췄습니다. Wi-Fi에 연결되면 이어서 받습니다.</string>
+    <string name="settings_auto_subtitles">자막 자동 표시</string>
+    <string name="settings_auto_subtitles_desc">한국어 자막이 있으면 재생할 때 바로 켭니다.</string>
+    <string name="settings_version">버전</string>
+    <string name="settings_save_failed">설정을 저장하지 못했습니다. 다시 눌러 주세요.</string>
+    <string name="status_wifi_waiting">Wi-Fi 대기</string>
+    <string name="playlist_summary_wifi_waiting">Wi-Fi 대기 %1$d개</string>
+    <string name="info_waiting_for_wifi">Wi-Fi에 연결되면 받기 시작합니다.</string>
+    <string name="mobile_play_confirm_title">이번만 모바일 데이터로 재생할까요?</string>
+    <string name="mobile_play_confirm_message">Wi-Fi 전용이 켜져 있습니다. 영상 크기만큼 모바일 데이터를 쓸 수 있습니다.</string>
+    <string name="action_play_once">이번만 재생</string>
 </resources>

@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer.ui
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class IncomingLinkSummaryTest {
@@ -58,13 +59,21 @@ class IncomingLinkSummaryTest {
         assertFalse(buttons(null, busy = true).enabled)
     }
 
-    @Test fun statusChipTreatsWaitingForWifiAsQueued() {
-        val partial = PlaylistMatch("m", "t", 0, complete = false)
+    @Test fun theSheetChipIsThePlaylistCardChipIncludingWaitingForWifi() {
+        assertEquals(PlaylistItemStatus.WAITING_FOR_WIFI,
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.WAITING_FOR_WIFI), playing = false, complete = false))
         assertEquals(PlaylistItemStatus.QUEUED,
-            IncomingLinkPolicy.status(partial, DownloadEntry("k", DownloadPhase.WAITING_FOR_WIFI), playing = false))
-        assertEquals(PlaylistItemStatus.DOWNLOADING, IncomingLinkPolicy.status(partial, null, playing = true))
-        assertEquals(PlaylistItemStatus.COMPLETED,
-            IncomingLinkPolicy.status(partial.copy(complete = true), null, playing = false))
-        assertEquals(PlaylistItemStatus.INCOMPLETE, IncomingLinkPolicy.status(partial, null, playing = false))
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.QUEUED), playing = false, complete = false))
+        assertEquals(PlaylistItemStatus.DOWNLOADING, PlaylistItemStatus.of(null, playing = true, complete = false))
+        assertEquals(PlaylistItemStatus.FAILED,
+            PlaylistItemStatus.of(DownloadEntry("k", DownloadPhase.FAILED, error = "x"), playing = false, complete = false))
+        assertEquals(PlaylistItemStatus.COMPLETED, PlaylistItemStatus.of(null, playing = false, complete = true))
+        assertEquals(PlaylistItemStatus.INCOMPLETE, PlaylistItemStatus.of(null, playing = false, complete = false))
+    }
+
+    @Test fun aSaveWhileDownloadsWaitForWifiAnnouncesTheWait() {
+        assertTrue(IncomingLinkPolicy.announcesWifiWait(IncomingLinkNotice.SAVED, waitsForWifi = true))
+        assertFalse(IncomingLinkPolicy.announcesWifiWait(IncomingLinkNotice.SAVED, waitsForWifi = false))
+        assertFalse("a failure says it failed", IncomingLinkPolicy.announcesWifiWait(IncomingLinkNotice.SAVE_FAILED, true))
     }
 }

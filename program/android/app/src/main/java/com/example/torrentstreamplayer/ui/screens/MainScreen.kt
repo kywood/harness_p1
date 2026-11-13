@@ -20,7 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -31,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.ui.LegalFooterPolicy
 import com.example.torrentstreamplayer.ui.LegalLink
+import com.example.torrentstreamplayer.ui.LegalLinkActions
 import com.example.torrentstreamplayer.ui.MainInputFill
 import com.example.torrentstreamplayer.ui.components.LinkTextField
 import com.example.torrentstreamplayer.ui.components.PrimaryButton
@@ -54,7 +56,6 @@ import com.example.torrentstreamplayer.ui.components.SecondaryButton
 import com.example.torrentstreamplayer.ui.components.SectionCard
 import com.example.torrentstreamplayer.ui.components.TextAction
 import com.example.torrentstreamplayer.ui.components.TextActionTone
-import com.example.torrentstreamplayer.ui.components.rememberExternalLinkOpener
 import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
@@ -75,6 +76,7 @@ internal fun MagnetLinkInputScreen(
     onOpenHistory: () -> Unit = {},
     onOpenLicenses: () -> Unit = {},
     onPrivacyOptions: (() -> Unit)? = null,
+    onOpenSettings: () -> Unit = {},
     inputFill: MainInputFill? = null,
     onInputFilled: (MainInputFill) -> Unit = {}
 ) {
@@ -92,16 +94,7 @@ internal fun MagnetLinkInputScreen(
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
     val snackbar = remember { SnackbarHostState() }
-    val openExternal = rememberExternalLinkOpener()
-    val browserUnavailable = stringResource(R.string.error_browser_unavailable)
-    var showUsageGuide by rememberSaveable { mutableStateOf(false) }
-    val footerActions = FooterActions(
-        openUsageGuide = { showUsageGuide = true },
-        openExternal = { url -> if (!openExternal(url)) scope.launch { snackbar.showSnackbar(browserUnavailable) } },
-        openLicenses = onOpenLicenses,
-        privacyOptions = onPrivacyOptions
-    )
-    if (showUsageGuide) UsageGuideSheet(onDismiss = { showUsageGuide = false }, openExternal = openExternal)
+    val footerActions = rememberLegalLinkActions(snackbar, onOpenLicenses, onPrivacyOptions)
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -118,7 +111,11 @@ internal fun MagnetLinkInputScreen(
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                BrandHeader()
+                // 톱니 줄은 로고를 아래로 너무 밀지 않게 lg 대신 xs만큼 띄운다(settings-wifi.md 1절).
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    SettingsEntry(onOpenSettings)
+                    BrandHeader()
+                }
                 SectionCard {
                     LinkTextField(magnetLink, { magnetLink = it }, errorMessage)
                     SecondaryButton(
@@ -156,6 +153,17 @@ internal fun MagnetLinkInputScreen(
     }
 }
 
+/** 메인 오른쪽 위 톱니: 설정으로 간다. 화면 모서리에 떠 있지 않고 본문과 함께 스크롤된다. */
+@Composable
+private fun SettingsEntry(onOpenSettings: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        IconButton(onClick = onOpenSettings) {
+            Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.title_settings),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Sizes.icon))
+        }
+    }
+}
+
 @Composable
 private fun BrandHeader() {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
@@ -189,21 +197,13 @@ private fun ShortcutCard(icon: ImageVector, title: String, hint: String, onClick
     }
 }
 
-/** 하단 링크가 부르는 동작. [privacyOptions]는 동의 필요 지역에서만 있다. */
-private class FooterActions(
-    val openUsageGuide: () -> Unit,
-    val openExternal: (String) -> Unit,
-    val openLicenses: () -> Unit,
-    val privacyOptions: (() -> Unit)?
-)
-
 /**
  * 메인 하단 법적 진입점(`design/specs/main-legal-footer.md`): 저작권 안내 한 줄, 링크 묶음, 버전.
  * 아래 여백은 바깥 스크롤의 `Spacing.xl`이 맡는다(배너와 24dp 이상, 잘못 누르기 방지).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Footer(versionName: String?, actions: FooterActions) {
+private fun Footer(versionName: String?, actions: LegalLinkActions) {
     // 바깥 Column의 spacedBy(lg)에 더해 바로가기 카드와 Spacing.xl만큼 띄운다.
     Column(
         Modifier.fillMaxWidth().padding(top = Spacing.xl - Spacing.lg),
@@ -212,7 +212,7 @@ private fun Footer(versionName: String?, actions: FooterActions) {
     ) {
         Text(stringResource(R.string.main_rights_notice), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, maxLines = 2)
-        val links = LegalFooterPolicy.links(consentOptionsAvailable = actions.privacyOptions != null)
+        val links = actions.links
         FlowRow(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -232,14 +232,8 @@ private fun Footer(versionName: String?, actions: FooterActions) {
 }
 
 @Composable
-private fun FooterLink(link: LegalLink, actions: FooterActions) {
-    val url = link.url?.let { stringResource(it) }
-    val onClick: () -> Unit = when (link) {
-        LegalLink.USAGE_GUIDE -> actions.openUsageGuide
-        LegalLink.PRIVACY_POLICY -> { { url?.let(actions.openExternal) } }
-        LegalLink.OPEN_SOURCE_LICENSES -> actions.openLicenses
-        LegalLink.AD_PRIVACY -> actions.privacyOptions ?: return
-    }
+private fun FooterLink(link: LegalLink, actions: LegalLinkActions) {
+    val onClick = actions.onClickFor(link) ?: return
     TextAction(
         text = stringResource(link.label),
         onClick = onClick,

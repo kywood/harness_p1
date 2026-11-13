@@ -86,14 +86,11 @@ internal object IncomingLinkPolicy {
         if (playbackActive) null else notice.action
 
     /**
-     * The status chip of a playlist entry, as the playlist card shows it. [task] is the entry's download task;
-     * [playing] is true when it is the video playing now. Waiting for Wi-Fi shows as queued.
+     * After a successful "받아 두기" while new downloads wait for Wi-Fi, the snackbar says so (`info_waiting_for_wifi`,
+     * `settings-wifi.md` 4절) instead of "재생 목록에 추가했습니다.".
      */
-    fun status(match: PlaylistMatch, task: DownloadEntry?, playing: Boolean): PlaylistItemStatus {
-        val queued = task?.phase == DownloadPhase.QUEUED || task?.phase == DownloadPhase.WAITING_FOR_WIFI
-        val active = task?.phase == DownloadPhase.RUNNING || playing
-        return PlaylistItemStatus.of(active, queued, task?.error != null, match.complete)
-    }
+    fun announcesWifiWait(notice: IncomingLinkNotice, waitsForWifi: Boolean): Boolean =
+        notice == IncomingLinkNotice.SAVED && waitsForWifi
 
     /**
      * Buttons for [state] (`open-link-sheet.md` 2-1, 2-3). "받아 두기" is hidden when the playlist entry is fully

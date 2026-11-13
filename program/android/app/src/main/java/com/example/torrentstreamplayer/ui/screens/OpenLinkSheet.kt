@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
@@ -23,7 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -43,6 +42,7 @@ import com.example.torrentstreamplayer.ui.IncomingLinkState
 import com.example.torrentstreamplayer.ui.IncomingLinkSummary
 import com.example.torrentstreamplayer.ui.LinkSheetButton
 import com.example.torrentstreamplayer.ui.MainViewModel
+import com.example.torrentstreamplayer.ui.AppSnackbarPolicy
 import com.example.torrentstreamplayer.ui.PlaylistItemStatus
 import com.example.torrentstreamplayer.ui.components.AppBottomSheet
 import com.example.torrentstreamplayer.ui.components.InlineNotice
@@ -60,22 +60,40 @@ import kotlinx.coroutines.flow.filterNotNull
 
 /**
  * 링크 확인 시트와 "받아 두기" 뒤 스낵바를 띄운다. 메인·준비·재생 어느 화면 위에서든 같은 시트다
- * (`design/specs/open-link-sheet.md`). [AppRoot]의 바깥 상자 안에 둔다.
+ * (`design/specs/open-link-sheet.md`). 스낵바는 앱 공용 [snackbar]에 띄우고 [AppSnackbarPolicy]를 따른다:
+ * 공용 스낵바를 그리지 않는 재생·준비 화면([snackbarVisible]이 false)에서는 띄우지 않고 쌓아 두지도 않는다.
+ *
+ * @param announceWifiWait 새 다운로드가 Wi-Fi 대기로 멈추면 `info_waiting_for_wifi`를 띄운다([rememberWifiWaitAnnouncer]).
  */
 @Composable
-internal fun OpenLinkHost(viewModel: MainViewModel, downloadJobs: Map<String, DownloadEntry>, modifier: Modifier) {
+internal fun OpenLinkHost(
+    viewModel: MainViewModel,
+    downloadJobs: Map<String, DownloadEntry>,
+    snackbar: SnackbarHostState,
+    snackbarVisible: Boolean,
+    waitsForWifi: Boolean,
+    announceWifiWait: () -> Unit
+) {
     val state by viewModel.incomingLink.collectAsState()
     val activeKey by viewModel.activeKey.collectAsState()
-    val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val visible by rememberUpdatedState(snackbarVisible)
+    val wifiWait by rememberUpdatedState(waitsForWifi)
+    val announce by rememberUpdatedState(announceWifiWait)
     // 키가 바뀌지 않는 효과 하나가 알림을 차례로 받는다. 스낵바가 끝난 뒤에야 "보였다"고 알려, 알림 값이 바뀌어도
     // 떠 있는 스낵바가 취소되지 않는다.
     LaunchedEffect(viewModel) {
         viewModel.incomingLinkNotice.filterNotNull().collect { event ->
-            val result = snackbar.showSnackbar(context.getString(event.notice.message),
-                actionLabel = event.action?.let(context::getString))
+            when {
+                !visible -> Unit
+                IncomingLinkPolicy.announcesWifiWait(event.notice, wifiWait) -> announce()
+                else -> {
+                    val result = snackbar.showSnackbar(context.getString(event.notice.message),
+                        actionLabel = event.action?.let(context::getString))
+                    if (result == SnackbarResult.ActionPerformed) viewModel.openPlaylist()
+                }
+            }
             viewModel.incomingLinkNoticeShown(event)
-            if (result == SnackbarResult.ActionPerformed) viewModel.openPlaylist()
         }
     }
     when (val current = state) {
@@ -87,14 +105,13 @@ internal fun OpenLinkHost(viewModel: MainViewModel, downloadJobs: Map<String, Do
         is IncomingLinkState.Confirm -> key(current.link) {
             val key = current.match?.let { runCatching { MagnetIdentity.key(it.magnet) }.getOrNull() }
             val task = key?.let(downloadJobs::get)
-            val status = current.match?.let { IncomingLinkPolicy.status(it, task, playing = key == activeKey) }
+            val status = current.match?.let { PlaylistItemStatus.of(task, playing = key == activeKey, it.complete) }
             OpenLinkSheet(current, task, status,
                 onPlay = { viewModel.playIncomingLink() },
                 onSave = viewModel::saveIncomingLink,
                 onDismiss = { viewModel.dismissIncomingLink(current) })
         }
     }
-    SnackbarHost(snackbar, modifier)
 }
 
 /**
@@ -190,7 +207,7 @@ private fun LinkSummaryCard(state: IncomingLinkState.Confirm, status: PlaylistIt
 @Composable
 private fun PlaylistLine(status: PlaylistItemStatus, positionMs: Long) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        StatusChip(stringResource(status.label), status.tone)
+        StatusChip(stringResource(status.label), status.tone, icon = status.icon?.let { ImageVector.vectorResource(it) })
         if (positionMs > 0) Text(stringResource(R.string.playlist_resume, formatTime(positionMs)),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
