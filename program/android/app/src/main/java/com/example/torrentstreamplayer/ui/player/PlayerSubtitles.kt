@@ -48,7 +48,7 @@ internal class PlayerSubtitles(
     private val mutableSheet = MutableStateFlow(SubtitleSheetState())
     private val autoPicks = Channel<TrackName>(Channel.BUFFERED)
     private val failures = Channel<Unit>(Channel.CONFLATED)
-    /** A refresh is queued and has not started yet; more requests until then merge into it. */
+    /** A refresh is waiting for the engine command queue; requests until its block starts merge into it. */
     private val refreshQueued = AtomicBoolean(false)
     private var recheck: Job? = null
 
@@ -65,14 +65,17 @@ internal class PlayerSubtitles(
 
     /**
      * Reads the tracks again (VLC added, removed or switched one, the sheet opened, or a recheck is due). Requests
-     * merge while one waits for the queue. Launched when called, never during composition (the old collector was
-     * started from the constructor, which runs inside `remember`).
+     * merge while one waits for the engine command queue: the flag drops as the first step of the queued block, so a
+     * request made while a refresh is already reading still gets its own refresh. Launched when called, never during
+     * composition (the old collector was started from the constructor, which runs inside `remember`).
      */
     fun refresh() {
         if (!refreshQueued.compareAndSet(false, true)) return
         scope.launch {
-            refreshQueued.set(false)
-            run { session.refresh() }
+            run {
+                refreshQueued.set(false)
+                session.refresh()
+            }
         }
     }
 
