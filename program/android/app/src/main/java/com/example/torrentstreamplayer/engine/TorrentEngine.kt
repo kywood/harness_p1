@@ -39,6 +39,11 @@ class TorrentEngine(private val context: Context) {
     /** True while the selected torrent is active in the session and could be advertised to peers. */
     internal val isSharingTorrent: Boolean get() = runCatching {
         currentHandle?.let { !it.flags.and_(TorrentFlags.PAUSED).non_zero() } ?: false }.getOrDefault(false)
+    /** For tests: whether the selected torrent downloads in native sequential order ([DownloadOrderPolicy]). */
+    internal val sequentialDownload: Boolean get() = runCatching {
+        currentHandle?.let { it.flags.and_(TorrentFlags.SEQUENTIAL_DOWNLOAD).non_zero() } ?: false }.getOrDefault(false)
+    /** For tests: the native priority (0-7) of [piece], or null without a torrent. */
+    internal fun piecePriorityOf(piece: Int): Int? = runCatching { currentHandle?.piecePriority(piece)?.swig()?.toInt() }.getOrNull()
     internal val uploadedBytes: Long get() = runCatching { currentHandle?.status()?.allTimeUpload() ?: 0L }.getOrDefault(0L)
     private var checkpoint: TorrentCheckpoint? = null
     private var activeCache: TorrentCache? = null
