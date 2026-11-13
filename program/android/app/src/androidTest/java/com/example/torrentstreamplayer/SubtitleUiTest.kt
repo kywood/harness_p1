@@ -211,8 +211,11 @@ class SubtitleUiTest {
             val tracks = VlcTrackPlayer(player)
             // The CP949 .smi goes through a UTF-8 copy, as on the player screen (SubtitleEncodingPolicy).
             val copies = SubtitleCopies(File(dir, "copies"))
-            assertTrue("the .smi is re-encoded", copies.prepare(smi).readText(Charsets.UTF_8).contains("한글 자막 SMI"))
-            val session = SubtitleSession(tracks, autoEnabled = true, preferredKey = "ko", prepare = copies::prepare)
+            copies.prepare(srt)
+            copies.prepare(smi)
+            assertTrue("the .smi is re-encoded", copies.copyOf(smi).readText(Charsets.UTF_8).contains("한글 자막 SMI"))
+            assertEquals("the UTF-8 .srt goes as it is", srt, copies.copyOf(srt))
+            val session = SubtitleSession(tracks, autoEnabled = true, preferredKey = "ko", prepare = copies::copyOf)
             session.start()
             val files = listOf(SubtitleFile(srt, SubtitleLanguage.KOREAN, true, true),
                 SubtitleFile(smi, SubtitleLanguage.KOREAN, true, true))
