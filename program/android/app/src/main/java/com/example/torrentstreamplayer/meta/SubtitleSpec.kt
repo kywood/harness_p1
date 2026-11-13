@@ -38,16 +38,22 @@ internal object SubtitleSpec {
     const val MAX_FOLDER_DEPTH = 2
 
     /**
-     * Release words (resolution, source, codec) where a name comparison stops: `Show.S01E01.1080p.WEB.mkv` compares
-     * as `Show S01E01`, so it matches `Show.S01E01.ko.srt`. Matched against one lowercase word, and only after an
-     * [EPISODE_WORD] or [YEAR_WORD], so titles such as `Web.of.Lies` keep their words.
+     * Release words (resolution, source, codec) where a name comparison stops anywhere in the name:
+     * `[Grp] Show - 01 [1080p].mkv` compares as `Grp Show 01`, so it matches `[Grp] Show - 01.ass`. These never
+     * appear in titles. Matched against one lowercase word.
      */
     val QUALITY_WORD = Regex(
-        "\\d{3,4}p|4k|uhd|hdr\\d*|web|webrip|webdl|hdtv|bluray|bdrip|brrip|dvdrip|remux|x26[45]|h26[45]|hevc|avc|" +
-            "aac\\d*|ac3|dts|ddp?\\d*|10bit|amzn|nf",
+        "\\d{3,4}p|hdr\\d*|webrip|webdl|hdtv|bluray|bdrip|brrip|dvdrip|remux|x26[45]|h26[45]|hevc|" +
+            "aac\\d*|ac3|dts|ddp?\\d*|10bit",
     )
 
-    /** Release year word (lowercase); release words are cut only after it or an [EPISODE_WORD]. */
+    /**
+     * Release words that may also be title words (`Web.of.Lies`, `Charlotte's Web`). The comparison stops at them only
+     * after an [EPISODE_WORD] or [YEAR_WORD]: `Show.S01E01.WEB.mkv` compares as `Show S01E01`.
+     */
+    val TITLE_QUALITY_WORD = Regex("web|nf|amzn|avc|uhd|4k")
+
+    /** Release year word (lowercase); [TITLE_QUALITY_WORD]s are cut only after it or an [EPISODE_WORD]. */
     val YEAR_WORD = Regex("(19|20)\\d{2}")
 
     /** Episode marker word (lowercase): `s01e02`, `e02`, `ep02`, `1x02`. */

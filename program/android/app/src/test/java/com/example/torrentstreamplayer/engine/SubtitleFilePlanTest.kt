@@ -128,6 +128,16 @@ class SubtitleFilePlanTest {
         assertEquals(listOf("D/드라마 1회.smi"), chosen(drama))
     }
 
+    @Test fun resolutionWordsAreCutEvenWithoutAnEpisodeMarker() {
+        val anime = files("S/[Grp] Show - 01 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 02 [1080p].mkv" to 500_000_000, "S/[Grp] Show - 03 [1080p].mkv" to 500_000_000,
+            "S/[Grp] Show - 01.ass" to 10, "S/[Grp] Show - 02.ass" to 10)
+        assertEquals(listOf("S/[Grp] Show - 01.ass"), chosen(anime))
+        val drama = files("D/드라마 1회 720p.mp4" to 500_000_000, "D/드라마 2회 720p.mp4" to 500_000_000,
+            "D/드라마 3회 720p.mp4" to 500_000_000, "D/드라마 1회.smi" to 10, "D/드라마 2회.smi" to 10)
+        assertEquals(listOf("D/드라마 1회.smi"), chosen(drama))
+    }
+
     @Test fun releaseWordsInTheTitleItselfAreKept() {
         val pack = files("S/Web.of.Lies.S01E01.1080p.mkv" to 500_000_000,
             "S/Web.of.Lies.S01E02.1080p.mkv" to 500_000_000,
