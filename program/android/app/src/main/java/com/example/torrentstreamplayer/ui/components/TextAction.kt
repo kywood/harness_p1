@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Sizes
@@ -42,6 +43,7 @@ enum class TextActionTone(val color: Color) {
  *
  * @param icon 글자 앞 아이콘(장식).
  * @param trailingIcon 글자 뒤 아이콘. 외부 브라우저로 나가는 링크의 `ic_open_in_new` 등.
+ * @param maxLines 글자 줄 수. 좁은 자리에서 줄바꿈해야 하면 늘린다(재생 목록 카드의 다운로드 동작).
  * @param trailingIconDescription [trailingIcon]의 읽기 문구. 버튼 이름 뒤에 이어 읽힌다("개인정보처리방침, 브라우저에서 열림").
  */
 @Composable
@@ -53,7 +55,8 @@ fun TextAction(
     icon: ImageVector? = null,
     tone: TextActionTone = TextActionTone.DEFAULT,
     trailingIcon: ImageVector? = null,
-    trailingIconDescription: String? = null
+    trailingIconDescription: String? = null,
+    maxLines: Int = 1
 ) {
     TextButton(
         onClick = onClick,
@@ -66,7 +69,7 @@ fun TextAction(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
             if (icon != null) Icon(icon, contentDescription = null, modifier = Modifier.size(Sizes.iconSmall))
-            Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Text(text, style = MaterialTheme.typography.labelLarge, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
             if (trailingIcon != null) Icon(trailingIcon, contentDescription = trailingIconDescription,
                 modifier = Modifier.size(Sizes.iconSmall))
         }

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -348,9 +347,11 @@ private fun PlaylistItemCard(
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SecondaryButton(stringResource(R.string.action_play), onPlay, enabled = actionsEnabled,
                 icon = Icons.Filled.PlayArrow)
-            TextAction(stringResource(button.label), onDownloadAction, icon = button.icon,
-                enabled = actionsEnabled && (button != DownloadButton.COMPLETE || active))
-            Spacer(Modifier.weight(1f))
+            // 글자 버튼은 남은 폭 안에서 줄바꿈하고, 삭제 아이콘 버튼은 48dp 터치 영역을 지킨다(가중치 없는 자식이 먼저 잰다).
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                TextAction(stringResource(button.label), onDownloadAction, icon = button.icon,
+                    enabled = actionsEnabled && (button != DownloadButton.COMPLETE || active), maxLines = 2)
+            }
             IconButton(onClick = onDelete, enabled = actionsEnabled) {
                 Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.action_delete_with_file),
                     tint = if (actionsEnabled) colors.onSurfaceVariant else colors.outline, modifier = Modifier.size(Sizes.icon))
