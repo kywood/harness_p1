@@ -1,4 +1,6 @@
 package com.example.torrentstreamplayer.engine
+import com.example.torrentstreamplayer.meta.TorrentFailure
+import com.example.torrentstreamplayer.meta.UserFacingFailure
 import java.io.File
 import org.junit.Assert.*
 import org.junit.Test
@@ -8,7 +10,10 @@ class ActiveTorrentFilesTest {
         try {
             ActiveTorrentFiles.acquire(first, file)
             assertThrows(IllegalStateException::class.java) { ActiveTorrentFiles.acquire(second, file) }
-            assertThrows(IllegalStateException::class.java) { ActiveTorrentFiles.deleting { ActiveTorrentFiles.requireUnused(file) } }
+            val inUse = assertThrows(IllegalStateException::class.java) {
+                ActiveTorrentFiles.deleting { ActiveTorrentFiles.requireUnused(file) }
+            }
+            assertEquals(TorrentFailure.FILE_IN_USE, (inUse as UserFacingFailure).failure)
             ActiveTorrentFiles.release(first)
             ActiveTorrentFiles.acquire(second, file)
         } finally { ActiveTorrentFiles.release(first); ActiveTorrentFiles.release(second) }
