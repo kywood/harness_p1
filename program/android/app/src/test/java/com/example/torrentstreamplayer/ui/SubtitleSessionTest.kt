@@ -48,7 +48,7 @@ class SubtitleSessionTest {
     private val audio = listOf(PlayerTrack(10, "Track 1 - [Japanese]"), PlayerTrack(11, "Track 2 - [Korean]"))
     private fun sub(name: String, language: SubtitleLanguage?) = SubtitleFile(File(name), language, true)
     private fun session(player: FakePlayer, auto: Boolean = true, preferred: String? = null) =
-        SubtitleSession(player, auto, preferred, now = { clock })
+        SubtitleSession(player, auto, SubtitlePreference.saved(preferred), now = { clock })
 
     @Test fun beforeStartTheSheetIsLoadingAndShowsDownloadingFiles() {
         val player = FakePlayer(PlayerTracks())

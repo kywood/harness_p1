@@ -22,7 +22,7 @@ import java.io.File
 /**
  * 자막 시트에 필요한 값(`design/specs/subtitles.md`). [files]·[pending]은 엔진이 받은(검증된)·받는 중인 자막 파일,
  * [autoSelect]는 설정 "자막 자동 표시", [preferredLanguage]는 기억한 선호 언어
- * (없으면 기기 언어, [SubtitleAutoPolicy.preferredKey]). 고른 언어는 [onLanguageChosen]으로 알린다.
+ * (없으면 기기 언어, [SubtitleAutoPolicy.preference]). 고른 언어는 [onLanguageChosen]으로 알린다.
  */
 internal data class PlayerSubtitleOptions(
     val files: List<SubtitleFile> = emptyList(),
@@ -49,13 +49,15 @@ internal fun rememberPlayerSubtitles(
     val scope = rememberCoroutineScope()
     val languageChosen by rememberUpdatedState(options.onLanguageChosen)
     val cacheDir = LocalContext.current.cacheDir
-    val deviceLanguage = LocalConfiguration.current.locales[0]?.language
+    val deviceLocale = LocalConfiguration.current.locales[0]
     val clock = remember(player) { PlaybackClock() }
     val copies = remember(player) { SubtitleCopies(File(cacheDir, COPY_DIR)) }
     val subtitles = remember(player) {
         player?.let {
-            val preferredKey = SubtitleAutoPolicy.preferredKey(options.preferredLanguage, deviceLanguage)
-            val session = SubtitleSession(VlcTrackPlayer(it), options.autoSelect, preferredKey,
+            // getISO3Language throws MissingResourceException for a locale without a three-letter code.
+            val iso3 = runCatching { deviceLocale?.isO3Language }.getOrNull()
+            val preference = SubtitleAutoPolicy.preference(options.preferredLanguage, deviceLocale?.language, iso3)
+            val session = SubtitleSession(VlcTrackPlayer(it), options.autoSelect, preference,
                 clock::elapsedMs, copies::copyOf)
             PlayerSubtitles(session, scope, EngineCommandQueue.shared.dispatcher, copies) { key ->
                 languageChosen(key)

@@ -13,7 +13,8 @@ class DownloadFailureTest {
     }
 
     @Test fun linkAndNetworkErrorsUseTheirRegisteredItems() {
-        assertEquals(DownloadFailure.Registered(TorrentFailure.INVALID_MAGNET), DownloadFailure.of(InvalidMagnetException()))
+        assertEquals(DownloadFailure.Registered(TorrentFailure.INVALID_MAGNET),
+            DownloadFailure.of(InvalidMagnetException()))
         assertEquals(DownloadFailure.Registered(TorrentFailure.LINK_GENERIC),
             DownloadFailure.of(UnknownHostException("tracker.example.com")))
     }

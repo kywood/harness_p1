@@ -30,6 +30,7 @@ import com.example.torrentstreamplayer.engine.SubtitleLanguage
 import com.example.torrentstreamplayer.ui.MainViewModel
 import com.example.torrentstreamplayer.ui.PlayerTracks
 import com.example.torrentstreamplayer.ui.StreamUiState
+import com.example.torrentstreamplayer.ui.SubtitlePreference
 import com.example.torrentstreamplayer.ui.SubtitleSession
 import com.example.torrentstreamplayer.ui.VideoPlaybackPolicy
 import com.example.torrentstreamplayer.ui.player.SubtitleSheet
@@ -219,7 +220,8 @@ class SubtitleUiTest {
             copies.prepare(smi)
             assertTrue("the .smi is re-encoded", copies.copyOf(smi).readText(Charsets.UTF_8).contains("한글 자막 SMI"))
             assertEquals("the UTF-8 .srt goes as it is", srt, copies.copyOf(srt))
-            val session = SubtitleSession(tracks, autoEnabled = true, preferredKey = "ko", prepare = copies::copyOf)
+            val session = SubtitleSession(tracks, autoEnabled = true, preference = SubtitlePreference.saved("ko"),
+                prepare = copies::copyOf)
             session.start()
             val files = listOf(SubtitleFile(srt, SubtitleLanguage.KOREAN, true, true),
                 SubtitleFile(smi, SubtitleLanguage.KOREAN, true, true))

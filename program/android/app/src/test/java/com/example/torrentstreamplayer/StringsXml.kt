@@ -33,10 +33,12 @@ internal object StringsXml {
     fun read(folder: String): Map<String, Entry> {
         val xml = File(res, "$folder/strings.xml").readText().replace(COMMENT, "")
         val strings = STRING.findAll(xml).associate { m ->
-            m.groupValues[1] to Entry(!m.groupValues[2].contains("translatable=\"false\""), mapOf("" to m.groupValues[3]))
+            val translatable = !m.groupValues[2].contains("translatable=\"false\"")
+            m.groupValues[1] to Entry(translatable, mapOf("" to m.groupValues[3]))
         }
         val plurals = PLURALS.findAll(xml).associate { m ->
-            m.groupValues[1] to Entry(true, ITEM.findAll(m.groupValues[2]).associate { it.groupValues[1] to it.groupValues[2] })
+            val items = ITEM.findAll(m.groupValues[2]).associate { it.groupValues[1] to it.groupValues[2] }
+            m.groupValues[1] to Entry(true, items)
         }
         return strings + plurals
     }

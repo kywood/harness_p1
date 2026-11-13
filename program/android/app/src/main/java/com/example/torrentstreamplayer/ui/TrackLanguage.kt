@@ -10,6 +10,14 @@ import java.util.Locale
  * English names VLC reports for it here; track names and the remembered preference read this table.
  *
  * @param codes ISO 639-1/2 codes and the English name, lowercase. The first one is the [key] saved as preference.
+ *
+ * Language codes: VLC names a track by an ISO 639-2 three-letter code (`spa`, `ind`, `vie`, `por`) or a two-letter
+ * one, while the device gives `Locale.language` (two letters). For a language not registered here the two codes are
+ * different keys, so the device side passes both ([keysOf] with `Locale.getISO3Language()`). Android may also give
+ * old two-letter codes: `in` (Indonesian, now `id`), `iw` (Hebrew, now `he`) and `ji` (Yiddish, now `yi`). When
+ * registering such a language, list the old code too (`ind`, `id`, `in`). Bibliographic three-letter codes (`fre`,
+ * `ger`, `chi`) differ from the ones `getISO3Language()` returns (`fra`, `deu`, `zho`); register both where VLC may
+ * use either.
  * @param subtitleLanguage the language the engine detects in subtitle file names, when it detects this one.
  */
 internal enum class TrackLanguage(
@@ -43,6 +51,9 @@ internal enum class TrackLanguage(
          * (`fre`) for other languages. Null when [text] is not a language code.
          */
         fun keyOf(text: String?): String? = of(text)?.key ?: normalize(text)
+
+        /** Preference keys of every code in [codes] that names a language ([keyOf]); one key for a registered one. */
+        fun keysOf(vararg codes: String?): Set<String> = codes.mapNotNull(::keyOf).toSet()
 
         /** ISO 639-2 codes that name no language (undetermined, multiple, none, uncoded). */
         private val NO_LANGUAGE = setOf("und", "mul", "zxx", "mis")
