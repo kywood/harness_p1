@@ -192,7 +192,7 @@ enum class PlaylistSort(@StringRes val label: Int, val key: (SavedMagnet) -> Lon
 
 - 코루틴 안에서 `catch (e: Exception)`을 쓸 때는 앞에 `catch (e: CancellationException) { throw e }`를 둔다.
 - 오류를 삼킬 때(`runCatching { }`)는 실패해도 되는 이유가 분명한 곳만, 필요하면 `Log.w`로 남긴다. 로그에 마그넷·URL 원문을 넣지 않는다.
-- 사용자에게 보이는 오류 문구는 한국어로 쓰고, 문구 자체는 design 소유다(새 문구는 design에 요청하거나 `strings.xml`에 둔다).
+- 사용자에게 보이는 오류 문구는 `strings.xml`(기본 영어 `values`, 한국어 `values-ko`)에 같은 키로 두고, 문구 자체는 design 소유다. 코드는 문구 대신 `TorrentFailure`의 `invalid()`/`blocked()`로 실패를 던지고, 화면은 `InputFailureText`로 문구를 얻는다. Kotlin 소스에 한글 문자열을 쓰면 `SourceTextLiteralTest`가 실패한다.
 
 ## 테스트
 

@@ -27,13 +27,13 @@ class PlaylistPresentationTest {
                 MagnetHistoryScreen({ listOf(SavedMagnet(link, "Resume video", 1, lastPositionMs = position.get())) }, {}, {}, {},
                     onAddDownload = { added.set(true) }, onResetPosition = { position.set(0) })
             } }
-            await { nodes("이어보기").isNotEmpty() }
-            val resumeBounds = nodes("이어보기").first().boundsInRoot
-            val resetBounds = nodes("위치 초기화").first().boundsInRoot
+            await { nodes(s(R.string.playlist_resume, "").trim()).isNotEmpty() }
+            val resumeBounds = nodes(s(R.string.playlist_resume, "").trim()).first().boundsInRoot
+            val resetBounds = nodes(s(R.string.action_reset_position)).first().boundsInRoot
             assertEquals(resumeBounds.center.y, resetBounds.center.y, 2f)
             assertTrue(resetBounds.left >= resumeBounds.right)
-            click("링크 추가"); assertTrue(added.get())
-            click("위치 초기화"); await { nodes("이어보기").isEmpty() }
+            click(s(R.string.action_add_link)); assertTrue(added.get())
+            click(s(R.string.action_reset_position)); await { nodes(s(R.string.playlist_resume, "").trim()).isEmpty() }
         }
     }
     @Test fun playlistQuickActionsKeepScreenAndResetOnlyResumePosition() {
@@ -44,6 +44,7 @@ class PlaylistPresentationTest {
     }
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private lateinit var host: MainActivity
+    private fun s(id: Int, vararg args: Any): String = instrumentation.targetContext.getString(id, *args)
     private fun nodes(text: String): List<SemanticsNode> {
         var result = emptyList<SemanticsNode>()
         instrumentation.runOnMainSync {
@@ -106,16 +107,16 @@ class PlaylistPresentationTest {
                     downloadCount = jobs.value.values.count { it.phase == DownloadPhase.RUNNING })
             } }
             await { nodes("Selection 0").isNotEmpty() }
-            click("전체 선택")
-            await { nodes("삭제").isNotEmpty() }
-            val center = nodes("전체 선택").first().boundsInRoot.center.y
-            assertEquals(center, nodes("삭제").first().boundsInRoot.center.y, 2f)
-            val downloadButton = nodes("다운로드").first { it.config.getOrNull(SemanticsProperties.Text)?.any { value -> value.text == "다운로드" } == true }
+            click(s(R.string.bulk_select_all))
+            await { nodes(s(R.string.action_delete)).isNotEmpty() }
+            val center = nodes(s(R.string.bulk_select_all)).first().boundsInRoot.center.y
+            assertEquals(center, nodes(s(R.string.action_delete)).first().boundsInRoot.center.y, 2f)
+            val downloadButton = nodes(s(R.string.action_download)).first { it.config.getOrNull(SemanticsProperties.Text)?.any { value -> value.text == s(R.string.action_download) } == true }
             assertEquals(center, downloadButton.boundsInRoot.center.y, 2f)
-            assertTrue(nodes("선택 다운로드").isEmpty()); assertTrue(nodes("선택 삭제").isEmpty())
-            click("다운로드")
-            await { jobs.value.size == 3 && nodes("중지").isNotEmpty() }
-            click("중지")
+            assertTrue(nodes("선택 다운로드").isEmpty()); assertTrue(nodes(s(R.string.bulk_delete_selected, 0).substringBefore(" (")).isEmpty())
+            click(s(R.string.action_download))
+            await { jobs.value.size == 3 && nodes(s(R.string.action_stop)).isNotEmpty() }
+            click(s(R.string.action_stop))
             await { jobs.value.keys == setOf(outside) }
             assertEquals(keys, stopped.get())
         }
@@ -133,12 +134,12 @@ class PlaylistPresentationTest {
                     onStopItem = { jobs.value = jobs.value - it }, onStopDownload = { jobs.value = emptyMap() },
                     downloadCount = jobs.value.values.count { it.phase == DownloadPhase.RUNNING })
             } }
-            await { nodes("다운로드 중 2개 · 대기 1개").isNotEmpty() && nodes("/s").size == 2 }
-            click("중지")
-            await { nodes("다운로드 중 1개 · 대기 1개").isNotEmpty() && nodes("/s").size == 1 }
+            await { nodes(s(R.string.playlist_summary_queued, 2, 1)).isNotEmpty() && nodes("/s").size == 2 }
+            click(s(R.string.action_stop))
+            await { nodes(s(R.string.playlist_summary_queued, 1, 1)).isNotEmpty() && nodes("/s").size == 1 }
             assertTrue(nodes("UI download 1").isNotEmpty())
-            click("전체 중지")
-            await { nodes("다운로드 중 0개").isNotEmpty() && nodes("전체 중지").isEmpty() }
+            click(s(R.string.action_stop_all))
+            await { nodes(s(R.string.playlist_summary, 0)).isNotEmpty() && nodes(s(R.string.action_stop_all)).isEmpty() }
         }
     }
     private fun verifyPlaylistSorting() {
@@ -163,7 +164,7 @@ class PlaylistPresentationTest {
             instrumentation.runOnMainSync { filter.value = PlaylistFilter.INCOMPLETE }
             await { nodes(old.title).isEmpty() && nodes(newer.title).isNotEmpty() }
             instrumentation.runOnMainSync { received.value = 100L }
-            await { nodes(newer.title).isEmpty() && nodes("해당 조건의 영상이 없습니다.").isNotEmpty() }
+            await { nodes(newer.title).isEmpty() && nodes(s(R.string.playlist_filter_empty)).isNotEmpty() }
         }
     }
     @Test fun stoppingDownloadUpdatesCountWithoutFalseReadError() {
@@ -187,12 +188,12 @@ class PlaylistPresentationTest {
                     onStopDownload = { task = DownloadTaskState() }, activeKey = task.key,
                     downloadCount = task.activeCount)
             } }
-            await { nodes("다운로드 중 0개").isNotEmpty() && calls.get() >= 1 }
-            click("다운로드")
-            await { nodes("다운로드 중 1개").isNotEmpty() && calls.get() >= 2 }
-            click("다운로드 중지")
-            await { nodes("다운로드 중 0개").isNotEmpty() && calls.get() >= 3 }
-            assertTrue(nodes("목록을 읽지 못했습니다.").isEmpty())
+            await { nodes(s(R.string.playlist_summary, 0)).isNotEmpty() && calls.get() >= 1 }
+            click(s(R.string.action_download))
+            await { nodes(s(R.string.playlist_summary, 1)).isNotEmpty() && calls.get() >= 2 }
+            click(s(R.string.action_stop_download))
+            await { nodes(s(R.string.playlist_summary, 0)).isNotEmpty() && calls.get() >= 3 }
+            assertTrue(nodes(s(R.string.playlist_load_error)).isEmpty())
         }
     }
     private fun verifyLoadRetry() {
@@ -202,9 +203,9 @@ class PlaylistPresentationTest {
                 MagnetHistoryScreen({ if (first.getAndSet(false)) throw java.io.IOException("read failed")
                     else emptyList() }, {}, {}, {})
             } }
-            await { nodes("목록을 읽지 못했습니다.").isNotEmpty() }
-            click("다시 시도")
-            await { nodes("목록을 읽지 못했습니다.").isEmpty() }
+            await { nodes(s(R.string.playlist_load_error)).isNotEmpty() }
+            click(s(R.string.action_retry))
+            await { nodes(s(R.string.playlist_load_error)).isEmpty() }
         }
     }
     private fun verifyPlaylistSimpleMode() {
@@ -215,18 +216,18 @@ class PlaylistPresentationTest {
                 var simple by remember { mutableStateOf(false) }
                 MagnetHistoryScreen({ listOf(entry) }, {}, {}, {}, simple = simple, onSimpleChange = { simple = it })
             } }
-            await { nodes("파일 앞 → 뒤").isNotEmpty() && nodes("magnet:?").isNotEmpty() }
+            await { nodes(s(R.string.piece_map_info, 0, 0).substringBefore(" · ")).isNotEmpty() && nodes("magnet:?").isNotEmpty() }
             val density = instrumentation.targetContext.resources.displayMetrics.density
-            val intro = nodes("최근 50개").first().boundsInRoot
-            val count = nodes("다운로드 중 0개").first().boundsInRoot
+            val intro = nodes(s(R.string.playlist_storage_note)).first().boundsInRoot
+            val count = nodes(s(R.string.playlist_summary, 0)).first().boundsInRoot
             assertTrue("Download count must precede storage notice", count.bottom <= intro.top)
             assertTrue("Playlist header spacing is too large", intro.top - count.bottom <= 6 * density)
-            click("간단히")
-            await { nodes("파일 앞 → 뒤").isEmpty() && nodes("magnet:?").isEmpty() }
+            click(s(R.string.action_simple))
+            await { nodes(s(R.string.piece_map_info, 0, 0).substringBefore(" · ")).isEmpty() && nodes("magnet:?").isEmpty() }
             assertTrue(nodes("Presentation sample").isNotEmpty())
             assertTrue(nodes("25.0%").isNotEmpty())
-            click("자세히")
-            await { nodes("파일 앞 → 뒤").isNotEmpty() && nodes("magnet:?").isNotEmpty() }
+            click(s(R.string.action_detailed))
+            await { nodes(s(R.string.piece_map_info, 0, 0).substringBefore(" · ")).isNotEmpty() && nodes("magnet:?").isNotEmpty() }
         }
     }
     @Test fun cancelAndSystemBackFromPlaylistPlaybackReturnToPlaylist() {
@@ -246,30 +247,30 @@ class PlaylistPresentationTest {
             lateinit var model: MainViewModel
             scenario.onActivity { host = it; model = ViewModelProvider(it)[MainViewModel::class.java] }
             try {
-                click("재생 목록")
+                click(s(R.string.action_open_playlist))
                 await { nodes(name).isNotEmpty() }
-                click("재생")
-                await { nodes("메인").isNotEmpty() }
-                click("재생 목록")
-                await { nodes("재생 목록").isNotEmpty() && nodes(name).isNotEmpty() }
+                click(s(R.string.action_play))
+                await { nodes(s(R.string.action_go_main)).isNotEmpty() }
+                click(s(R.string.action_open_playlist))
+                await { nodes(s(R.string.action_open_playlist)).isNotEmpty() && nodes(name).isNotEmpty() }
                 assertEquals(StreamUiState.Idle, model.uiState.value)
                 await { model.downloads.entry(key)?.phase == DownloadPhase.RUNNING }
                 // The engine starts on the engine command queue shortly after the task is marked running.
                 await { model.downloads.engineFor(key)?.isDownloading == true }
-                click("재생")
-                click("메인")
-                await { nodes("저장 파일 관리").isNotEmpty() }
+                click(s(R.string.action_play))
+                click(s(R.string.action_go_main))
+                await { nodes(s(R.string.action_open_stored_files)).isNotEmpty() }
                 assertEquals(StreamUiState.Idle, model.uiState.value)
                 assertNull(model.downloads.entry(key))
-                click("재생 목록")
+                click(s(R.string.action_open_playlist))
                 await { nodes(name).isNotEmpty() }
-                click("재생")
-                await { model.uiState.value !is StreamUiState.Idle && nodes("메인").isNotEmpty() }
+                click(s(R.string.action_play))
+                await { model.uiState.value !is StreamUiState.Idle && nodes(s(R.string.action_go_main)).isNotEmpty() }
                 scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
-                await { nodes("재생 목록").isNotEmpty() && nodes(name).isNotEmpty() }
+                await { nodes(s(R.string.action_open_playlist)).isNotEmpty() && nodes(name).isNotEmpty() }
                 assertEquals(StreamUiState.Idle, model.uiState.value)
-                click("닫기")
-                await { nodes("저장 파일 관리").isNotEmpty() }
+                click(s(R.string.action_close))
+                await { nodes(s(R.string.action_open_stored_files)).isNotEmpty() }
             } finally { runBlocking { model.deleteSavedMagnet(link) } }
         }
     }

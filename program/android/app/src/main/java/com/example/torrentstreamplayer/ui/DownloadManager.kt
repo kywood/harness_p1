@@ -1,4 +1,5 @@
 package com.example.torrentstreamplayer.ui
+import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.engine.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -56,7 +57,8 @@ internal class DownloadManager(private val scope: CoroutineScope,
     val mobilePlayback = mutableMobilePlayback.asStateFlow()
     private val mutableTasks = MutableStateFlow<Map<String, DownloadEntry>>(emptyMap())
     val tasks = mutableTasks.asStateFlow()
-    private val mutableError = MutableStateFlow<String?>(null)
+    private val mutableError = MutableStateFlow<Int?>(null)
+    /** The last refused start as a string resource ([R.string]), or null. */
     val error = mutableError.asStateFlow()
     private val legacyState = MutableStateFlow(DownloadTaskState())
     val state = legacyState.asStateFlow()
@@ -79,9 +81,9 @@ internal class DownloadManager(private val scope: CoroutineScope,
     private fun update(entry: DownloadEntry) { publish(tasks.value + (entry.key to entry)) }
     fun start(magnet: String, canStart: (String) -> Boolean) {
         val key = try { MagnetIdentity.key(magnet) } catch (_: Exception) {
-            mutableError.value = "유효한 마그넷 주소가 필요합니다."; return
+            mutableError.value = R.string.error_magnet_required; return
         }
-        if (!canStart(key)) { mutableError.value = "재생 중인 영상은 이미 다운로드 중입니다."; return }
+        if (!canStart(key)) { mutableError.value = R.string.failure_already_downloading; return }
         if (tasks.value[key]?.phase?.stoppable == true) return
         nodes.remove(key)?.let { retire(it) }
         mutableError.value = null

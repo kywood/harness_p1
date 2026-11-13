@@ -1,6 +1,8 @@
 package com.example.torrentstreamplayer
 
 import com.example.torrentstreamplayer.engine.MetadataDetails
+import com.example.torrentstreamplayer.meta.MetadataOrigin
+import com.example.torrentstreamplayer.meta.MetadataStage
 import com.example.torrentstreamplayer.ui.AppBackPolicy
 import com.example.torrentstreamplayer.ui.StreamUiState
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
@@ -11,12 +13,16 @@ class PreparationUiTest {
     @Test fun metadataIsUnknownUntilReceivedRatherThanShowingFakePieces() {
         val initial = MetadataDetails()
         assertFalse(initial.hasMetadata)
+        assertEquals(MetadataStage.RESOLVING, initial.stage)
+        assertNull(initial.origin)
         assertEquals(0, initial.pieceCount)
         assertNull(initial.name)
     }
     @Test fun receivedMetadataRetainsFileAndPieceDetails() {
-        val details = MetadataDetails(source = "네트워크").connected(5).received("Sample", 3, 1000, 10, 100)
+        val details = MetadataDetails(origin = MetadataOrigin.NETWORK).connected(5).received("Sample", 3, 1000, 10, 100)
         assertTrue(details.hasMetadata)
+        assertEquals(MetadataStage.RECEIVED, details.stage)
+        assertEquals(MetadataOrigin.NETWORK, details.origin)
         assertEquals("Sample", details.name)
         assertEquals(3, details.fileCount)
         assertEquals(1000L, details.totalSize)

@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,7 +87,9 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
         loading = true
         error = null
         try { files = withContext(Dispatchers.IO) { loadFiles() } }
-        catch (e: Exception) { error = e.localizedMessage ?: resources.getString(R.string.stored_files_load_error) }
+        catch (e: Exception) {
+            error = InputFailureText.ownMessage(e, context) ?: resources.getString(R.string.stored_files_load_error)
+        }
         finally { loading = false }
     }
     Column(Modifier.fillMaxSize()) {
@@ -105,7 +108,7 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
             ) {
                 item(key = "summary") {
                     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        Text(stringResource(R.string.stored_files_summary, visibleFiles.size,
+                        Text(pluralStringResource(R.plurals.stored_files_summary, visibleFiles.size, visibleFiles.size,
                             Formatter.formatFileSize(context, visibleFiles.sumOf { it.size })),
                             style = MaterialTheme.typography.headlineSmall)
                         Text(stringResource(R.string.stored_files_note), style = MaterialTheme.typography.bodySmall,
@@ -162,13 +165,12 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
                 scope.launch {
                     deleting = true
                     try {
-                        check(withContext(Dispatchers.IO) { deleteFile(file.path) }) {
-                            resources.getString(R.string.stored_files_delete_missing)
-                        }
+                        if (withContext(Dispatchers.IO) { deleteFile(file.path) }) refresh++
+                        else error = resources.getString(R.string.stored_files_delete_missing)
                         pending = null
-                        refresh++
                     } catch (e: Exception) {
-                        error = e.localizedMessage ?: resources.getString(R.string.stored_files_delete_failed)
+                        error = InputFailureText.ownMessage(e, context)
+                            ?: resources.getString(R.string.stored_files_delete_failed)
                         pending = null
                     } finally {
                         deleting = false

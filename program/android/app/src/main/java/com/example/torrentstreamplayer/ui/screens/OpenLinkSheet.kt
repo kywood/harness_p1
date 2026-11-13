@@ -40,6 +40,7 @@ import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.ui.DownloadEntry
 import com.example.torrentstreamplayer.ui.IncomingLinkAction
 import com.example.torrentstreamplayer.ui.IncomingLinkPolicy
+import com.example.torrentstreamplayer.ui.playlistTitle
 import com.example.torrentstreamplayer.ui.IncomingLinkState
 import com.example.torrentstreamplayer.ui.IncomingLinkSummary
 import com.example.torrentstreamplayer.ui.LinkSheetButton
@@ -206,7 +207,7 @@ internal fun RejectedLinkSheet(state: IncomingLinkState.Rejected, onDismiss: () 
 /** 요약 카드: 이름(또는 줄인 해시)과 종류, 재생 목록에 있으면 상태 칩과 이어보기 위치. 한 덩어리로 읽힌다. */
 @Composable
 private fun LinkSummaryCard(state: IncomingLinkState.Confirm, status: PlaylistItemStatus?) {
-    val summary = IncomingLinkSummary.of(state.link, state.match?.title)
+    val summary = IncomingLinkSummary.of(state.link, state.match?.let { playlistTitle(it.magnet, it.title) })
     val name = summary.name ?: stringResource(R.string.open_link_magnet_short, summary.hashPrefix.orEmpty())
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = Shapes.medium,
         modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {

@@ -4,8 +4,8 @@ import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontWeight
 internal object DownloadMetricText {
     fun build(size: Long?, downloaded: Long?, speed: Long?, accent: Color, muted: Color,
-        velocity: Color, format: (Long) -> String): AnnotatedString = buildAnnotatedString {
-        val base = DownloadProgressLabel.text(size, downloaded, format)
+        velocity: Color, unknown: String, format: (Long) -> String): AnnotatedString = buildAnnotatedString {
+        val base = DownloadProgressLabel.text(size, downloaded, unknown, format)
         append(base)
         addStyle(SpanStyle(color = muted), 0, length)
         if (size != null && size > 0 && downloaded != null) {

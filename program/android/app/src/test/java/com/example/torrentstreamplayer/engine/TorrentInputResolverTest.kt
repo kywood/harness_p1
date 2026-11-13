@@ -1,4 +1,6 @@
 package com.example.torrentstreamplayer.engine
+import com.example.torrentstreamplayer.meta.TorrentFailure
+import com.example.torrentstreamplayer.meta.UserFacingFailure
 import org.junit.Assert.*
 import org.junit.Test
 import java.net.InetSocketAddress
@@ -39,7 +41,14 @@ class TorrentInputResolverTest {
         val resolver = TorrentInputResolver({ magnet }, { error("Network must not be used") })
         assertThrows(InvalidMagnetException::class.java) { resolver.resolve("$magnet&dn=[Group] Title") }
         val url = assertThrows(IllegalArgumentException::class.java) { resolver.resolve("https://exa mple.test/a b") }
-        assertEquals("마그넷 또는 HTTP(S) 토렌트 파일 주소를 입력하세요.", url.message)
+        assertEquals(TorrentFailure.INPUT_UNSUPPORTED, (url as UserFacingFailure).failure)
+    }
+    @Test fun inputLengthAndNonTorrentBytesUseRegisteredFailures() {
+        val resolver = TorrentInputResolver({ magnet }, { "<html>".toByteArray() })
+        val empty = assertThrows(IllegalArgumentException::class.java) { resolver.resolve("  ") }
+        assertEquals(TorrentFailure.INPUT_LENGTH, (empty as UserFacingFailure).failure)
+        val page = assertThrows(IllegalArgumentException::class.java) { resolver.resolve("https://example.test/a") }
+        assertEquals(TorrentFailure.NOT_TORRENT, (page as UserFacingFailure).failure)
     }
     @Test fun unreadableTorrentBytesAreReportedAsTorrentFileFailure() {
         val failure = assertThrows(TorrentInputResolver.InvalidTorrentFileException::class.java) {
@@ -80,7 +89,7 @@ class TorrentInputResolverTest {
             TorrentInputResolver({ magnet }, { throw java.net.ConnectException("refused") })
                 .resolve("http://example.test/a.torrent")
         }
-        assertTrue(error.message!!.contains("HTTPS"))
+        assertEquals(TorrentFailure.INPUT_HTTPS, (error as UserFacingFailure).failure)
     }
     @Test fun networkSecurityConfigAllowsExactlyTheRegisteredCleartextHosts() {
         val xml = java.io.File("src/main/res/xml/network_security_config.xml").readText()
@@ -93,9 +102,11 @@ class TorrentInputResolverTest {
         server.createContext("/missing") { it.sendResponseHeaders(404, -1); it.close() }
         server.start()
         try {
-            assertThrows(IllegalStateException::class.java) {
+            val error = assertThrows(IllegalStateException::class.java) {
                 TorrentInputResolver({ magnet }).resolve("http://127.0.0.1:" + server.address.port + "/missing")
             }
+            assertEquals(TorrentFailure.TORRENT_HTTP, (error as UserFacingFailure).failure)
+            assertEquals(listOf<Any>(404), error.args)
         } finally { server.stop(0) }
     }
     @Test fun webAddressAcceptsOnlyHttpOrHttpsWithAHost() {

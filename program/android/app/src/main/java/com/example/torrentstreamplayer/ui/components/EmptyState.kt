@@ -19,6 +19,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /** 빈 목록 표시: 아이콘 + 한 줄 설명 + (있으면) 동작 버튼. */
 @Composable
@@ -45,5 +47,6 @@ fun EmptyState(
 @Preview
 @Composable
 private fun EmptyStatePreview() {
-    TorrentStreamPlayerTheme { EmptyState(Icons.Filled.Info, "재생 목록이 비어 있습니다.", actionLabel = "메인", onAction = {}) }
+    TorrentStreamPlayerTheme { EmptyState(Icons.Filled.Info, stringResource(R.string.playlist_empty),
+        actionLabel = stringResource(R.string.action_go_main), onAction = {}) }
 }

@@ -63,5 +63,5 @@ fun AppTopBar(
 @Preview
 @Composable
 private fun AppTopBarPreview() {
-    TorrentStreamPlayerTheme { AppTopBar("재생 목록", onBack = {}) }
+    TorrentStreamPlayerTheme { AppTopBar(stringResource(R.string.action_open_playlist), onBack = {}) }
 }

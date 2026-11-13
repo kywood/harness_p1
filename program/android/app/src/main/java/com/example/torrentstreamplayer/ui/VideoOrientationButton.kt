@@ -16,6 +16,7 @@ import com.example.torrentstreamplayer.ui.theme.PlaybackColors
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 /** 회전 아이콘 안 기기 모양의 짧은 변·긴 변·선 두께. 아이콘 그림의 일부라 간격 토큰이 아니다. */
@@ -30,7 +31,7 @@ internal fun VideoOrientationButton() {
     IconButton(enabled = activity != null,
         onClick = { activity?.requestedOrientation = VideoOrientation.next(landscape) }) {
         Box(Modifier.size(Sizes.iconMedium), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Refresh, contentDescription = VideoOrientation.description(landscape),
+            Icon(Icons.Default.Refresh, contentDescription = stringResource(VideoOrientation.description(landscape)),
                 tint = PlaybackColors.OnVideo, modifier = Modifier.size(Sizes.iconMedium))
             // 화면 방향을 나타내는 작은 직사각형(가로면 세로로 긴 모양: 다음에 바뀔 방향).
             Canvas(Modifier.size(if (landscape) DEVICE_SHORT else DEVICE_LONG, if (landscape) DEVICE_LONG else DEVICE_SHORT)) {

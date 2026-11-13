@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.engine
 
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import org.libtorrent4j.*
 import org.libtorrent4j.alerts.*
 import org.libtorrent4j.swig.*
@@ -50,7 +51,7 @@ internal class TorrentCheckpoint(
         if (waitMillis > 0) pending.get()?.await(waitMillis, TimeUnit.MILLISECONDS)
     }
     internal val isClosed: Boolean get() = disk.isClosed
-    internal fun awaitClosed() { check(disk.awaitClosed(5_000)) { "다운로드 기록 저장이 끝나지 않았습니다. 잠시 후 다시 삭제해 주세요." } }
+    internal fun awaitClosed() { if (!disk.awaitClosed(5_000)) throw TorrentFailure.RECORD_PENDING.blocked() }
     fun close() {
         saveProgress(latestProgress)
         session.removeListener(this)

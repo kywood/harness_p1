@@ -137,9 +137,10 @@ fun SettingsLinkItem(
 private fun SettingsItemsPreview() {
     TorrentStreamPlayerTheme {
         Column {
-            SettingsSwitchItem("Wi-Fi 전용", "모바일 데이터에서는 다운로드를 멈춥니다.", checked = true, onCheckedChange = {})
-            SettingsLinkItem("개인정보처리방침", external = true, onClick = {})
-            SettingsLinkItem("버전", value = "v.2026.11.13.001")
+            SettingsSwitchItem(stringResource(R.string.settings_wifi_only), stringResource(R.string.settings_wifi_only_desc),
+                checked = true, onCheckedChange = {})
+            SettingsLinkItem(stringResource(R.string.action_privacy_policy), external = true, onClick = {})
+            SettingsLinkItem(stringResource(R.string.settings_version), value = "v.2026.11.13.001")
         }
     }
 }
