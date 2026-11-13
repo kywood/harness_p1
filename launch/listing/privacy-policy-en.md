@@ -1,9 +1,18 @@
 # 개인정보처리방침 영어판 초안 (Notion 붙여 넣기용)
 
-- 작성: 2026-11-13, launch (#144). 1차 글로벌 출시(미국·캐나다·영국·아일랜드·호주·뉴질랜드·인도·필리핀) 준비.
+- 작성: 2026-11-13, launch (#144). 갱신: 같은 날, 국가 계획 변경 반영. 1차 글로벌 출시(미국·캐나다·호주·뉴질랜드·인도·필리핀·싱가포르) 준비. 영국·아일랜드·EU는 3차.
 - 원문: 현재 Notion 방침(한국어, 시행일 2026-11-12, 1~9절). 2026-11-13에 끝까지 스크롤해 확인했고 **영어 내용은 없다.**
 - 이 초안은 한국어 1~9절을 옮기고, 1차 국가에 필요한 내용(영국 UK GDPR 권리·법적 근거, 미국 주법의 "판매·공유 거부", 국외 이전)을 더했다. **법률 검토를 받은 문서가 아니다.**
 - 앱의 방침 링크(`url_privacy_policy`)는 언어와 상관없이 같은 Notion 주소 하나다(`translatable="false"`). 그래서 **같은 페이지의 한국어 아래에 영어를 붙이는 방식**을 권장한다. 페이지를 나누면 앱 코드 변경(언어별 URL)이 필요하다.
+
+## 영국(UK GDPR) 절을 남겨 두는 이유
+
+영국은 3차로 밀려 1차에는 6절(Your rights (United Kingdom))이 꼭 필요하지 않다. 그래도 **남겨 둔다.**
+
+- 지금 넣어도 해가 없다. 개발자가 직접 갖는 데이터가 없다는 사실과 동의 철회 방법만 적은 절이라, 1차 국가 사용자에게 틀린 말이 되지 않는다.
+- Play 배포 국가와 상관없이 영국 거주자가 다른 나라 계정이나 여행 중 설치로 앱을 쓸 수 있다. 방침은 국가 제한 없이 누구나 읽는다.
+- 3차 직전에 방침을 다시 고치고 시행일을 바꾸는 일을 줄인다. 3차 때는 EU GDPR 문구(아일랜드·EU)를 이 절에 더하기만 하면 된다.
+- 빼고 싶으면 6절과 4절의 "for example in the United Kingdom" 괄호를 함께 지우면 된다. 다른 절은 영향이 없다.
 
 ## 붙여 넣는 방법
 
@@ -39,7 +48,7 @@ Because of how BitTorrent works, while a video is downloading your IP address is
 The app shows ads from Google AdMob. To serve and measure ads, Google may collect your advertising ID, device information, approximate location (based on your IP address), and app usage information such as ad views and taps, as well as diagnostics.
 
 - Where the law requires it (for example in the United Kingdom), you are asked for consent through Google's consent tool (User Messaging Platform) before personalised ads are shown.
-- Where an ad privacy choice is available to you (for example in the UK and in some US states), you can change it at any time from "Ad privacy settings" in the app.
+- Where an ad privacy choice is available to you (for example in the UK and in some US states), you can change it at any time from "Ad privacy settings" on the Home screen or in Settings.
 - You can reset or delete your advertising ID in your device settings.
 - Google's processing is described in the Google Privacy Policy (https://policies.google.com/privacy) and in "How Google uses information from sites or apps that use our services" (https://policies.google.com/technologies/partner-sites).
 
