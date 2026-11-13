@@ -36,4 +36,10 @@ internal object EngineSpec {
 
     /** End of a Matroska/WebM file fetched early for its `Cues` (seek index), which is usually far smaller. */
     const val CUES_TAIL_PREFETCH_BYTES = 1L * 1024 * 1024
+
+    /** Deadline of a pinned startup or index piece. */
+    const val PIN_DEADLINE_MS = 1_000
+
+    /** Deadline of a tail prefetch piece: later than the startup buffer so the head is fetched first. */
+    const val TAIL_PREFETCH_DEADLINE_MS = 3_000
 }
