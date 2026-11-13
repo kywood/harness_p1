@@ -20,8 +20,8 @@ internal fun MetadataDetailsPanel(details: MetadataDetails) {
     val context = LocalContext.current
     fun size(bytes: Long) = Formatter.formatFileSize(context, bytes)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-        Text(details.phase, style = MaterialTheme.typography.titleSmall)
-        if (details.source.isNotEmpty()) DetailLine(stringResource(R.string.metadata_source, details.source, details.peers))
+        Text(stringResource(details.stage.label, details.elapsedSec), style = MaterialTheme.typography.titleSmall)
+        details.origin?.let { DetailLine(stringResource(R.string.metadata_source, stringResource(it.label), details.peers)) }
         if (details.hasMetadata) {
             Text(details.name.orEmpty(), style = MaterialTheme.typography.titleMedium, maxLines = 2)
             DetailLine(stringResource(R.string.metadata_files, details.fileCount, size(details.totalSize)))
