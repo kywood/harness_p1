@@ -57,6 +57,8 @@ class TorrentEngine(private val context: Context) {
     private val readDemands = ReadDemandRegistry()
     private var priorityPins: Set<Int> = emptySet()
     @Volatile private var startTrace: PlaybackStartTrace? = null
+    /** File-end index pieces pinned like the startup buffer but not waited for ([StartupPrefetchPlan]). */
+    private var prefetchPieces: Set<Int> = emptySet()
     private val _pieceMap = MutableStateFlow(PieceMapSnapshot.EMPTY)
     val pieceMap = _pieceMap.asStateFlow()
     private val _metadataDetails = MutableStateFlow(MetadataDetails())
@@ -415,7 +417,7 @@ class TorrentEngine(private val context: Context) {
         val buffer = PlaybackBuffer.of(pieceLength, PlaybackBuffer.bytesPerSecond(selectedFileLength, playbackDurationMs) ?: EngineSpec.DEFAULT_BYTES_PER_SECOND)
         val window = SequentialPiecePlan.window(startPieceIndex, lastPieceIndex, buffer)
         val offsets = readDemands.offsets().filter { it in 0 until selectedFileLength }
-        val pins = startupPieces + offsets.flatMap { offset ->
+        val pins = startupPieces + prefetchPieces + offsets.flatMap { offset ->
             val first = ((selectedFileStartOffset + offset) / pieceLength).toInt()
             val missing = SequentialPiecePlan.nextMissing(first, lastPieceIndex, handle::havePiece) ?: first
             SequentialPiecePlan.window(missing, lastPieceIndex, buffer).toList()
@@ -508,6 +510,8 @@ class TorrentEngine(private val context: Context) {
         currentHandle?.let { applyDownloadOrder(it, playbackFocused = true) }
         startupPieces = StartupBufferPlan.required(selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
+        prefetchPieces = StartupPrefetchPlan.tailPieces(selectedFileLength, selectedFileStartOffset,
+            info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
         startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile!!.extension)
         updateStartupIndex()
@@ -517,7 +521,7 @@ class TorrentEngine(private val context: Context) {
     @Synchronized internal fun releasePlaybackPriority() {
         StrictMode.noteSlowCall("TorrentEngine.releasePlaybackPriority")
         seekRequests.beginSeek()
-        startupPieces = emptySet(); startupIndex = null
+        startupPieces = emptySet(); startupIndex = null; prefetchPieces = emptySet()
         readDemands.clear()
         runCatching { currentHandle?.clearPieceDeadlines()
             for (piece in firstPieceIndex..lastPieceIndex) currentHandle?.piecePriority(piece, Priority.DEFAULT)
@@ -631,6 +635,7 @@ class TorrentEngine(private val context: Context) {
         readDemands.clear()
         priorityPins = emptySet()
         startTrace = null
+        prefetchPieces = emptySet()
         worker?.interrupt()
         retiredWorkers.removeAll { !it.isAlive }
         worker?.takeIf { it.isAlive }?.let { retiredWorkers.add(it) }
