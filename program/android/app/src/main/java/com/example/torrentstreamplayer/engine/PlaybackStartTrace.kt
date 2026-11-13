@@ -32,12 +32,13 @@ internal class PlaybackStartTrace(
      */
     @Synchronized fun observe(range: IntRange, havePiece: (Int) -> Boolean): String? {
         if (range.isEmpty()) return null
+        // Past the limit nothing more is logged; skip rebuilding the piece array every second.
+        if (known != null && order.size >= pieceLimit) return null
         val previous = known
         val current = BooleanArray(range.last - range.first + 1) { havePiece(range.first + it) }
         known = current
         if (previous == null || previous.size != current.size)
             return "[$tag] resumed with ${current.count { it }}/${current.size} pieces"
-        if (order.size >= pieceLimit) return null
         val added = current.indices.filter { current[it] && !previous[it] }.take(pieceLimit - order.size)
         if (added.isEmpty()) return null
         order += added
