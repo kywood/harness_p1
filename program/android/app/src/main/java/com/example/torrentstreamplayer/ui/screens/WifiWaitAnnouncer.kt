@@ -13,7 +13,8 @@ import kotlinx.coroutines.launch
 /**
  * 받기를 시작한 뒤 부르는 함수 하나를 돌려준다(`design/specs/settings-wifi.md` 4절). 지금 새 다운로드가 Wi-Fi 대기로
  * 멈추면([waitsForWifi], [WifiWaitPolicy]) [snackbar]에 `info_waiting_for_wifi`를 띄운다. 재생 목록 카드·선택
- * 다운로드와 링크 추가 창이 모두 이것을 거쳐 어디서 받기를 시작하든 같게 동작한다.
+ * 다운로드와 링크 추가 창이 모두 이것을 거쳐 어디서 받기를 시작하든 같게 동작한다. 재생·준비 화면에서는 호스트를
+ * 그리지 않아 보이지 않는다(`AppSnackbarPolicy`).
  */
 @Composable
 internal fun rememberWifiWaitAnnouncer(snackbar: SnackbarHostState, waitsForWifi: Boolean): () -> Unit {

@@ -32,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +54,6 @@ import com.example.torrentstreamplayer.ui.components.SecondaryButton
 import com.example.torrentstreamplayer.ui.components.SectionCard
 import com.example.torrentstreamplayer.ui.components.TextAction
 import com.example.torrentstreamplayer.ui.components.TextActionTone
-import com.example.torrentstreamplayer.ui.components.rememberExternalLinkOpener
 import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
@@ -81,16 +79,7 @@ internal fun MagnetLinkInputScreen(
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
     }
     val snackbar = remember { SnackbarHostState() }
-    val openExternal = rememberExternalLinkOpener()
-    val browserUnavailable = stringResource(R.string.error_browser_unavailable)
-    var showUsageGuide by rememberSaveable { mutableStateOf(false) }
-    val footerActions = LegalLinkActions(
-        openUsageGuide = { showUsageGuide = true },
-        openExternal = { url -> if (!openExternal(url)) scope.launch { snackbar.showSnackbar(browserUnavailable) } },
-        openLicenses = onOpenLicenses,
-        privacyOptions = onPrivacyOptions
-    )
-    if (showUsageGuide) UsageGuideSheet(onDismiss = { showUsageGuide = false }, openExternal = openExternal)
+    val footerActions = rememberLegalLinkActions(snackbar, onOpenLicenses, onPrivacyOptions)
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -229,7 +218,7 @@ private fun Footer(versionName: String?, actions: LegalLinkActions) {
 
 @Composable
 private fun FooterLink(link: LegalLink, actions: LegalLinkActions) {
-    val onClick = actions.actionFor(link, link.url?.let { stringResource(it) }) ?: return
+    val onClick = actions.onClickFor(link) ?: return
     TextAction(
         text = stringResource(link.label),
         onClick = onClick,

@@ -1,12 +1,15 @@
 package com.example.torrentstreamplayer
 
 import android.app.Application
+import android.os.SystemClock
+import android.view.MotionEvent
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.data.ConnectionSource
@@ -37,7 +40,7 @@ import java.io.File
 
 /**
  * Wi-Fi 전용 + 모바일 데이터에서 덜 받은 영상을 메인에서 재생하면 확인 창이 뜨고(`design/specs/settings-wifi.md` 5절),
- * "이번만 재생"은 재생을 시작하고 "취소"는 아무것도 시작하지 않는다. 연결은 가짜 [ConnectionSource]로 MOBILE에 고정한다.
+ * "이번만 재생"은 재생을 시작하고 "취소"·뒤로·바깥 누름은 아무것도 시작하지 않는다. 연결은 가짜 [ConnectionSource]로 MOBILE에 고정한다.
  */
 @RunWith(AndroidJUnit4::class)
 class WifiOnlyPlaybackConfirmTest {
@@ -78,11 +81,16 @@ class WifiOnlyPlaybackConfirmTest {
     }
 
     @After fun tearDown() {
-        instrumentation.runOnMainSync {
-            model.stopStream()
-            model.stopDownloads()
+        try {
+            instrumentation.runOnMainSync {
+                model.stopStream()
+                model.downloads.stop()
+            }
+            // 정지는 비동기라 엔진이 아직 쓰는 중일 수 있다. 다른 계측 테스트처럼 쓰기가 끝난 뒤에 지운다.
+            model.downloads.awaitStoppedWrites(model.downloads.stoppedWriters())
+        } finally {
+            root.deleteRecursively()
         }
-        root.deleteRecursively()
     }
 
     /** 메타데이터만 있는(덜 받은) 토렌트를 격리된 저장소에 둔다. */
@@ -112,6 +120,30 @@ class WifiOnlyPlaybackConfirmTest {
             assertNull(model.mobilePlaybackConfirm.value)
             assertTrue(model.settings.value.wifiOnly)
         }
+        assertTrue(compose.onAllNodesWithText(text(R.string.mobile_play_confirm_title)).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test fun backDismissesWithoutStarting() {
+        askFromMain()
+        Espresso.pressBack()
+        compose.runOnIdle {
+            assertNull(model.mobilePlaybackConfirm.value)
+            assertEquals(AppScreen.Main(), model.screen.value)
+        }
+        assertTrue(compose.onAllNodesWithText(text(R.string.mobile_play_confirm_title)).fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test fun tapOutsideDismissesWithoutStarting() {
+        askFromMain()
+        // 확인 창 바깥(화면 왼쪽 위 모서리)을 누른다. 새 의존성(UiAutomator) 없이 터치를 주입한다.
+        val time = SystemClock.uptimeMillis()
+        listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP).forEach { action ->
+            val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, 1f, 1f, 0)
+            instrumentation.uiAutomation.injectInputEvent(event, true)
+            event.recycle()
+        }
+        compose.waitUntil(5_000) { model.mobilePlaybackConfirm.value == null }
+        compose.runOnIdle { assertEquals(AppScreen.Main(), model.screen.value) }
         assertTrue(compose.onAllNodesWithText(text(R.string.mobile_play_confirm_title)).fetchSemanticsNodes().isEmpty())
     }
 
