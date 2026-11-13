@@ -22,6 +22,9 @@ class VideoPlaybackPolicyTest {
             assertFalse(options.contains("--no-skip-frames"))
         }
     }
+    @Test fun koreanLegacySubtitlesAreReadAsCp949() {
+        assertTrue(VideoPlaybackPolicy.options(debug = false).contains("--subsdec-encoding=CP949"))
+    }
     @Test fun verboseNativeLoggingIsOnlyForDebugBuilds() {
         assertTrue(VideoPlaybackPolicy.options(debug = true).contains("-vvv"))
         assertFalse(VideoPlaybackPolicy.options(debug = false).contains("-vvv"))

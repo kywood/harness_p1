@@ -28,6 +28,13 @@ import com.example.torrentstreamplayer.ui.player.PlayerBottomPanel
 import com.example.torrentstreamplayer.ui.player.PlayerCenterControls
 import com.example.torrentstreamplayer.ui.player.PlayerErrorState
 import com.example.torrentstreamplayer.ui.player.PlayerMoreSheet
+import com.example.torrentstreamplayer.ui.player.PlayerNoticeArea
+import com.example.torrentstreamplayer.ui.player.PlayerSubtitleOptions
+import com.example.torrentstreamplayer.ui.player.PlayerSubtitles
+import com.example.torrentstreamplayer.ui.player.SubtitleSheet
+import com.example.torrentstreamplayer.ui.player.VlcTrackPlayer
+import com.example.torrentstreamplayer.ui.player.trackNoticeText
+import com.example.torrentstreamplayer.meta.PlayerSpec
 import com.example.torrentstreamplayer.ui.player.PlayerTimePill
 import com.example.torrentstreamplayer.ui.player.PlayerTopBar
 import com.example.torrentstreamplayer.ui.theme.PlaybackColors
@@ -79,12 +86,14 @@ private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VlcPlayerScreen(
+internal fun VlcPlayerScreen(
     fileName: String,
     torrentEngine: TorrentEngine,
     onBackClicked: () -> Unit, onAddDownload: (() -> Unit)? = null,
     initialPositionMs: Long = 0, onPositionChanged: (Long, Long) -> Unit = { _, _ -> },
-    onPlaybackCompleted: (Long) -> Unit = {}, onPlaybackExited: ((Long) -> Unit)? = null
+    onPlaybackCompleted: (Long) -> Unit = {}, onPlaybackExited: ((Long) -> Unit)? = null,
+    subtitleOptions: PlayerSubtitleOptions = PlayerSubtitleOptions(),
+    mobilePlayback: Boolean = false,
 ) {
     val context = LocalContext.current
     val resources = androidx.compose.ui.platform.LocalResources.current
@@ -124,6 +133,12 @@ fun VlcPlayerScreen(
     var showControls by remember { mutableStateOf(true) }
     var showSeekBarOnly by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
+    var showSubtitles by remember { mutableStateOf(false) }
+    var notices by remember { mutableStateOf(PlayerNoticeQueue()) }
+    var bottomPanelHeight by remember { mutableIntStateOf(0) }
+    // VLC events that change the track list; the subtitle session re-reads the tracks on each change.
+    var trackChanges by remember { mutableIntStateOf(0) }
+    var playbackStarted by remember(torrentEngine) { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(VideoZoomState()) }
     var viewport by remember { mutableStateOf(IntSize.Zero) }
 
@@ -148,8 +163,8 @@ fun VlcPlayerScreen(
     LaunchedEffect(showSeekBarOnly, isSeeking) {
         if (showSeekBarOnly && !isSeeking) { delay(1800); showSeekBarOnly = false }
     }
-    LaunchedEffect(showControls, isPlaying, zoom, isSeeking, showMore) {
-        if (showControls && isPlaying && !isSeeking && !showMore) {
+    LaunchedEffect(showControls, isPlaying, zoom, isSeeking, showMore, showSubtitles) {
+        if (showControls && isPlaying && !isSeeking && !showMore && !showSubtitles) {
             delay(3500)
             showControls = false
         }
@@ -183,6 +198,10 @@ fun VlcPlayerScreen(
                     }
                     MediaPlayer.Event.Playing -> {
                         isPlaying = true
+                        playbackStarted = true
+                    }
+                    MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> {
+                        trackChanges++
                     }
                     MediaPlayer.Event.Paused -> {
                         isPlaying = false
@@ -202,6 +221,33 @@ fun VlcPlayerScreen(
         }
     }
 
+    val scope = rememberCoroutineScope()
+    val languageChosen by rememberUpdatedState(subtitleOptions.onLanguageChosen)
+    // Created once per player with the settings of the moment it opens; later setting changes apply next time.
+    val subtitles = remember(playerHolder) {
+        playerHolder?.let { holder ->
+            PlayerSubtitles(SubtitleSession(VlcTrackPlayer(holder.mediaPlayer), subtitleOptions.autoSelect,
+                subtitleOptions.preferredLanguage), scope, EngineCommandQueue.shared.dispatcher) { languageChosen(it) }
+        }
+    }
+    LaunchedEffect(subtitles, playbackStarted) { if (playbackStarted) subtitles?.start() }
+    LaunchedEffect(subtitles, trackChanges) { if (trackChanges > 0) subtitles?.refresh() }
+    LaunchedEffect(subtitles, subtitleOptions.files, subtitleOptions.pending) {
+        subtitles?.updateFiles(subtitleOptions.files, subtitleOptions.pending)
+    }
+    LaunchedEffect(subtitles) {
+        subtitles?.autoPicked?.collect { notices = notices.add(PlayerNotice.SubtitleOn(it)) }
+    }
+    LaunchedEffect(mobilePlayback) { if (mobilePlayback) notices = notices.add(PlayerNotice.MobileData) }
+    val currentNotice = notices.current
+    LaunchedEffect(currentNotice) {
+        if (currentNotice != null) {
+            delay(PlayerSpec.NOTICE_MS)
+            notices = notices.next()
+        }
+    }
+    val subtitleSheet = subtitles?.sheet?.collectAsState()?.value ?: SubtitleSheetState()
+
     DisposableEffect(playerHolder, streamServer, lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_PAUSE && resumeApplied && totalLengthMs > 0)
@@ -211,6 +257,7 @@ fun VlcPlayerScreen(
         onDispose {
             lifecycle.removeObserver(observer)
             if (resumeApplied && totalLengthMs > 0) positionCallback(currentTimeMs, totalLengthMs)
+            subtitles?.close()
             if (playerHolder != null) playerHolder.releaseAsync(streamServer)
             else EngineCommandQueue.shared.post { streamServer.stop() } // Player failed to start; only the server is open.
         }
@@ -368,18 +415,13 @@ fun VlcPlayerScreen(
                         fileName = fileName,
                         stats = stringResource(R.string.player_stats, formatSpeed(downloadSpeedBytes),
                             downloadProgress.toInt(), numPeers),
-                        zoomLabel = String.format(Locale.US, "%.1f×", zoom.scale),
+                        zoomLabel = PlayerOverlayPolicy.zoomLabel(zoom.scale)
+                            .takeIf { PlayerOverlayPolicy.zoomChipVisible(zoom.scale) },
+                        subtitleLabel = subtitleSheet.selectedName?.let { trackNoticeText(it) },
                         landscape = landscape,
                         onBack = { exitPlayback() },
-                        onZoomOut = {
-                            zoom = zoom.transformed(0.8f, 0f, 0f,
-                                viewport.width.toFloat(), viewport.height.toFloat())
-                        },
+                        onSubtitles = { showSubtitles = true },
                         onZoomReset = { zoom = VideoZoomState() },
-                        onZoomIn = {
-                            zoom = zoom.transformed(1.25f, 0f, 0f,
-                                viewport.width.toFloat(), viewport.height.toFloat())
-                        },
                         onMore = { showMore = true },
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
@@ -431,17 +473,36 @@ fun VlcPlayerScreen(
                                 seekTo(targetTime)
                             }
                         },
-                        modifier = Modifier.align(Alignment.BottomCenter)
+                        modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged { bottomPanelHeight = it.height }
                     )
                 }
             }
+            PlayerNoticeArea(currentNotice, viewport.width, if (showControls) bottomPanelHeight else 0,
+                Modifier.align(Alignment.BottomStart))
             if (showMore) {
                 PlayerMoreSheet(
+                    zoomLabel = PlayerOverlayPolicy.zoomLabel(zoom.scale),
+                    onZoomOut = {
+                        zoom = zoom.transformed(0.8f, 0f, 0f, viewport.width.toFloat(), viewport.height.toFloat())
+                    },
+                    onZoomReset = { zoom = VideoZoomState() },
+                    onZoomIn = {
+                        zoom = zoom.transformed(1.25f, 0f, 0f, viewport.width.toFloat(), viewport.height.toFloat())
+                    },
                     onDismiss = { showMore = false },
                     onAddLink = onAddDownload?.let { add -> { showMore = false; add() } },
                     onRestart = {
                         showMore = false; resumeApplied = true; seekTo(0); positionCallback(0, totalLengthMs)
                     }
+                )
+            }
+            if (showSubtitles && subtitles != null) {
+                SubtitleSheet(
+                    state = subtitleSheet,
+                    onDismiss = { showSubtitles = false },
+                    onSelectSubtitle = { subtitles.selectSubtitle(it) },
+                    onSelectAudio = { subtitles.selectAudio(it) },
+                    selectFailed = subtitles.selectFailed,
                 )
             }
         }

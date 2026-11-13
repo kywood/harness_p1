@@ -6,6 +6,8 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.io.ByteArrayOutputStream
+import java.io.DataOutputStream
 
 class SettingsRepositoryTest {
     private class MemoryStore(var bytes: ByteArray? = null) : SettingsStore {
@@ -27,6 +29,20 @@ class SettingsRepositoryTest {
         assertEquals(AppSettings(), AppSettingsCodec.decode(byteArrayOf(0, 0)))
         val future = AppSettingsCodec.encode(custom).also { it[3] = (AppSettingsCodec.VERSION + 1).toByte() }
         assertEquals(AppSettings(), AppSettingsCodec.decode(future))
+    }
+
+    @Test fun subtitleLanguageRoundTripsAndVersionOneStillReads() {
+        val custom = AppSettings(autoSubtitles = false, subtitleLanguage = "en")
+        assertEquals(custom, AppSettingsCodec.decode(AppSettingsCodec.encode(custom)))
+        assertEquals(AppSettings(), AppSettingsCodec.decode(AppSettingsCodec.encode(AppSettings(subtitleLanguage = ""))))
+        val versionOne = ByteArrayOutputStream().also { bytes ->
+            DataOutputStream(bytes).use { out ->
+                out.writeInt(1)
+                out.writeBoolean(true)
+                out.writeBoolean(false)
+            }
+        }.toByteArray()
+        assertEquals(AppSettings(wifiOnly = true, autoSubtitles = false), AppSettingsCodec.decode(versionOne))
     }
 
     @Test fun updateSavesAndSurvivesANewRepository() = runBlocking {

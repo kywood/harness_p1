@@ -41,6 +41,7 @@ import com.example.torrentstreamplayer.engine.SubtitleSelectionPolicy
 import com.example.torrentstreamplayer.ui.navigation.AppNavigator
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import com.example.torrentstreamplayer.ui.navigation.PlaybackOrigin
+import java.io.File
 
 /** @param connections 연결 감시 포트. 앱은 [NetworkMonitor], 테스트는 가짜를 넣는다. */
 class MainViewModel @JvmOverloads internal constructor(
@@ -129,6 +130,12 @@ class MainViewModel @JvmOverloads internal constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     internal val subtitleFiles: StateFlow<List<SubtitleFile>> = playbackSource
         .flatMapLatest { it?.subtitleFiles ?: flowOf(emptyList()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), emptyList())
+
+    /** 재생 중인 영상과 함께 아직 받는 중인 자막 파일. 자막 시트에 "받는 중"으로 보인다. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    internal val pendingSubtitleFiles: StateFlow<List<File>> = playbackSource
+        .flatMapLatest { it?.pendingSubtitleFiles ?: flowOf(emptyList()) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(replayExpirationMillis = 0), emptyList())
 
     /** 자동으로 켤 자막: 영상 이름과 맞는 것 중 한국어 → 영어 → 첫 번째([SubtitleSelectionPolicy]). */
@@ -290,6 +297,9 @@ class MainViewModel @JvmOverloads internal constructor(
     fun setWifiOnly(enabled: Boolean) = updateSettings { it.copy(wifiOnly = enabled) }
 
     fun setAutoSubtitles(enabled: Boolean) = updateSettings { it.copy(autoSubtitles = enabled) }
+
+    /** 재생 화면에서 고른 자막 언어를 "선호 언어"로 기억한다(영상별이 아님, PR #131 PM 결정). */
+    fun rememberSubtitleLanguage(key: String) = updateSettings { it.copy(subtitleLanguage = key) }
 
     private fun updateSettings(change: (AppSettings) -> AppSettings) {
         viewModelScope.launch {

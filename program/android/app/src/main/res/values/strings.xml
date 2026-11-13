@@ -180,8 +180,8 @@
     <string name="action_usage_guide">이용 안내</string>
     <string name="action_confirm">확인</string>
     <string name="guide_rights_body">PiecePlay는 콘텐츠를 제공하거나 찾아 주지 않습니다. 재생할 링크는 직접 고르며, 저작권을 침해하는 이용에 대한 책임은 사용자에게 있습니다.</string>
-    <string name="guide_what_title">영상 하나만 받습니다</string>
-    <string name="guide_what_body">마그넷 링크나 .torrent 파일 주소를 넣으면, 다 받기 전에 앞부분부터 받아 바로 재생합니다. 토렌트 안에서 가장 큰 영상 파일 하나만 받고 나머지 파일은 받지 않습니다.</string>
+    <string name="guide_what_title">영상과 그 자막만 받습니다</string>
+    <string name="guide_what_body">마그넷 링크나 .torrent 파일 주소를 넣으면, 다 받기 전에 앞부분부터 받아 바로 재생합니다. 토렌트 안에서 가장 큰 영상 파일 하나와 그 영상의 자막 파일만 받고, 나머지 파일은 받지 않습니다.</string>
     <string name="guide_upload_title">올려 보내지 않습니다</string>
     <string name="guide_upload_body">받기만 하고 다른 사람에게 올려 보내지 않습니다. 다 받으면 바로 연결을 멈춥니다. 다만 토렌트 방식의 특성상, 연결된 사용자에게 이 기기의 IP 주소가 보입니다.</string>
     <string name="guide_storage_title">기기 안에만 저장합니다</string>
@@ -190,4 +190,30 @@
     <string name="guide_data_body">영상 크기만큼 데이터를 씁니다. 모바일 데이터에서는 요금이 나올 수 있으니 Wi-Fi에서 쓰는 것을 권합니다.</string>
     <string name="guide_ads_title">광고</string>
     <string name="guide_ads_body">메인과 재생 목록에 배너 광고가 나오고, 재생을 마친 뒤 가끔 전면 광고가 나옵니다. 재생하는 동안에는 광고가 나오지 않습니다.</string>
+
+    <!-- 자막 (design/specs/subtitles.md 4절) -->
+    <string name="label_subtitles">자막</string>
+    <string name="label_audio">음성</string>
+    <string name="subtitle_off">끄기</string>
+    <string name="subtitle_none">자막 없음</string>
+    <string name="track_untitled">트랙 %1$d</string>
+    <string name="track_duplicate" translatable="false">%1$s %2$d</string>
+    <string name="track_with_detail" translatable="false">%1$s (%2$s)</string>
+    <string name="tag_subtitle_file">파일</string>
+    <string name="tag_downloading">받는 중</string>
+    <string name="tag_download_failed">받지 못함</string>
+    <string name="tracks_loading">트랙을 확인하는 중…</string>
+    <string name="subtitle_auto_notice">자막: %1$s</string>
+    <string name="subtitle_file_suffix">%1$s(파일)</string>
+    <string name="lang_ko">한국어</string>
+    <string name="lang_en">영어</string>
+    <string name="lang_ja">일본어</string>
+    <string name="lang_zh">중국어</string>
+    <string name="error_track_select">트랙을 바꾸지 못했습니다. 다시 골라 주세요.</string>
+    <string name="cd_subtitles_on">자막, 켜짐: %1$s</string>
+    <string name="cd_subtitles_off">자막, 꺼짐</string>
+    <string name="cd_subtitle_file">%1$s, 자막 파일</string>
+    <string name="player_zoom">화면 확대</string>
+    <!-- PM 결정 5(PR #131): Wi-Fi 전용인데 모바일 데이터로 이어 재생할 때 한 번 보이는 알림 칩. 문구는 PM 지시 그대로. -->
+    <string name="notice_mobile_playback">모바일 데이터로 재생 중</string>
 </resources>
