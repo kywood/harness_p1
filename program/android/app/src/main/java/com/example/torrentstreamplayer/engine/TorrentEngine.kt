@@ -27,6 +27,8 @@ class TorrentEngine(private val context: Context) {
     private var sessionManager: SessionManager? = null
     @Volatile private var currentHandle: TorrentHandle? = null
     @Volatile private var activeRun = 0L
+    /** Run whose file and edge priorities are set; playback priorities set earlier would be overwritten by them. */
+    @Volatile private var prioritiesSetRun = -1L
     @Volatile var localVideo: File? = null
         private set
     private var worker: Thread? = null
@@ -37,6 +39,11 @@ class TorrentEngine(private val context: Context) {
     /** True while the selected torrent is active in the session and could be advertised to peers. */
     internal val isSharingTorrent: Boolean get() = runCatching {
         currentHandle?.let { !it.flags.and_(TorrentFlags.PAUSED).non_zero() } ?: false }.getOrDefault(false)
+    /** For tests: whether the selected torrent downloads in native sequential order ([DownloadOrderPolicy]). */
+    internal val sequentialDownload: Boolean get() = runCatching {
+        currentHandle?.let { it.flags.and_(TorrentFlags.SEQUENTIAL_DOWNLOAD).non_zero() } ?: false }.getOrDefault(false)
+    /** For tests: the native priority (0-7) of [piece], or null without a torrent. */
+    internal fun piecePriorityOf(piece: Int): Int? = runCatching { currentHandle?.piecePriority(piece)?.swig()?.toInt() }.getOrNull()
     internal val uploadedBytes: Long get() = runCatching { currentHandle?.status()?.allTimeUpload() ?: 0L }.getOrDefault(0L)
     private var checkpoint: TorrentCheckpoint? = null
     private var activeCache: TorrentCache? = null
@@ -265,9 +272,9 @@ class TorrentEngine(private val context: Context) {
                 val selectedPieceLength = torrentInfo.pieceLength().toLong()
                 val downloadCheckpoint = checkpoint
 
-                // Ascending deadlines follow playback; native sequential mode would favor the file start.
+                // Download-only tasks read from the file start; playback's deadline windows need native sequential off.
                 try {
-                    handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+                    applyDownloadOrder(handle, playbackFocused = prioritizePlayback)
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting sequential download flag: ${EngineFailureLog.describe(t)}")
                     onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
@@ -290,14 +297,8 @@ class TorrentEngine(private val context: Context) {
                     lastPieceIndex = filePieceRange.second
 
                     // Prioritize first and last pieces for video header / index metadata
-                    handle.piecePriority(firstPieceIndex, Priority.TOP_PRIORITY)
-                    if (firstPieceIndex + 1 <= lastPieceIndex) {
-                        handle.piecePriority(firstPieceIndex + 1, Priority.TOP_PRIORITY)
-                    }
-                    if (lastPieceIndex - 1 >= firstPieceIndex) {
-                        handle.piecePriority(lastPieceIndex - 1, Priority.TOP_PRIORITY)
-                    }
-                    handle.piecePriority(lastPieceIndex, Priority.TOP_PRIORITY)
+                    DownloadOrderPolicy.edgePieces(firstPieceIndex, lastPieceIndex)
+                        .forEach { handle.piecePriority(it, Priority.TOP_PRIORITY) }
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting piece priorities: ${EngineFailureLog.describe(t)}")
                     onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
@@ -306,6 +307,7 @@ class TorrentEngine(private val context: Context) {
 
                 if (prioritizePlayback) prioritizeOffset(0L)
                 startupPieces.filterNot { it in priorityWindow }.forEach { handle.setPieceDeadline(it, 5000) }
+                prioritiesSetRun = run
                 onMetadataReceived(selectedVideoFile?.name ?: "Video", selectedFileLength)
                 _metadataDetails.value = _metadataDetails.value.copy(phase = if (prioritizePlayback)
                     "초기 재생용 조각 확보 중…" else "파일 다운로드 중…")
@@ -382,6 +384,10 @@ class TorrentEngine(private val context: Context) {
         }.also { it.start() }
     }
 
+    private fun applyDownloadOrder(handle: TorrentHandle, playbackFocused: Boolean) {
+        if (DownloadOrderPolicy.order(playbackFocused).sequential) handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+        else handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+    }
     @Synchronized private fun updateStartupIndex() {
         val handle = currentHandle ?: return
         val index = startupIndex ?: return
@@ -496,8 +502,10 @@ class TorrentEngine(private val context: Context) {
     @Synchronized internal fun requestPlayback(): Boolean {
         StrictMode.noteSlowCall("TorrentEngine.requestPlayback")
         if (localVideo != null) return true
+        if (prioritiesSetRun != activeRun) return false
         val info = currentHandle?.torrentFile() ?: return false
         if (BuildConfig.DEBUG) startTrace?.let { Log.d(TAG, it.playbackRequested()) }
+        currentHandle?.let { applyDownloadOrder(it, playbackFocused = true) }
         startupPieces = StartupBufferPlan.required(selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
         startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
@@ -512,7 +520,9 @@ class TorrentEngine(private val context: Context) {
         startupPieces = emptySet(); startupIndex = null
         readDemands.clear()
         runCatching { currentHandle?.clearPieceDeadlines()
-            for (piece in firstPieceIndex..lastPieceIndex) currentHandle?.piecePriority(piece, Priority.DEFAULT) }
+            for (piece in firstPieceIndex..lastPieceIndex) currentHandle?.piecePriority(piece, Priority.DEFAULT)
+            currentHandle?.let { handle -> applyDownloadOrder(handle, playbackFocused = false)
+                DownloadOrderPolicy.edgePieces(firstPieceIndex, lastPieceIndex).forEach { handle.piecePriority(it, Priority.TOP_PRIORITY) } } }
         priorityWindow = IntRange.EMPTY; priorityPins = emptySet(); backgroundPiecePriority = -1
     }
     private fun playbackReady(): Boolean {
