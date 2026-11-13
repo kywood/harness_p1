@@ -275,9 +275,10 @@ private fun RoundControl(
 private fun PlayerOverlayPreview() {
     TorrentStreamPlayerTheme {
         Column(Modifier.background(PlaybackColors.Video)) {
-            PlayerTopBar("Big.Buck.Bunny.1080p.mkv", "↓ 1.20 MB/s · 35% · 피어 3명", "1.5×", "한국어(파일)", false,
+            val subtitle = stringResource(R.string.subtitle_file_suffix, stringResource(R.string.lang_ko))
+            PlayerTopBar("Big.Buck.Bunny.1080p.mkv", stringResource(R.string.player_stats, "1.20 MB/s", 35, 3), "1.5×", subtitle, false,
                 {}, {}, {}, {})
-            PlayerNoticeChip("자막: 한국어(파일)", ImageVector.vectorResource(R.drawable.ic_subtitles),
+            PlayerNoticeChip(stringResource(R.string.subtitle_auto_notice, subtitle), ImageVector.vectorResource(R.drawable.ic_subtitles),
                 Sizes.contentMaxWidth)
             PlayerCenterControls(true, null, {}, {}, {}, Modifier.align(Alignment.CenterHorizontally))
         }

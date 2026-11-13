@@ -86,7 +86,9 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
         loading = true
         error = null
         try { files = withContext(Dispatchers.IO) { loadFiles() } }
-        catch (e: Exception) { error = e.localizedMessage ?: resources.getString(R.string.stored_files_load_error) }
+        catch (e: Exception) {
+            error = InputFailureText.ownMessage(e, context) ?: resources.getString(R.string.stored_files_load_error)
+        }
         finally { loading = false }
     }
     Column(Modifier.fillMaxSize()) {
@@ -162,13 +164,12 @@ fun StoredFilesScreen(loadFiles: () -> List<StoredTorrentFile>,
                 scope.launch {
                     deleting = true
                     try {
-                        check(withContext(Dispatchers.IO) { deleteFile(file.path) }) {
-                            resources.getString(R.string.stored_files_delete_missing)
-                        }
+                        if (withContext(Dispatchers.IO) { deleteFile(file.path) }) refresh++
+                        else error = resources.getString(R.string.stored_files_delete_missing)
                         pending = null
-                        refresh++
                     } catch (e: Exception) {
-                        error = e.localizedMessage ?: resources.getString(R.string.stored_files_delete_failed)
+                        error = InputFailureText.ownMessage(e, context)
+                            ?: resources.getString(R.string.stored_files_delete_failed)
                         pending = null
                     } finally {
                         deleting = false

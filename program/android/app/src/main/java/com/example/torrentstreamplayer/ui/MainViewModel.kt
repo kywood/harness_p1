@@ -20,12 +20,14 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.example.torrentstreamplayer.R
 import com.example.torrentstreamplayer.data.AppSettings
 import com.example.torrentstreamplayer.data.ConnectionSource
 import com.example.torrentstreamplayer.data.ConnectionType
 import com.example.torrentstreamplayer.data.NetworkMonitor
 import com.example.torrentstreamplayer.data.settled
 import com.example.torrentstreamplayer.meta.NetworkSpec
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import com.example.torrentstreamplayer.data.PlaylistRepository
 import com.example.torrentstreamplayer.data.SettingsRepository
 import kotlinx.coroutines.flow.combine
@@ -86,14 +88,15 @@ class MainViewModel @JvmOverloads internal constructor(
     }
     /** Background thread: waits for queued engine stops and every stopped engine's disk writes. */
     private fun awaitStoppedWrites(writers: List<DownloadController>) {
-        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
+        if (!commands.awaitIdle()) throw TorrentFailure.STOP_PENDING.blocked()
         if (engine.isInitialized()) engine.value.awaitStoppedWrites()
         downloads.awaitStoppedWrites(writers)
     }
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { playlist.add(it) }; Unit },
         { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit },
-        describeFailure = { InputFailureText.message(it, application) }) }, onTaskAdded = ::saveQueuedLink)
+        describeFailure = { InputFailureText.message(it, application)
+            ?: application.getString(R.string.error_download_start_plain) }) }, onTaskAdded = ::saveQueuedLink)
 
 
     /** 대기 작업 기록과 재생 목록 삭제의 순서. 작업이 살았는지는 메인 스레드에서 본다([DownloadManager]는 메인 전용). */
@@ -114,7 +117,7 @@ class MainViewModel @JvmOverloads internal constructor(
     /** Stopped downloads may still be writing their files; waits for them on [Dispatchers.IO] before deleting. */
     suspend fun deleteStoredFile(path: String): Boolean {
         val writers = withContext(Dispatchers.Main.immediate) {
-            check(downloads.tasks.value.values.none { it.phase.stoppable }) { "파일을 삭제하려면 먼저 재생 목록의 다운로드를 중지해 주세요." }
+            if (downloads.tasks.value.values.any { it.phase.stoppable }) throw TorrentFailure.STOP_DOWNLOADS_FIRST.blocked()
             downloads.stoppedWriters()
         }
         return withContext(Dispatchers.IO) {
@@ -184,7 +187,7 @@ class MainViewModel @JvmOverloads internal constructor(
         val request = ++requestVersion
         val trimmed = magnetUrl.trim()
         if (trimmed.isEmpty()) {
-            setStream(StreamUiState.Error(getApplication<Application>().getString(com.example.torrentstreamplayer.R.string.error_empty_link)))
+            setStream(StreamUiState.Error(getApplication<Application>().getString(R.string.error_empty_link)))
             return
         }
 
@@ -205,7 +208,7 @@ class MainViewModel @JvmOverloads internal constructor(
             catch (e: Exception) {
                 if (request == requestVersion)
                     setStream(StreamUiState.Error(InputFailureText.message(e, getApplication())
-                        ?: "주소를 처리하지 못했습니다."))
+                        ?: getApplication<Application>().getString(R.string.error_input_failed)))
             }
         }
     }
@@ -214,7 +217,7 @@ class MainViewModel @JvmOverloads internal constructor(
         val key = com.example.torrentstreamplayer.engine.MagnetIdentity.key(magnet)
         downloads.start(magnet) { true }
         if (continueDownloading) { _activeKey.value = null; setStream(StreamUiState.Idle); return }
-        val source = downloads.borrow(key) ?: error("다운로드 작업을 연결하지 못했습니다.")
+        val source = downloads.borrow(key) ?: throw TorrentFailure.TASK_UNAVAILABLE.blocked()
         startSharedPlayback(magnet, request, source)
     }
     private fun startSharedPlayback(magnet: String, request: Long, source: TorrentEngine) {
@@ -225,7 +228,8 @@ class MainViewModel @JvmOverloads internal constructor(
             while (request == requestVersion) {
                 val task = _activeKey.value?.let { downloads.entry(it) }
                 if (task == null || task.phase == DownloadPhase.FAILED) {
-                    setStream(StreamUiState.Error(task?.error ?: "다운로드가 중지되었습니다."))
+                    setStream(StreamUiState.Error(task?.error
+                        ?: getApplication<Application>().getString(R.string.error_download_stopped)))
                     break
                 }
                 // requestPlayback/isPlaybackReady take the engine lock and query libtorrent synchronously.

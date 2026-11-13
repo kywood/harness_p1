@@ -31,6 +31,8 @@ import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /** 비활성 버튼의 투명도. */
 private const val DISABLED_ALPHA = 0.4f
@@ -111,9 +113,9 @@ private fun ButtonsPreview() {
             Modifier.background(MaterialTheme.colorScheme.background).padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            PrimaryButton("바로 재생", {}, Modifier.fillMaxWidth())
-            PrimaryButton("바로 재생", {}, Modifier.fillMaxWidth(), enabled = false)
-            SecondaryButton("재생 목록", {}, Modifier.fillMaxWidth())
+            PrimaryButton(stringResource(R.string.action_stream_play), {}, Modifier.fillMaxWidth())
+            PrimaryButton(stringResource(R.string.action_stream_play), {}, Modifier.fillMaxWidth(), enabled = false)
+            SecondaryButton(stringResource(R.string.action_open_playlist), {}, Modifier.fillMaxWidth())
         }
     }
 }

@@ -28,7 +28,7 @@ class StartupInitializationTest {
                 }
                 assertTrue(roots(activity.window.decorView).flatMap { it.semanticsOwner.getAllSemanticsNodes(true) }
                     .any { it.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription)
-                        ?.contains("PiecePlay 로고") == true })
+                        ?.contains(activity.getString(R.string.cd_app_logo)) == true })
                 model.stopStream()
                 assertFalse(model.isTorrentEngineInitialized)
             }

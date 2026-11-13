@@ -11,6 +11,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /**
  * 앱의 대화상자 하나의 모양: 삭제 확인, 링크 추가 등. [destructive]이면 확인 버튼을 `error` 색으로,
@@ -60,6 +62,7 @@ fun ConfirmDialog(
 @Composable
 private fun ConfirmDialogPreview() {
     TorrentStreamPlayerTheme {
-        ConfirmDialog("파일 삭제", "삭제한 파일은 되돌릴 수 없습니다.", "삭제", "취소", {}, {})
+        ConfirmDialog(stringResource(R.string.playlist_delete_title), stringResource(R.string.playlist_delete_message), stringResource(R.string.action_delete),
+            stringResource(R.string.action_cancel), {}, {})
     }
 }

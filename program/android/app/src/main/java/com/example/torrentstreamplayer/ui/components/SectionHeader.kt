@@ -12,6 +12,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /**
  * 목록 안 묶음 제목("다운로드", "재생", "정보"). `titleSmall` `onSurfaceVariant`, 화면 읽기는 제목으로 읽는다.
@@ -33,5 +35,5 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier, top: Dp = Spacin
 @Preview
 @Composable
 private fun SectionHeaderPreview() {
-    TorrentStreamPlayerTheme { SectionHeader("다운로드", top = Spacing.lg) }
+    TorrentStreamPlayerTheme { SectionHeader(stringResource(R.string.settings_section_download), top = Spacing.lg) }
 }

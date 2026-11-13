@@ -1,4 +1,5 @@
 package com.example.torrentstreamplayer.engine
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -12,7 +13,7 @@ internal class TorrentRemoval(private val downloads: File, private val state: Fi
         require(key.matches(KEY))
         fun keyed(root: File): File {
             val target = File(root, key)
-            require(target.canonicalFile.parentFile == root.canonicalFile) { "항목 저장 경로가 올바르지 않습니다." }
+            if (target.canonicalFile.parentFile != root.canonicalFile) throw TorrentFailure.ITEM_PATH.invalid()
             return target
         }
         val data = keyed(downloads)
@@ -21,9 +22,9 @@ internal class TorrentRemoval(private val downloads: File, private val state: Fi
             require(path.isNotBlank() && !File(path).isAbsolute)
             require(!path.split('/', '\\').first().matches(KEY_FOLDER))
             val file = File(downloads, path)
-            require(file.canonicalFile != downloads.canonicalFile &&
-                file.canonicalFile.toPath().startsWith(downloads.canonicalFile.toPath())) { "파일이 앱 저장 공간 밖을 가리킵니다." }
-            require(!file.isDirectory) { "개별 파일 대신 폴더를 삭제할 수 없습니다." }
+            if (file.canonicalFile == downloads.canonicalFile ||
+                !file.canonicalFile.toPath().startsWith(downloads.canonicalFile.toPath())) throw TorrentFailure.OUTSIDE_STORAGE.invalid()
+            if (file.isDirectory) throw TorrentFailure.FOLDER_DELETE.invalid()
             file
         }
         fun tree(folder: File): List<File> =
@@ -36,10 +37,10 @@ internal class TorrentRemoval(private val downloads: File, private val state: Fi
         val all = (dataFiles + legacy + cacheFiles).distinctBy { it.absolutePath }
         all.forEach { file ->
             ActiveTorrentFiles.requireUnused(file)
-            require(!Files.isSymbolicLink(file.toPath())) { "심볼릭 링크는 삭제하지 않습니다." }
+            if (Files.isSymbolicLink(file.toPath())) throw TorrentFailure.SYMLINK_DELETE.invalid()
             val target = file.canonicalFile.toPath()
             require(listOf(downloads, state).any { target != it.canonicalFile.toPath() && target.startsWith(it.canonicalFile.toPath()) })
-            check(protectedFiles.none { it.canonicalFile.toPath().startsWith(target) }) { "다른 항목에서 사용 중인 파일입니다." }
+            if (protectedFiles.any { it.canonicalFile.toPath().startsWith(target) }) throw TorrentFailure.ITEM_IN_USE.blocked()
         }
         all.forEach { Files.deleteIfExists(it.toPath()) }
     }

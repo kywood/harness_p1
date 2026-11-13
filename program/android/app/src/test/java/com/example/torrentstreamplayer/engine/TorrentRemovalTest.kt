@@ -1,4 +1,6 @@
 package com.example.torrentstreamplayer.engine
+import com.example.torrentstreamplayer.meta.TorrentFailure
+import com.example.torrentstreamplayer.meta.UserFacingFailure
 import java.io.File
 import org.junit.Assert.*
 import org.junit.Rule
@@ -34,9 +36,10 @@ class TorrentRemovalTest {
         val state = folder.newFolder("state")
         val own = file(downloads, "$key/movie.mkv")
         val outside = folder.newFile("outside.mkv")
-        assertThrows(IllegalArgumentException::class.java) {
+        val error = assertThrows(IllegalArgumentException::class.java) {
             TorrentRemoval(downloads, state).delete(key, listOf("../outside.mkv"))
         }
+        assertEquals(TorrentFailure.OUTSIDE_STORAGE, (error as UserFacingFailure).failure)
         assertTrue(own.exists()); assertTrue(outside.exists())
     }
     @Test fun anotherTorrentFolderAndStorageRootsCannotBeDeletedAsLegacyFiles() {
@@ -53,9 +56,10 @@ class TorrentRemovalTest {
         val state = folder.newFolder("state")
         val video = file(downloads, "$key/movie.mkv")
         val metadata = file(state, "$key/metadata.bin")
-        assertThrows(IllegalStateException::class.java) {
+        val error = assertThrows(IllegalStateException::class.java) {
             TorrentRemoval(downloads, state).delete(key, emptyList(), listOf(video))
         }
+        assertEquals(TorrentFailure.ITEM_IN_USE, (error as UserFacingFailure).failure)
         assertTrue(video.exists()); assertTrue(metadata.exists())
     }
     @Test fun invalidIdentityCannotNameStorageRootOrParent() {

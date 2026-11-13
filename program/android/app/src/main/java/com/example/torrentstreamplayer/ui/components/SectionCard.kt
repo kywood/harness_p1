@@ -14,6 +14,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /** 내용 묶음 카드: `surface`, 모서리 `medium`, 안쪽 여백 16dp. [onClick]을 주면 카드 전체가 눌린다. */
 @Composable
@@ -39,8 +41,8 @@ fun SectionCard(
 private fun SectionCardPreview() {
     TorrentStreamPlayerTheme {
         SectionCard {
-            Text("다운로드 조각", style = MaterialTheme.typography.titleMedium)
-            Text("파일 앞 → 뒤", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.piece_map_title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.piece_map_pending), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

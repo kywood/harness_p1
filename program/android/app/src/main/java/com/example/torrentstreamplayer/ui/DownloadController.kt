@@ -3,6 +3,7 @@ import android.util.Log
 import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentEngine
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 internal data class DownloadTaskState(val key: String? = null, val speed: Long = 0,
@@ -14,8 +15,8 @@ internal class DownloadController(private val scope: CoroutineScope,
     private val save: suspend (String) -> Unit,
     private val title: suspend (String, String) -> Unit,
     private val commands: EngineCommandQueue = EngineCommandQueue.shared,
-    /** Text for a failed start; null falls back to the generic message. Never show raw library messages. */
-    private val describeFailure: (Throwable) -> String? = InputFailureText::ownMessage) {
+    /** Text for a failed start, from registered strings only. Never show raw library messages. */
+    private val describeFailure: (Throwable) -> String) {
     private val lazyEngine = lazy(createEngine)
     val engine get() = lazyEngine.value
     private val mutableState = MutableStateFlow(DownloadTaskState())
@@ -29,7 +30,7 @@ internal class DownloadController(private val scope: CoroutineScope,
             try {
                 val resolved = withContext(Dispatchers.IO) { engine.resolveInput(input.trim()) }
                 val key = MagnetIdentity.key(resolved)
-                check(canStart(key)) { "재생 중인 영상은 이미 다운로드 중입니다." }
+                if (!canStart(key)) throw TorrentFailure.ALREADY_DOWNLOADING.blocked()
                 if (request != generation) return@launch
                 mutableState.value = DownloadTaskState(key = key)
                 save(resolved)
@@ -63,14 +64,14 @@ internal class DownloadController(private val scope: CoroutineScope,
             catch (error: Exception) {
                 if (request == generation) {
                     stopEngine()
-                    mutableState.value = DownloadTaskState(error = describeFailure(error) ?: "다운로드를 시작하지 못했습니다.")
+                    mutableState.value = DownloadTaskState(error = describeFailure(error))
                 }
             }
         }
     }
     /** Call from a background thread: waits for queued engine stops, then for their disk writes. */
     fun awaitStoppedWrites() {
-        check(commands.awaitIdle()) { "다운로드 종료를 기다리는 중입니다. 잠시 후 다시 삭제해 주세요." }
+        if (!commands.awaitIdle()) throw TorrentFailure.STOP_PENDING.blocked()
         if (lazyEngine.isInitialized()) engine.awaitStoppedWrites()
     }
     private fun stopEngine() {

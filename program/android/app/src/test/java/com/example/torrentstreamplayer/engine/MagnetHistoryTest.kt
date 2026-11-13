@@ -9,6 +9,15 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 class MagnetHistoryTest {
+    @Test fun unnamedMagnetGetsAPlaceholderTheScreenCanRecognize() {
+        history().add(magnet(1))
+        val saved = history().list().single()
+        val id = MagnetIdentity.key(magnet(1)).take(8)
+        assertEquals(id, MagnetHistory.placeholderId(saved.magnet, saved.title))
+        assertNull("받은 이름은 자리 표시가 아니다", MagnetHistory.placeholderId(saved.magnet, "Movie.mkv"))
+        assertNull("다른 마그넷의 자리 표시와 섞이지 않는다", MagnetHistory.placeholderId(magnet(2), saved.title))
+        assertNull(MagnetHistory.placeholderId("not a magnet", saved.title))
+    }
     @Test fun delayedPositionSaveCannotRestoreDeletedVideo() {
         history().add(magnet(1)); history().delete(magnet(1))
         history().savePosition(magnet(1), 15000, 60000)

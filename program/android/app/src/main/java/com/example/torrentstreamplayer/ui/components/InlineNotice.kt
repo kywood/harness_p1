@@ -24,6 +24,8 @@ import com.example.torrentstreamplayer.ui.theme.Shapes
 import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.Spacing
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
+import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.R
 
 /**
  * 카드·시트 안 안내 줄(`design/specs/error-recovery.md` 5절): `surfaceContainer` 바탕, `Shapes.small`, 안쪽
@@ -70,10 +72,10 @@ private fun InlineNoticePreview() {
             Modifier.background(MaterialTheme.colorScheme.surface).padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md)
         ) {
-            InlineNotice("재생 목록에 있는 영상입니다.")
+            InlineNotice(stringResource(R.string.open_link_in_playlist))
             InlineNotice(
-                "아직 공유 중인 사용자를 찾지 못했습니다. 계속 기다리거나, 재생 목록에서 받아 두고 나중에 보세요.",
-                actionLabel = "재생 목록에서 계속 받기",
+                stringResource(R.string.settings_wifi_paused_notice),
+                actionLabel = stringResource(R.string.action_open_playlist),
                 onAction = {}
             )
         }

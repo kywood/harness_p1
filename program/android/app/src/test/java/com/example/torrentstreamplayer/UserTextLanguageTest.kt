@@ -2,6 +2,7 @@ package com.example.torrentstreamplayer
 
 import com.example.torrentstreamplayer.engine.InvalidMagnetException
 import com.example.torrentstreamplayer.engine.MagnetIdentity
+import com.example.torrentstreamplayer.meta.TorrentFailure
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
@@ -23,10 +24,11 @@ class UserTextLanguageTest {
     }
 
     @Test fun everyRegisteredTorrentFailureHasAString() {
-        val failureKeys = strings.keys.filter { it.startsWith("failure_") }.toSet()
-        val expected = setOf("failure_invalid_magnet", "failure_metadata_timeout", "failure_metadata_decode",
-            "failure_no_video", "failure_download_setup", "failure_engine", "failure_unknown")
-        assertEquals(expected, failureKeys)
+        val failureKeys = strings.keys.filter { it.startsWith("failure_") }.toSet() - "failure_unknown"
+        val registered = TorrentFailure.entries.map { failure ->
+            R.string::class.java.fields.single { it.getInt(null) == failure.message }.name
+        }.toSet()
+        assertEquals("failure_ 문구는 TorrentFailure에 등록해 쓴다", failureKeys, registered - "error_link_generic")
         assertFalse("엔진 오류 문구는 예외 원문을 받지 않는다", strings.getValue("failure_engine").contains("%"))
     }
 
