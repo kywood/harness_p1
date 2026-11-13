@@ -7,6 +7,8 @@ import com.example.torrentstreamplayer.ui.SubtitleSnapshot
 import com.example.torrentstreamplayer.ui.TrackName
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -25,14 +27,22 @@ import java.util.concurrent.atomic.AtomicBoolean
  * the sheet). Every session call runs on [player] — the engine command queue, which also orders the player's
  * release — and results come back to [scope] (the screen's main-thread scope).
  *
+ * Subtitle file copies ([copies]) are made on [io] before the session sees the files, so file work never holds the
+ * engine command queue; the session only looks the copies up ([SubtitleCopies.copyOf]). A file change started later
+ * wins: an earlier one whose copies finish afterwards is dropped (generation counter [fileGeneration]).
+ *
  * @param onLanguageChosen the viewer picked a subtitle with a language; saved as the preferred language.
  */
 internal class PlayerSubtitles(
     private val session: SubtitleSession,
     private val scope: CoroutineScope,
     private val player: CoroutineDispatcher,
+    private val copies: SubtitleCopies? = null,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
     private val onLanguageChosen: (String) -> Unit,
 ) {
+    /** Main thread only: the latest [updateFiles] call. */
+    private var fileGeneration = 0L
     private val closed = AtomicBoolean(false)
     private val sheetOpen = AtomicBoolean(false)
     private val mutableSheet = MutableStateFlow(SubtitleSheetState())
@@ -61,7 +71,13 @@ internal class PlayerSubtitles(
         refreshes.trySend(Unit)
     }
 
-    fun updateFiles(ready: List<SubtitleFile>, pending: List<File>) = launchRun { session.updateFiles(ready, pending) }
+    fun updateFiles(ready: List<SubtitleFile>, pending: List<File>) {
+        val generation = ++fileGeneration
+        scope.launch {
+            if (copies != null) withContext(io) { ready.forEach { copies.prepare(it.file) } }
+            if (generation == fileGeneration) run { session.updateFiles(ready, pending) }
+        }
+    }
 
     /** The sheet opened or closed. A failure still on its way when the sheet closes is dropped, not shown later. */
     fun sheetShown(open: Boolean) {
@@ -85,10 +101,12 @@ internal class PlayerSubtitles(
         if (!result.first) reportFailure()
     }
 
-    /** Call before releasing the player; later calls do nothing. */
+    /** Call before releasing the player; later calls do nothing. The copies are removed on [io]. */
     fun close() {
         closed.set(true)
         refreshes.close()
+        // Not on [scope], which is cancelled with the screen: a plain task on the shared IO pool.
+        copies?.let { store -> io.asExecutor().execute { store.clear() } }
     }
 
     private fun reportFailure() {

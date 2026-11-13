@@ -33,7 +33,8 @@ internal data class PlayerSubtitleOptions(
  * 재생기 하나의 자막 연결. [player]마다 한 번 만들고(그때의 설정을 쓴다, 재생 중 바뀐 설정은 다음 재생부터),
  * [running](재생 중이고 버퍼링이 아님)·[trackChanges](VLC 트랙 이벤트 수)·엔진 자막 파일이 바뀔 때 세션에 알린다.
  * [running]인 동안만 자막 파일 대기 시간을 센다([PlaybackClock]). CP949 자막의 UTF-8 사본([SubtitleCopies])은 앱 캐시
- * `subtitle_copies/`에 두고 재생이 끝나면 지운다. 재생기를 놓기 전에 호출하는 쪽이 [PlayerSubtitles.close]를 부른다.
+ * `subtitle_copies/`에 IO 디스패처에서 만들고(첫 사본 전에 이전 재생의 남은 사본을 지운다), [PlayerSubtitles.close] 때
+ * 지운다. 재생기를 놓기 전에 호출하는 쪽이 [PlayerSubtitles.close]를 부른다.
  */
 @Composable
 internal fun rememberPlayerSubtitles(
@@ -50,13 +51,11 @@ internal fun rememberPlayerSubtitles(
     val subtitles = remember(player) {
         player?.let {
             val session = SubtitleSession(VlcTrackPlayer(it), options.autoSelect, options.preferredLanguage,
-                clock::elapsedMs, copies::prepare)
-            PlayerSubtitles(session, scope, EngineCommandQueue.shared.dispatcher) { key -> languageChosen(key) }
+                clock::elapsedMs, copies::copyOf)
+            PlayerSubtitles(session, scope, EngineCommandQueue.shared.dispatcher, copies) { key ->
+                languageChosen(key)
+            }
         }
-    }
-    DisposableEffect(copies) {
-        EngineCommandQueue.shared.post { copies.clear() }
-        onDispose { EngineCommandQueue.shared.post { copies.clear() } }
     }
     LaunchedEffect(clock, running) { clock.setRunning(running) }
     LaunchedEffect(subtitles, running) { if (running) subtitles?.start() }
