@@ -292,14 +292,8 @@ class TorrentEngine(private val context: Context) {
                     lastPieceIndex = filePieceRange.second
 
                     // Prioritize first and last pieces for video header / index metadata
-                    handle.piecePriority(firstPieceIndex, Priority.TOP_PRIORITY)
-                    if (firstPieceIndex + 1 <= lastPieceIndex) {
-                        handle.piecePriority(firstPieceIndex + 1, Priority.TOP_PRIORITY)
-                    }
-                    if (lastPieceIndex - 1 >= firstPieceIndex) {
-                        handle.piecePriority(lastPieceIndex - 1, Priority.TOP_PRIORITY)
-                    }
-                    handle.piecePriority(lastPieceIndex, Priority.TOP_PRIORITY)
+                    DownloadOrderPolicy.edgePieces(firstPieceIndex, lastPieceIndex)
+                        .forEach { handle.piecePriority(it, Priority.TOP_PRIORITY) }
                     prioritiesSetRun = run
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting piece priorities: ${EngineFailureLog.describe(t)}")
