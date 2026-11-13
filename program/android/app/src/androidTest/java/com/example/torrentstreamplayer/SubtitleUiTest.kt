@@ -124,7 +124,11 @@ class SubtitleUiTest {
             await(remainingMs(), "Sintel did not start; this test needs Sintel peers or its web seed") {
                 model.uiState.value is StreamUiState.Playing
             }
-            await(remainingMs(), "Sintel subtitle files were not downloaded") { model.subtitleFiles.value.isNotEmpty() }
+            // subtitleFiles only updates while the player screen collects it, and the compose rule's clock moves
+            // only inside compose waits, so a plain sleep loop would read an empty list forever.
+            compose.waitUntil("Sintel subtitle files were downloaded", remainingMs()) {
+                model.subtitleFiles.value.isNotEmpty()
+            }
             val onPrefix = text(R.string.cd_subtitles_on, "")
             // Sintel has no Korean file, so the English file is picked: the button reads "자막, 켜짐: 영어(파일)".
             while (compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true).fetchSemanticsNodes()
