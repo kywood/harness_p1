@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class SubtitleDownloadsTest {
     @get:Rule val temp = TemporaryFolder()
@@ -60,6 +61,13 @@ class SubtitleDownloadsTest {
         restored.select(plan, 0, pieceLength, root)
         restored.restore(saved)
         assertEquals(listOf("v.ko.srt"), restored.files.value.map { it.file.name })
+        assertEquals("nothing downloads the rest without a handle", emptyList<File>(), restored.pending.value)
+
+        val unsaved = SubtitleDownloads()
+        unsaved.select(plan, 0, pieceLength, root)
+        unsaved.restore(null)
+        assertEquals(emptyList<File>(), unsaved.pending.value)
+        assertFalse(unsaved.hasPending)
 
         restored.restore(byteArrayOf(1, 2))
         restored.clear()

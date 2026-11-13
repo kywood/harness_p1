@@ -100,19 +100,21 @@ internal class SubtitleDownloads {
 
     /**
      * Restores completion saved by [encodeCompleted] for an already complete video, which never gets a handle.
-     * Only files still planned and present on disk with their full size are published.
+     * Only files still planned and present on disk with their full size are published. The others leave the plan:
+     * without a handle nothing downloads them, so they must not stay [pending].
      */
     @Synchronized fun restore(saved: ByteArray?) {
         val indexes = runCatching {
-            DataInputStream(ByteArrayInputStream(saved ?: return)).use { input ->
+            DataInputStream(ByteArrayInputStream(saved ?: ByteArray(0))).use { input ->
                 val count = input.readInt()
                 require(count in 0..planned.size)
                 List(count) { input.readInt() }
             }
-        }.getOrNull() ?: return
+        }.getOrNull().orEmpty()
         val present = planned.filter { (candidate, file) ->
             candidate.index in indexes && file.isFile && file.length() == candidate.size
         }
+        planned = present
         completed += present.map { it.first.index }
         publish()
     }
