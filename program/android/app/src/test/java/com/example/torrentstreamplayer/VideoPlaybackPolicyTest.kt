@@ -25,6 +25,13 @@ class VideoPlaybackPolicyTest {
     @Test fun noSubtitleEncodingIsForcedOnVlc() {
         assertFalse(VideoPlaybackPolicy.options(debug = false).any { it.startsWith("--subsdec-encoding") })
     }
+    @Test fun vlcDoesNotAddSubtitleFilesOnItsOwn() {
+        listOf(true, false).forEach { debug ->
+            val options = VideoPlaybackPolicy.options(debug)
+            assertTrue(options.contains("--no-sub-autodetect-file"))
+            assertFalse(options.contains("--sub-autodetect-file"))
+        }
+    }
     @Test fun verboseNativeLoggingIsOnlyForDebugBuilds() {
         assertTrue(VideoPlaybackPolicy.options(debug = true).contains("-vvv"))
         assertFalse(VideoPlaybackPolicy.options(debug = false).contains("-vvv"))
