@@ -533,6 +533,8 @@ class TorrentEngine(private val context: Context) {
         if (localVideo != null) return true
         val handle = currentHandle ?: return false
         if (firstPieceIndex < 0 || lastPieceIndex < 0) return false
+        // Polled every 250 ms: finding the index here, not in the 1 s loop, saves up to a second per step.
+        if (startupIndex?.ready == false) updateStartupIndex()
         if (startupIndex?.ready == false) return false
         return try {
             val required = startupPieces

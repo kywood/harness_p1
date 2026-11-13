@@ -17,6 +17,18 @@ class StartupIndexStateTest {
         assertEquals(setOf(2), index.update { true })
         assertTrue(index.ready)
     }
+    @Test fun pollingAfterTheIndexIsReadyIsFreeAndAddsNothing() {
+        val index = StartupIndexState(video(), 24, 0, 8, "mp4")
+        index.update { true }
+        var checks = 0
+        repeat(10) { assertEquals(emptySet<Int>(), index.update { checks++; true }) }
+        assertEquals(0, checks)
+    }
+    @Test fun pollingWhileAPieceIsMissingKeepsAskingForTheSamePieces() {
+        val index = StartupIndexState(video(), 24, 0, 8, "mp4")
+        repeat(3) { assertEquals(setOf(2), index.update { it < 2 }) }
+        assertFalse(index.ready)
+    }
     @Test fun missingIndexRemainsBlockedUntilItsPieceIsVerified() {
         val index = StartupIndexState(video(), 24, 0, 8, "mp4")
         assertEquals(setOf(2), index.update { it < 2 })
