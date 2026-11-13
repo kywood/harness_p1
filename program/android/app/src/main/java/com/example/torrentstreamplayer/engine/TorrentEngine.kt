@@ -18,6 +18,8 @@ import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
 import java.io.File
 import com.example.torrentstreamplayer.meta.EngineSpec
+import com.example.torrentstreamplayer.meta.MetadataOrigin
+import com.example.torrentstreamplayer.meta.MetadataStage
 import com.example.torrentstreamplayer.meta.TorrentFailure
 import com.example.torrentstreamplayer.meta.TorrentStorageDir
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -159,9 +161,9 @@ class TorrentEngine(private val context: Context) {
                 check(teardown.await()) { "Previous download is still stopping" }
                 if (BuildConfig.DEBUG) Log.d(TAG, "Fetching magnet metadata...")
                 val cachedMetadata = cache.read("metadata")
-                _metadataDetails.value = MetadataDetails(phase = if (cachedMetadata == null)
-                    "네트워크 세션 준비 중…" else "저장된 토렌트 정보 확인 중…",
-                    source = if (cachedMetadata == null) "네트워크" else "저장된 메타데이터")
+                _metadataDetails.value = if (cachedMetadata == null)
+                    MetadataDetails(stage = MetadataStage.PREPARING_SESSION, origin = MetadataOrigin.NETWORK)
+                    else MetadataDetails(stage = MetadataStage.CHECKING_SAVED, origin = MetadataOrigin.SAVED)
                 val (metadataBytes, session) = try {
                     MetadataStartup.load(cachedMetadata, { ensureStarted(run) }, { Thread.sleep(500) }) { session ->
                         MetadataMonitor(session) { if (run == activeRun) _metadataDetails.value = it }
@@ -315,8 +317,8 @@ class TorrentEngine(private val context: Context) {
                 startupPieces.filterNot { it in priorityWindow }.forEach { handle.setPieceDeadline(it, 5000) }
                 prioritiesSetRun = run
                 onMetadataReceived(selectedVideoFile?.name ?: "Video", selectedFileLength)
-                _metadataDetails.value = _metadataDetails.value.copy(phase = if (prioritizePlayback)
-                    "초기 재생용 조각 확보 중…" else "파일 다운로드 중…")
+                _metadataDetails.value = _metadataDetails.value.copy(stage = if (prioritizePlayback)
+                    MetadataStage.STARTUP_PIECES else MetadataStage.DOWNLOADING)
 
                 // Progress polling loop
                 while (run == activeRun && activeSession.isRunning && currentHandle != null) {
@@ -368,7 +370,7 @@ class TorrentEngine(private val context: Context) {
                             val completeMap = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { true }
                             _activeDownload.value = DownloadSnapshot(maxFileSize, maxFileSize, candidate.path, completeMap)
                             runCatching { cache.write("progress", _activeDownload.value!!.encode()) }
-                            _metadataDetails.value = _metadataDetails.value.copy(phase = "다운로드 완료")
+                            _metadataDetails.value = _metadataDetails.value.copy(stage = MetadataStage.COMPLETE)
                             downloadSpeedBytes = 0L
                             _pieceMap.value = PieceMapSnapshot.capture(firstPieceIndex, lastPieceIndex) { true }
                             onProgress(100f, 0L)
