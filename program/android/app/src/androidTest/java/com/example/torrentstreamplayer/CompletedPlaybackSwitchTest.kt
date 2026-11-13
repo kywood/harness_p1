@@ -24,7 +24,7 @@ class CompletedPlaybackSwitchTest {
             override fun getCacheDir() = File(root, "cache").apply { mkdirs() }
             override fun getNoBackupFilesDir() = File(root, "private").apply { mkdirs() }
         }
-        val model = MainViewModel(app)
+        val model = MainViewModel(app, FixedConnection())
         val data = ByteArray(32768)
         val buffer = java.nio.ByteBuffer.wrap(data)
         buffer.putInt(16).put("ftyp".toByteArray()).putLong(0).putInt(32744).put("mdat".toByteArray())

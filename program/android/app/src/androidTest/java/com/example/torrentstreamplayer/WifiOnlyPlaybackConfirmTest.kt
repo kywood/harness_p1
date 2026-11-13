@@ -11,6 +11,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.espresso.Espresso
+import androidx.test.espresso.action.ViewActions
+import androidx.test.espresso.matcher.RootMatchers
+import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.data.ConnectionSource
@@ -129,7 +132,9 @@ class WifiOnlyPlaybackConfirmTest {
 
     @Test fun backDismissesWithoutStarting() {
         askFromMain()
-        Espresso.pressBack()
+        // Aimed at the dialog's window: right after it opens, Espresso's default root can still be the activity
+        // window, which then never regains focus while the dialog is up.
+        Espresso.onView(ViewMatchers.isRoot()).inRoot(RootMatchers.isDialog()).perform(ViewActions.pressBack())
         compose.runOnIdle {
             assertNull(model.mobilePlaybackConfirm.value)
             assertEquals(AppScreen.Main(), model.screen.value)

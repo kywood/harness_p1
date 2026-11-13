@@ -42,7 +42,7 @@ class QuickDownloadResumeTest {
                 "application/x-bittorrent", extra.inputStream(), extra.size.toLong())
         }
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        val model = MainViewModel(app)
+        val model = MainViewModel(app, FixedConnection())
         server.start()
         try {
             instrumentation.runOnMainSync { model.startStreaming(playing) }

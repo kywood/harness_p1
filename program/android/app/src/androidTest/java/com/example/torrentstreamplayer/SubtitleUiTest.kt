@@ -164,7 +164,8 @@ class SubtitleUiTest {
     @Test fun koreanSmiAndSrtOpenInVlc() {
         val dir = File(context.cacheDir, "subtitle-ui-" + System.nanoTime()).apply { mkdirs() }
         try {
-            val image = File(dir, "frame.png")
+            // In its own folder: VLC would pick up frame.*.srt beside it by itself and list a third track.
+            val image = File(dir, "video/frame.png").apply { parentFile?.mkdirs() }
             image.outputStream().use { out ->
                 Bitmap.createBitmap(640, 360, Bitmap.Config.ARGB_8888).also { Canvas(it).drawColor(Color.DKGRAY) }
                     .compress(Bitmap.CompressFormat.PNG, 100, out)
@@ -173,7 +174,9 @@ class SubtitleUiTest {
                 writeText("1\n00:00:00,000 --> 00:00:30,000\n한글 자막 SRT 확인\n", Charsets.UTF_8)
             }
             val smi = File(dir, "frame.kor.smi").apply {
-                writeBytes(("<SAMI><BODY><SYNC Start=0><P Class=KRCC>한글 자막 SMI 확인</P></BODY></SAMI>\n")
+                // The closing SYNC gives the line an end time, like the .srt line.
+                writeBytes(("<SAMI><BODY><SYNC Start=0><P Class=KRCC>한글 자막 SMI 확인</P>" +
+                    "<SYNC Start=30000><P Class=KRCC>&nbsp;</P></BODY></SAMI>\n")
                     .toByteArray(Charset.forName("x-windows-949")))
             }
             val vlc = LibVLC(context, VideoPlaybackPolicy.options(debug = false))
@@ -196,7 +199,8 @@ class SubtitleUiTest {
                     }, Modifier.fillMaxSize())
                 }
             }
-            await(5_000, "video layout was not created") { layout.get() != null }
+            // The compose rule drives the frame clock; a plain sleep loop would never let AndroidView compose.
+            compose.waitUntil(5_000) { layout.get() != null }
             instrumentation.runOnMainSync {
                 player.attachViews(layout.get(), null, false, false)
                 Media(vlc, Uri.fromFile(image)).also {
@@ -229,6 +233,8 @@ class SubtitleUiTest {
             assertEquals(2, fileRows.size)
             for (row in fileRows) {
                 assertTrue("VLC refused subtitle track ${row.name}", session.selectSubtitle(row.id))
+                // A still image barely moves the clock, so a track picked later gets no line until it reads again.
+                player.time = 0
                 Thread.sleep(1_500)
                 val shot = instrumentation.uiAutomation.takeScreenshot()
                 assertNotNull(shot)

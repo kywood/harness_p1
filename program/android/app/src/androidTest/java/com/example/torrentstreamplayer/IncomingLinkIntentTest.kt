@@ -92,6 +92,8 @@ class IncomingLinkIntentTest {
 
     @Test fun aLinkArrivingWhilePreparingOffersOnlySavingAndKeepsPlayback() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            var launchIntent: Intent? = null
+            scenario.onActivity { launchIntent = it.intent }
             try {
                 withModel(scenario) { it.playFromMain(other) }
                 assertTrue(withModel(scenario) { it.uiState.value !is StreamUiState.Idle })
@@ -108,6 +110,9 @@ class IncomingLinkIntentTest {
                 withModel(scenario) { it.cancelToMain() }
                 val model = withModel(scenario) { it }
                 runBlocking { model.deleteSavedMagnet(other) }
+                // onNewIntent calls setIntent; ActivityScenario ignores lifecycle events of an activity whose intent
+                // no longer matches the one it launched, so close() would wait for DESTROYED forever.
+                scenario.onActivity { it.intent = launchIntent }
             }
         }
     }
