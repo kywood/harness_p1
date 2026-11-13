@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.state.ToggleableState
 import com.example.torrentstreamplayer.R
@@ -78,7 +79,7 @@ internal fun BulkSelectionActions(keys: List<String>, selected: Set<String>,
     }
     pending?.let { targets ->
         ConfirmDialog(
-            title = stringResource(R.string.bulk_delete_title, targets.size),
+            title = pluralStringResource(R.plurals.bulk_delete_title, targets.size, targets.size),
             message = description,
             confirmLabel = stringResource(if (busy) R.string.action_deleting else R.string.action_delete),
             dismissLabel = stringResource(R.string.action_cancel),
@@ -89,7 +90,7 @@ internal fun BulkSelectionActions(keys: List<String>, selected: Set<String>,
                     try {
                         val removed = withContext(Dispatchers.IO) { BulkSelection.delete(targets) { delete(it) } }
                         onSelection(selected - removed)
-                        if (removed.size < targets.size) error = resources.getString(R.string.bulk_delete_partial, targets.size - removed.size)
+                        if (removed.size < targets.size) error = (targets.size - removed.size).let { resources.getQuantityString(R.plurals.bulk_delete_partial, it, it) }
                         pending = null
                         onChanged()
                     } finally {
