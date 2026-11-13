@@ -24,7 +24,8 @@ class PlaylistPresentationTest {
     private fun verifyQuickActions(link: String, position: java.util.concurrent.atomic.AtomicLong, added: java.util.concurrent.atomic.AtomicBoolean) {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity -> host = activity; activity.setContent {
-                MagnetHistoryScreen({ listOf(SavedMagnet(link, "Resume video", 1, lastPositionMs = position.get())) }, {}, {}, {},
+                // The title must not contain the "Resume" label: nodes() matches the first node containing it.
+                MagnetHistoryScreen({ listOf(SavedMagnet(link, "Quick action video", 1, lastPositionMs = position.get())) }, {}, {}, {},
                     onAddDownload = { added.set(true) }, onResetPosition = { position.set(0) })
             } }
             await { nodes(s(R.string.playlist_resume, "").trim()).isNotEmpty() }

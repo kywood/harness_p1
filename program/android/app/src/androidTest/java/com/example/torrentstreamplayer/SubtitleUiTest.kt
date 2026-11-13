@@ -182,7 +182,18 @@ class SubtitleUiTest {
             sintelStage("subtitle button shown", STAGE_OFF_MS) { shown(buttonPrefix).also(::showControls) }
             compose.onAllNodes(hasDescriptionStarting(buttonPrefix), useUnmergedTree = true)[0].performClick()
             sintelStage("open sheet lists Sintel.en.srt by itself", STAGE_SUBTITLE_ON_MS) { sintelRowShown() }
-            Espresso.pressBack()
+            // One Back only lowers a fully open sheet to half; press again (at most once a second) until it is gone,
+            // so the taps that follow land on the player and not on a sheet row such as "끄기".
+            var lastBack = 0L
+            sintelStage("sheet closed", STAGE_OFF_MS) {
+                !sintelRowShown().also { open ->
+                    val now = System.currentTimeMillis()
+                    if (open && now - lastBack > 1_000) {
+                        lastBack = now
+                        Espresso.pressBack()
+                    }
+                }
+            }
             // Sintel has no Korean file, so the English file is picked: the button reads "자막, 켜짐: 영어(파일)".
             sintelStage("subtitle files downloaded and one turned on automatically", STAGE_SUBTITLE_ON_MS) {
                 model.subtitleFiles.value.isNotEmpty() &&
