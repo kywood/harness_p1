@@ -42,15 +42,20 @@ class SubtitleMenuPlanTest {
         val embeddedEnglish = PlayerTrack(2, "Track 2 - [English]")
         val fileEnglish = added("m.en.srt", 10, SubtitleLanguage.ENGLISH)
         val fileKorean = added("m.ko.srt", 11, SubtitleLanguage.KOREAN)
+        fun pick(key: String?, embedded: List<PlayerTrack>, externals: List<ExternalSubtitle>) =
+            SubtitleAutoPolicy.choose(key, embedded, externals)?.trackId
         assertEquals("preferred-language file first", 11,
-            SubtitleAutoPolicy.choose(null, listOf(embeddedKorean), listOf(fileEnglish, fileKorean)))
-        assertEquals("then a preferred-language embedded track", 1,
-            SubtitleAutoPolicy.choose(null, listOf(embeddedKorean), listOf(fileEnglish)))
-        assertEquals("then the file policy", 10, SubtitleAutoPolicy.choose(null, listOf(embeddedEnglish), listOf(fileEnglish)))
-        assertEquals("then embedded Korean", 1, SubtitleAutoPolicy.choose("ja", listOf(embeddedKorean), emptyList()))
-        assertNull(SubtitleAutoPolicy.choose(null, listOf(embeddedEnglish), emptyList()))
+            pick(null, listOf(embeddedKorean), listOf(fileEnglish, fileKorean)))
+        assertEquals("then a preferred-language embedded track", 1, pick(null, listOf(embeddedKorean), listOf(fileEnglish)))
+        assertEquals("then the file policy", 10, pick(null, listOf(embeddedEnglish), listOf(fileEnglish)))
+        assertEquals("then embedded Korean", 1, pick("ja", listOf(embeddedKorean), emptyList()))
+        assertNull(pick(null, listOf(embeddedEnglish), emptyList()))
         val otherEpisode = added("e2.ko.srt", 12, SubtitleLanguage.KOREAN, matches = false)
-        assertNull("a file the plan does not allow is skipped", SubtitleAutoPolicy.choose(null, emptyList(), listOf(otherEpisode)))
+        assertNull("a file the plan does not allow is skipped", pick(null, emptyList(), listOf(otherEpisode)))
+        val koreanOnTheWay = ExternalSubtitle(File("m.ko.srt"), null, ExternalSubtitleState.DOWNLOADING)
+        assertEquals("a stand-in while the preferred file downloads", AutoSubtitleChoice(10, final = false),
+            SubtitleAutoPolicy.choose(null, emptyList(), listOf(fileEnglish, koreanOnTheWay)))
+        assertEquals(AutoSubtitleChoice(10, final = true), SubtitleAutoPolicy.choose(null, emptyList(), listOf(fileEnglish)))
     }
 
     @Test fun noticeQueueShowsOneAtATimeWithoutRepeats() {

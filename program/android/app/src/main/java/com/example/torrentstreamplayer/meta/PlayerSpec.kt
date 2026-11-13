@@ -7,4 +7,10 @@ internal object PlayerSpec {
 
     /** A notice chip is at most this share of the screen width; longer text ends with an ellipsis. */
     const val NOTICE_MAX_WIDTH_FRACTION = 0.7f
+
+    /**
+     * How long the player may take to list a subtitle file it accepted. VLC opens added files later, and a file it
+     * cannot read never gets a track; after this the file shows as "받지 못함" and the next file is added.
+     */
+    const val SUBTITLE_TRACK_TIMEOUT_MS = 5_000L
 }

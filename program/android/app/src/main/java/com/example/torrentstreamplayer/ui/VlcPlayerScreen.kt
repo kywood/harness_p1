@@ -28,13 +28,12 @@ import com.example.torrentstreamplayer.ui.player.PlayerBottomPanel
 import com.example.torrentstreamplayer.ui.player.PlayerCenterControls
 import com.example.torrentstreamplayer.ui.player.PlayerErrorState
 import com.example.torrentstreamplayer.ui.player.PlayerMoreSheet
-import com.example.torrentstreamplayer.ui.player.PlayerNoticeArea
+import com.example.torrentstreamplayer.ui.player.PlayerNoticeHost
 import com.example.torrentstreamplayer.ui.player.PlayerSubtitleOptions
-import com.example.torrentstreamplayer.ui.player.PlayerSubtitles
-import com.example.torrentstreamplayer.ui.player.SubtitleSheet
-import com.example.torrentstreamplayer.ui.player.VlcTrackPlayer
+import com.example.torrentstreamplayer.ui.player.PlayerSubtitleSheetHost
+import com.example.torrentstreamplayer.ui.player.rememberPlayerSubtitles
+import com.example.torrentstreamplayer.ui.player.sheetState
 import com.example.torrentstreamplayer.ui.player.trackNoticeText
-import com.example.torrentstreamplayer.meta.PlayerSpec
 import com.example.torrentstreamplayer.ui.player.PlayerTimePill
 import com.example.torrentstreamplayer.ui.player.PlayerTopBar
 import com.example.torrentstreamplayer.ui.theme.PlaybackColors
@@ -45,6 +44,7 @@ import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.util.Locale
 import androidx.compose.ui.res.stringResource
+import com.example.torrentstreamplayer.BuildConfig
 import com.example.torrentstreamplayer.R
 
 private class PlayerHolder(val libVlc: LibVLC, val mediaPlayer: MediaPlayer) {
@@ -134,7 +134,6 @@ internal fun VlcPlayerScreen(
     var showSeekBarOnly by remember { mutableStateOf(false) }
     var showMore by remember { mutableStateOf(false) }
     var showSubtitles by remember { mutableStateOf(false) }
-    var notices by remember { mutableStateOf(PlayerNoticeQueue()) }
     var bottomPanelHeight by remember { mutableIntStateOf(0) }
     // VLC events that change the track list; the subtitle session re-reads the tracks on each change.
     var trackChanges by remember { mutableIntStateOf(0) }
@@ -172,7 +171,7 @@ internal fun VlcPlayerScreen(
 
     val playerHolder = remember(torrentEngine) {
         try {
-            val options = VideoPlaybackPolicy.options(com.example.torrentstreamplayer.BuildConfig.DEBUG)
+            val options = VideoPlaybackPolicy.options(BuildConfig.DEBUG, Locale.getDefault().language)
             val vlc = LibVLC(context, options)
             val mp = MediaPlayer(vlc)
 
@@ -200,9 +199,7 @@ internal fun VlcPlayerScreen(
                         isPlaying = true
                         playbackStarted = true
                     }
-                    MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> {
-                        trackChanges++
-                    }
+                    MediaPlayer.Event.ESAdded, MediaPlayer.Event.ESDeleted, MediaPlayer.Event.ESSelected -> trackChanges++
                     MediaPlayer.Event.Paused -> {
                         isPlaying = false
                     }
@@ -220,33 +217,7 @@ internal fun VlcPlayerScreen(
             null
         }
     }
-
-    val scope = rememberCoroutineScope()
-    val languageChosen by rememberUpdatedState(subtitleOptions.onLanguageChosen)
-    // Created once per player with the settings of the moment it opens; later setting changes apply next time.
-    val subtitles = remember(playerHolder) {
-        playerHolder?.let { holder ->
-            PlayerSubtitles(SubtitleSession(VlcTrackPlayer(holder.mediaPlayer), subtitleOptions.autoSelect,
-                subtitleOptions.preferredLanguage), scope, EngineCommandQueue.shared.dispatcher) { languageChosen(it) }
-        }
-    }
-    LaunchedEffect(subtitles, playbackStarted) { if (playbackStarted) subtitles?.start() }
-    LaunchedEffect(subtitles, trackChanges) { if (trackChanges > 0) subtitles?.refresh() }
-    LaunchedEffect(subtitles, subtitleOptions.files, subtitleOptions.pending) {
-        subtitles?.updateFiles(subtitleOptions.files, subtitleOptions.pending)
-    }
-    LaunchedEffect(subtitles) {
-        subtitles?.autoPicked?.collect { notices = notices.add(PlayerNotice.SubtitleOn(it)) }
-    }
-    LaunchedEffect(mobilePlayback) { if (mobilePlayback) notices = notices.add(PlayerNotice.MobileData) }
-    val currentNotice = notices.current
-    LaunchedEffect(currentNotice) {
-        if (currentNotice != null) {
-            delay(PlayerSpec.NOTICE_MS)
-            notices = notices.next()
-        }
-    }
-    val subtitleSheet = subtitles?.sheet?.collectAsState()?.value ?: SubtitleSheetState()
+    val subtitles = rememberPlayerSubtitles(playerHolder?.mediaPlayer, subtitleOptions, playbackStarted, trackChanges)
 
     DisposableEffect(playerHolder, streamServer, lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
@@ -417,7 +388,7 @@ internal fun VlcPlayerScreen(
                             downloadProgress.toInt(), numPeers),
                         zoomLabel = PlayerOverlayPolicy.zoomLabel(zoom.scale)
                             .takeIf { PlayerOverlayPolicy.zoomChipVisible(zoom.scale) },
-                        subtitleLabel = subtitleSheet.selectedName?.let { trackNoticeText(it) },
+                        subtitleLabel = subtitles.sheetState().selectedName?.let { trackNoticeText(it) },
                         landscape = landscape,
                         onBack = { exitPlayback() },
                         onSubtitles = { showSubtitles = true },
@@ -477,18 +448,17 @@ internal fun VlcPlayerScreen(
                     )
                 }
             }
-            PlayerNoticeArea(currentNotice, viewport.width, if (showControls) bottomPanelHeight else 0,
+            PlayerNoticeHost(subtitles, mobilePlayback, viewport.width, if (showControls) bottomPanelHeight else 0,
                 Modifier.align(Alignment.BottomStart))
+            fun zoomBy(factor: Float) {
+                zoom = zoom.transformed(factor, 0f, 0f, viewport.width.toFloat(), viewport.height.toFloat())
+            }
             if (showMore) {
                 PlayerMoreSheet(
                     zoomLabel = PlayerOverlayPolicy.zoomLabel(zoom.scale),
-                    onZoomOut = {
-                        zoom = zoom.transformed(0.8f, 0f, 0f, viewport.width.toFloat(), viewport.height.toFloat())
-                    },
+                    onZoomOut = { zoomBy(0.8f) },
                     onZoomReset = { zoom = VideoZoomState() },
-                    onZoomIn = {
-                        zoom = zoom.transformed(1.25f, 0f, 0f, viewport.width.toFloat(), viewport.height.toFloat())
-                    },
+                    onZoomIn = { zoomBy(1.25f) },
                     onDismiss = { showMore = false },
                     onAddLink = onAddDownload?.let { add -> { showMore = false; add() } },
                     onRestart = {
@@ -496,38 +466,7 @@ internal fun VlcPlayerScreen(
                     }
                 )
             }
-            if (showSubtitles && subtitles != null) {
-                SubtitleSheet(
-                    state = subtitleSheet,
-                    onDismiss = { showSubtitles = false },
-                    onSelectSubtitle = { subtitles.selectSubtitle(it) },
-                    onSelectAudio = { subtitles.selectAudio(it) },
-                    selectFailed = subtitles.selectFailed,
-                )
-            }
+            PlayerSubtitleSheetHost(subtitles, showSubtitles, onDismiss = { showSubtitles = false })
         }
-    }
-}
-
-private fun formatSpeed(bytesPerSec: Long): String {
-    val kb = bytesPerSec / 1024
-    val mb = kb / 1024.0
-    return if (mb >= 1.0) {
-        String.format(Locale.US, "%.2f MB/s", mb)
-    } else {
-        "$kb KB/s"
-    }
-}
-
-internal fun formatTime(timeMs: Long): String {
-    if (timeMs <= 0) return "00:00"
-    val totalSeconds = timeMs / 1000
-    val seconds = totalSeconds % 60
-    val minutes = (totalSeconds / 60) % 60
-    val hours = totalSeconds / 3600
-    return if (hours > 0) {
-        String.format(Locale.US, "%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format(Locale.US, "%02d:%02d", minutes, seconds)
     }
 }

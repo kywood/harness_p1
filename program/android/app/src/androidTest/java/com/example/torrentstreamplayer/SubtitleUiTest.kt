@@ -3,6 +3,8 @@ package com.example.torrentstreamplayer
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
 import android.view.ViewGroup
@@ -33,12 +35,14 @@ import com.example.torrentstreamplayer.ui.VideoPlaybackPolicy
 import com.example.torrentstreamplayer.ui.player.SubtitleSheet
 import com.example.torrentstreamplayer.ui.player.VlcTrackPlayer
 import com.example.torrentstreamplayer.ui.SubtitleMenuPlan
+import com.example.torrentstreamplayer.ui.TrackOption
 import com.example.torrentstreamplayer.ui.PlayerTrack
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,6 +50,7 @@ import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicBoolean
@@ -56,10 +61,11 @@ import java.util.concurrent.atomic.AtomicReference
  * 자막 시트와 LibVLC 자막 연결(`design/specs/subtitles.md`, #125·#126).
  *
  * - [sheetListsTracksAndStaysOpenAfterAPick]: 네트워크 없이 시트만 그린다.
- * - [sintelSubtitleCanBeOpenedAndTurnedOff]: 공개 영상 Sintel(Blender Foundation, CC BY)을 실제로 받는다. 네트워크와
- *   피어·웹 시드가 필요하다.
+ * - [sintelSubtitleCanBeOpenedAndTurnedOff]: 공개 영상 Sintel(Blender Foundation, CC BY)을 실제로 받는다. 피어나 웹 시드가
+ *   필요하고, 네트워크가 없으면 건너뛴다(`assumeTrue`). 전체 대기는 120초까지. 설정·재생 목록·받은 파일은 `finally`에서
+ *   되돌리고 지운다.
  * - [koreanSmiAndSrtOpenInVlc]: 직접 만든 한글 `.srt`(UTF-8)·`.smi`(CP949) 파일을 이미지 영상 위에 붙인다. 글자가 바르게
- *   보이는지는 저장한 화면 캡처를 사람이 본다(경로는 logcat `SubtitleUiTest`).
+ *   보이는지는 자동으로 판정하지 않는다. 저장한 화면 캡처를 사람이 본다(경로는 logcat `SubtitleUiTest`).
  */
 @RunWith(AndroidJUnit4::class)
 class SubtitleUiTest {
@@ -102,37 +108,56 @@ class SubtitleUiTest {
     }
 
     @Test fun sintelSubtitleCanBeOpenedAndTurnedOff() {
+        assumeTrue("needs a network connection", hasInternet())
         val model = ViewModelProvider(compose.activity)[MainViewModel::class.java]
-        compose.runOnUiThread {
-            model.setWifiOnly(false)
-            model.setAutoSubtitles(true)
-            model.startStreaming(SINTEL)
+        val saved = model.settings.value
+        // One deadline for the whole test, so a missing network or peer holds the run for at most this long.
+        val deadline = System.currentTimeMillis() + PLAYBACK_TIMEOUT_MS
+        fun remainingMs() = (deadline - System.currentTimeMillis()).coerceAtLeast(1)
+        try {
+            compose.runOnUiThread {
+                model.setWifiOnly(false)
+                model.setAutoSubtitles(true)
+                model.startStreaming(SINTEL)
+            }
+            await(remainingMs(), "Sintel did not start; this test needs Sintel peers or its web seed") {
+                model.uiState.value is StreamUiState.Playing
+            }
+            await(remainingMs(), "Sintel subtitle files were not downloaded") { model.subtitleFiles.value.isNotEmpty() }
+            val onPrefix = text(R.string.cd_subtitles_on, "")
+            // Sintel has no Korean file, so the English file is picked: the button reads "자막, 켜짐: 영어(파일)".
+            while (compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true).fetchSemanticsNodes()
+                    .isEmpty()) {
+                check(System.currentTimeMillis() < deadline) { "No subtitle was turned on automatically" }
+                // Hidden controls leave the tree; a tap shows them (the button exists only while they are shown).
+                if (compose.onAllNodes(hasDescriptionStarting(text(R.string.cd_subtitles_off)), useUnmergedTree = true)
+                        .fetchSemanticsNodes().isEmpty()) compose.onRoot().performTouchInput { click(center) }
+                Thread.sleep(500)
+            }
+            compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true)[0].performClick()
+            compose.waitUntil(10_000) {
+                compose.onAllNodesWithText("Sintel.en.srt").fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText(text(R.string.subtitle_off)).performClick()
+            compose.waitUntil(10_000) {
+                compose.onAllNodes(hasDescriptionStarting(text(R.string.cd_subtitles_off)), useUnmergedTree = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } finally {
+            compose.runOnUiThread {
+                model.closePlayback()
+                model.setWifiOnly(saved.wifiOnly)
+                model.setAutoSubtitles(saved.autoSubtitles)
+            }
+            // Stops the download, waits for its writes (awaitStoppedWrites) and deletes its files and history entry.
+            runBlocking { model.deleteSavedMagnet(SINTEL) }
         }
-        await(PLAYBACK_TIMEOUT_MS, "Sintel did not start; this test needs network and Sintel peers or web seed") {
-            model.uiState.value is StreamUiState.Playing
-        }
-        await(PLAYBACK_TIMEOUT_MS, "Sintel subtitle files were not downloaded") { model.subtitleFiles.value.isNotEmpty() }
-        val onPrefix = text(R.string.cd_subtitles_on, "")
-        // The English file is picked automatically (no Korean file in Sintel), so the button reads "자막, 켜짐: 영어(파일)".
-        val limit = System.currentTimeMillis() + PLAYBACK_TIMEOUT_MS
-        while (compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true).fetchSemanticsNodes()
-                .isEmpty()) {
-            check(System.currentTimeMillis() < limit) { "No subtitle was turned on automatically" }
-            // Hidden controls leave the tree; a tap shows them (the button exists only while they are shown).
-            if (compose.onAllNodes(hasDescriptionStarting(text(R.string.cd_subtitles_off)), useUnmergedTree = true)
-                    .fetchSemanticsNodes().isEmpty()) compose.onRoot().performTouchInput { click(center) }
-            Thread.sleep(500)
-        }
-        compose.onAllNodes(hasDescriptionStarting(onPrefix), useUnmergedTree = true)[0].performClick()
-        compose.waitUntil(10_000) {
-            compose.onAllNodesWithText("Sintel.en.srt").fetchSemanticsNodes().isNotEmpty()
-        }
-        compose.onNodeWithText(text(R.string.subtitle_off)).performClick()
-        compose.waitUntil(10_000) {
-            compose.onAllNodes(hasDescriptionStarting(text(R.string.cd_subtitles_off)), useUnmergedTree = true)
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        compose.runOnUiThread { model.closePlayback() }
+    }
+
+    private fun hasInternet(): Boolean {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     @Test fun koreanSmiAndSrtOpenInVlc() {
@@ -148,9 +173,9 @@ class SubtitleUiTest {
             }
             val smi = File(dir, "frame.kor.smi").apply {
                 writeBytes(("<SAMI><BODY><SYNC Start=0><P Class=KRCC>한글 자막 SMI 확인</P></BODY></SAMI>\n")
-                    .toByteArray(Charset.forName(VideoPlaybackPolicy.SUBTITLE_FALLBACK_ENCODING)))
+                    .toByteArray(Charset.forName(VideoPlaybackPolicy.KOREAN_SUBTITLE_ENCODING)))
             }
-            val vlc = LibVLC(context, VideoPlaybackPolicy.options(debug = false))
+            val vlc = LibVLC(context, VideoPlaybackPolicy.options(debug = false, deviceLanguage = "ko"))
             val player = MediaPlayer(vlc)
             val failed = AtomicBoolean(false)
             val playing = AtomicBoolean(false)
@@ -188,9 +213,12 @@ class SubtitleUiTest {
             val files = listOf(SubtitleFile(srt, SubtitleLanguage.KOREAN, true, true),
                 SubtitleFile(smi, SubtitleLanguage.KOREAN, true, true))
             session.updateFiles(files, emptyList())
-            await(15_000, "VLC did not list the two subtitle files") { tracks.tracks().subtitles.size >= 2 }
-            val sheet = session.refresh().sheet
-            val fileRows = sheet.subtitles.filter { it.enabled }
+            // Files are added one at a time; each refresh matches the newest track and adds the next file.
+            var fileRows = emptyList<TrackOption>()
+            await(20_000, "VLC did not list the two subtitle files") {
+                fileRows = session.refresh().sheet.subtitles.filter { it.enabled }
+                fileRows.size >= 2
+            }
             assertEquals(2, fileRows.size)
             for (row in fileRows) {
                 assertTrue("VLC refused subtitle track ${row.name}", session.selectSubtitle(row.id))
@@ -218,6 +246,6 @@ class SubtitleUiTest {
         const val SINTEL = "magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel" +
             "&tr=udp%3A%2F%2Fexplodie.org%3A6969&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337" +
             "&tr=wss%3A%2F%2Ftracker.webtorrent.dev&ws=https%3A%2F%2Fwebtorrent.io%2Ftorrents%2F"
-        const val PLAYBACK_TIMEOUT_MS = 240_000L
+        const val PLAYBACK_TIMEOUT_MS = 120_000L
     }
 }

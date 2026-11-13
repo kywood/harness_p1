@@ -15,18 +15,20 @@ class VideoPlaybackPolicyTest {
     }
     @Test fun lateFramesCanBeSkippedToCatchUpWithPlayback() {
         listOf(true, false).forEach { debug ->
-            val options = VideoPlaybackPolicy.options(debug)
+            val options = VideoPlaybackPolicy.options(debug, "en")
             assertTrue(options.contains("--drop-late-frames"))
             assertTrue(options.contains("--skip-frames"))
             assertFalse(options.contains("--no-drop-late-frames"))
             assertFalse(options.contains("--no-skip-frames"))
         }
     }
-    @Test fun koreanLegacySubtitlesAreReadAsCp949() {
-        assertTrue(VideoPlaybackPolicy.options(debug = false).contains("--subsdec-encoding=CP949"))
+    @Test fun koreanDevicesReadLegacySubtitlesAsCp949() {
+        assertTrue(VideoPlaybackPolicy.options(debug = false, deviceLanguage = "ko").contains("--subsdec-encoding=CP949"))
+        assertFalse("other devices keep VLC's default",
+            VideoPlaybackPolicy.options(debug = false, deviceLanguage = "en").any { it.startsWith("--subsdec-encoding") })
     }
     @Test fun verboseNativeLoggingIsOnlyForDebugBuilds() {
-        assertTrue(VideoPlaybackPolicy.options(debug = true).contains("-vvv"))
-        assertFalse(VideoPlaybackPolicy.options(debug = false).contains("-vvv"))
+        assertTrue(VideoPlaybackPolicy.options(debug = true, deviceLanguage = "en").contains("-vvv"))
+        assertFalse(VideoPlaybackPolicy.options(debug = false, deviceLanguage = "en").contains("-vvv"))
     }
 }

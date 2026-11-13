@@ -6,13 +6,20 @@ import com.example.torrentstreamplayer.engine.SubtitleFile
 import com.example.torrentstreamplayer.engine.SubtitleLanguage
 import java.io.File
 
-/** Embedded tracks the player reports. Ids are VLC track ids; [NO_TRACK] means none is selected (subtitles off). */
+/**
+ * Embedded tracks the player reports. Ids are VLC track ids; [NO_TRACK] means none is selected (subtitles off).
+ * [videoCount] counts video tracks only, so a silent video without subtitles still shows the player has opened it.
+ */
 internal data class PlayerTracks(
     val subtitles: List<PlayerTrack> = emptyList(),
     val audio: List<PlayerTrack> = emptyList(),
     val subtitleId: Int = NO_TRACK,
     val audioId: Int = NO_TRACK,
+    val videoCount: Int = 0,
 ) {
+    /** True once the player has listed any of the video's own tracks. */
+    val listed: Boolean get() = videoCount > 0 || subtitles.isNotEmpty() || audio.isNotEmpty()
+
     companion object {
         const val NO_TRACK = -1
     }

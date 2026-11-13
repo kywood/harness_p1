@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.example.torrentstreamplayer.R
@@ -48,7 +49,8 @@ internal fun PlayerMoreSheet(
                     val resetDescription = zoomResetDescription(zoomLabel)
                     IconButton(onClick = onZoomReset,
                         modifier = Modifier.semantics { contentDescription = resetDescription }) {
-                        Text(zoomLabel, color = MaterialTheme.colorScheme.onSurface, maxLines = 1,
+                        Text(zoomLabel, Modifier.clearAndSetSemantics {}, color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
                             style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = TABULAR_FIGURES))
                     }
                     SheetIconButton(ImageVector.vectorResource(R.drawable.ic_zoom_in),
@@ -63,10 +65,9 @@ internal fun PlayerMoreSheet(
     }
 }
 
-/** "확대 배율 되돌리기 (1.5×)". */
+/** "확대 배율 되돌리기, 지금 1.5×". 배율 글자는 따로 읽지 않으므로(`clearAndSetSemantics`) 이 이름에 값을 넣는다. */
 @Composable
-internal fun zoomResetDescription(label: String): String =
-    stringResource(R.string.track_with_detail, stringResource(R.string.cd_zoom_reset), label)
+internal fun zoomResetDescription(label: String): String = stringResource(R.string.cd_zoom_reset_value, label)
 
 @Composable
 private fun SheetIconButton(icon: ImageVector, description: String, onClick: () -> Unit) {

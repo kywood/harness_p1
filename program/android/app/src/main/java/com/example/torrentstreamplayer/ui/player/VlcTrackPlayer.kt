@@ -31,6 +31,7 @@ internal class VlcTrackPlayer(private val player: MediaPlayer) : TrackPlayer {
             audio = read(audio, IMedia.Track.Type.Audio),
             subtitleId = player.spuTrack,
             audioId = player.audioTrack,
+            videoCount = player.videoTracks.orEmpty().count { it.id >= 0 },
         )
     }
 

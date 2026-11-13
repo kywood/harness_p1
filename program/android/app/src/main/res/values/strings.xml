@@ -214,6 +214,8 @@
     <string name="cd_subtitles_off">자막, 꺼짐</string>
     <string name="cd_subtitle_file">%1$s, 자막 파일</string>
     <string name="player_zoom">화면 확대</string>
+    <!-- 배율 칩·더보기 시트의 배율 버튼 읽기 이름(리뷰 14). 보이는 배율 글자는 따로 읽지 않는다. -->
+    <string name="cd_zoom_reset_value">확대 배율 되돌리기, 지금 %1$s</string>
     <!-- PM 결정 5(PR #131): Wi-Fi 전용인데 모바일 데이터로 이어 재생할 때 한 번 보이는 알림 칩. 문구는 PM 지시 그대로. -->
     <string name="notice_mobile_playback">모바일 데이터로 재생 중</string>
     <!-- 링크: 다른 앱에서 받은 링크 확인 시트 (design/specs/open-link-sheet.md 3절, 오류 문구는 error-recovery.md 2-1) -->

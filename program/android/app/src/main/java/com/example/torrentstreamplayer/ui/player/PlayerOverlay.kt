@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.vectorResource
@@ -239,7 +240,7 @@ private fun ZoomChip(label: String, onReset: () -> Unit) {
         .semantics { contentDescription = description }, contentAlignment = Alignment.Center) {
         Text(label, color = PlaybackColors.OnVideo, maxLines = 1,
             style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = TABULAR_FIGURES),
-            modifier = Modifier.background(PlaybackColors.Panel, Shapes.pill)
+            modifier = Modifier.clearAndSetSemantics {}.background(PlaybackColors.Panel, Shapes.pill)
                 .padding(horizontal = Spacing.md, vertical = Spacing.xs))
     }
 }
