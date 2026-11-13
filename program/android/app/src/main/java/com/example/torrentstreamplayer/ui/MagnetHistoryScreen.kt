@@ -317,7 +317,7 @@ private fun PlaylistItemCard(
     val button = DownloadButton.of(status, active)
     SectionCard {
         Row(verticalAlignment = Alignment.Top) {
-            Text(entry.title, Modifier.weight(1f).padding(top = Spacing.md), style = MaterialTheme.typography.titleMedium,
+            Text(playlistTitle(entry.magnet, entry.title), Modifier.weight(1f).padding(top = Spacing.md), style = MaterialTheme.typography.titleMedium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             Checkbox(checked = checked, enabled = checkEnabled, onCheckedChange = onCheckedChange,
                 colors = CheckboxDefaults.colors(checkedColor = colors.tertiary, checkmarkColor = colors.background,

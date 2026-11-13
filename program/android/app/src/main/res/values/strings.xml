@@ -140,6 +140,8 @@
     <string name="playlist_filter_empty">해당 조건의 영상이 없습니다.</string>
     <string name="playlist_added_at">받은 날짜 %1$s</string>
     <string name="playlist_resume">이어보기 %1$s</string>
+    <!-- 이름 없는 마그넷의 제목. %1$s는 해시 앞 8자리 (ui/PlaylistTitle) -->
+    <string name="playlist_untitled">토렌트 %1$s</string>
     <!-- 받은 크기 줄에서 전체 크기를 아직 모를 때 진행률 자리 (DownloadProgressLabel) -->
     <string name="progress_unknown">확인 전</string>
     <string name="playlist_reset_failed">위치를 초기화하지 못했습니다.</string>
