@@ -19,7 +19,7 @@ internal object MetadataFetch {
                     .or_(TorrentFlags.STOP_WHEN_READY))
                 val error = ErrorCode(org.libtorrent4j.swig.error_code())
                 SessionHandle(session.swig()).addTorrent(params, error).also {
-                    check(error.value == 0 && it.isValid) { "메타데이터 연결 실패: " + error.message }
+                    check(error.value == 0 && it.isValid) { "Unable to add torrent for metadata: " + error.message }
                     owned = true
                     it.resume()
                 }
@@ -28,7 +28,7 @@ internal object MetadataFetch {
         val discovery = MetadataDiscovery()
         return try {
             MetadataWait.await(timeoutMillis) { elapsed ->
-                check(session.isRunning && handle.isValid) { "메타데이터 연결이 종료되었습니다." }
+                check(session.isRunning && handle.isValid) { "Metadata session closed" }
                 progress(handle, elapsed)
                 if (owned && handle.torrentFile() == null && discovery.shouldRetry(elapsed, handle.status().numPeers())) {
                     android.util.Log.i("TorrentMetadata", "No peers at ${elapsed}ms; refreshing discovery on same handle")
