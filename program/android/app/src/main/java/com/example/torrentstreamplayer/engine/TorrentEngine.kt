@@ -265,9 +265,9 @@ class TorrentEngine(private val context: Context) {
                 val selectedPieceLength = torrentInfo.pieceLength().toLong()
                 val downloadCheckpoint = checkpoint
 
-                // Ascending deadlines follow playback; native sequential mode would favor the file start.
+                // Download-only tasks read from the file start; playback's deadline windows need native sequential off.
                 try {
-                    handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+                    applyDownloadOrder(handle, playbackFocused = prioritizePlayback)
                 } catch (t: Throwable) {
                     Log.e(TAG, "Error setting sequential download flag: ${EngineFailureLog.describe(t)}")
                     onError(TorrentFailure.DOWNLOAD_SETUP.text(context))
@@ -382,6 +382,10 @@ class TorrentEngine(private val context: Context) {
         }.also { it.start() }
     }
 
+    private fun applyDownloadOrder(handle: TorrentHandle, playbackFocused: Boolean) {
+        if (DownloadOrderPolicy.order(playbackFocused).sequential) handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+        else handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+    }
     @Synchronized private fun updateStartupIndex() {
         val handle = currentHandle ?: return
         val index = startupIndex ?: return
