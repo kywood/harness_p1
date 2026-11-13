@@ -38,16 +38,23 @@ planning(무엇을·왜, 화면 정의) → PM(우선순위 결정, 이슈로 �
 
 ## 용어
 
-| 사용자에게 보이는 이름 | 코드 |
-|---|---|
-| 메인 | `MagnetLinkInputScreen` (`ui/screens/MainScreen.kt`) |
-| 재생 목록 | `MagnetHistoryScreen` |
-| 저장 파일 관리 | `StoredFilesScreen` |
-| 준비 화면 | `PreparingScreen` (`LoadingScreen`, `BufferingScreen`, `ui/screens/PreparingScreen.kt`) |
-| 재생 화면 | `VlcPlayerScreen` |
-| 피스 맵 | `PieceMap` |
-| 설정 | `SettingsScreen` (`ui/screens/SettingsScreen.kt`, `AppScreen.Settings`) |
-| Wi-Fi 전용 | `AppSettings.wifiOnly` (설정 항목) |
-| Wi-Fi 대기 | `DownloadPhase.WAITING_FOR_WIFI`, `PlaylistItemStatus.WAITING_FOR_WIFI` (재생 목록 상태 칩) |
+| 사용자에게 보이는 이름 | 영어 화면 이름 | 코드 |
+|---|---|---|
+| 메인 | Home | `MagnetLinkInputScreen` (`ui/screens/MainScreen.kt`) |
+| 재생 목록 | Playlist | `MagnetHistoryScreen` |
+| 저장 파일 관리 | Stored files | `StoredFilesScreen` |
+| 준비 화면 | (화면 이름 없음) | `PreparingScreen` (`LoadingScreen`, `BufferingScreen`, `ui/screens/PreparingScreen.kt`) |
+| 재생 화면 | (화면 이름 없음) | `VlcPlayerScreen` |
+| 피스 맵 | Download pieces | `PieceMap` |
+| 설정 | Settings | `SettingsScreen` (`ui/screens/SettingsScreen.kt`, `AppScreen.Settings`) |
+| Wi-Fi 전용 | Wi-Fi only | `AppSettings.wifiOnly` (설정 항목) |
+| Wi-Fi 대기 | Waiting for Wi-Fi | `DownloadPhase.WAITING_FOR_WIFI`, `PlaylistItemStatus.WAITING_FOR_WIFI` (재생 목록 상태 칩) |
+| 바로 재생 | Play now | `action_stream_play` |
+| 받아 두기 | Save for later | `action_save_for_later` |
+| 이어서 재생 | Resume | `action_resume_play` |
+| 광고 개인정보 설정 | Ad privacy settings | `action_ad_privacy` |
+| 이용 안내 | Usage guide | `action_usage_guide` |
+| 오픈소스 라이선스 | Open source licenses | `action_open_source_licenses` |
+| 개인정보처리방침 | Privacy policy | `action_privacy_policy` |
 
-문서와 사용자 문구는 한국어로 쓴다.
+문서는 한국어로 쓴다. 앱 화면 문구는 기본 `res/values/strings.xml`이 영어, `res/values-ko/strings.xml`이 한국어다(기기 언어가 한국어면 한국어). 새 문구는 두 파일에 같은 키로 넣고, 영어 화면 이름은 위 표를 따른다.
