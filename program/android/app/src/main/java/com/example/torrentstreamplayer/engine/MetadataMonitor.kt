@@ -1,12 +1,14 @@
 package com.example.torrentstreamplayer.engine
 
+import com.example.torrentstreamplayer.meta.MetadataOrigin
+import com.example.torrentstreamplayer.meta.MetadataStage
 import org.libtorrent4j.*
 import org.libtorrent4j.alerts.*
 import java.io.File
 
 internal class MetadataMonitor(private val session: SessionManager,
     private val update: (MetadataDetails) -> Unit) : AlertListener {
-    private var details = MetadataDetails(phase = "피어 연결 및 토렌트 정보 수신 중…", source = "네트워크")
+    private var details = MetadataDetails(stage = MetadataStage.CONNECTING, origin = MetadataOrigin.NETWORK)
     @Volatile private var target: Sha1Hash? = null
     override fun types(): IntArray = intArrayOf(AlertType.METADATA_RECEIVED.swig(),
         AlertType.PEER_CONNECT.swig(), AlertType.PEER_DISCONNECTED.swig())
@@ -32,8 +34,7 @@ internal class MetadataMonitor(private val session: SessionManager,
                 details = details.received(info.name(), info.files().numFiles(),
                     info.totalSize(), info.numPieces(), info.pieceLength().toLong())
             }
-            if (!details.hasMetadata) details = details.copy(phase =
-                "피어 탐색 및 토렌트 정보 수신 중… ${elapsed / 1000}초 / 120초")
+            if (!details.hasMetadata) details = details.copy(stage = MetadataStage.SEARCHING, elapsedSec = elapsed / 1000)
             update(details)
         } }
         finally { session.removeListener(this) }
