@@ -233,6 +233,22 @@ class MainViewModel @JvmOverloads internal constructor(
     internal val settings: StateFlow<AppSettings> get() = settingsRepository.settings
     /** 지금 연결 종류(Wi-Fi / 모바일 / 데이터 절약 / 없음). 설정 화면 안내 줄에 쓴다. */
     internal val connection: StateFlow<ConnectionType> get() = connections.connection
+
+    /**
+     * [NetworkSpec.CONNECTION_SETTLE_MS] 동안 같았던 연결. 다운로드 규칙([DownloadManager.applyNetwork])과 [waitsForWifi]가
+     * 같은 값을 써서, 안내 줄·스낵바와 실제 Wi-Fi 대기 상태가 어긋나지 않는다.
+     */
+    private val settledConnection: StateFlow<ConnectionType> by lazy {
+        connections.connection.settled(NetworkSpec.CONNECTION_SETTLE_MS)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, connections.connection.value)
+    }
+
+    /** 지금 새 다운로드가 "Wi-Fi 대기"로 멈추면 true([WifiWaitPolicy]). 설정 안내 줄과 받기 시작 스낵바가 쓴다. */
+    internal val waitsForWifi: StateFlow<Boolean> by lazy {
+        combine(settingsRepository.settings, settledConnection) { saved, connection ->
+            WifiWaitPolicy.waitsForWifi(saved.wifiOnly, connection)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    }
     private val mobileGate = MobilePlaybackGate()
 
     /**
@@ -249,7 +265,7 @@ class MainViewModel @JvmOverloads internal constructor(
             try { settingsRepository.load() }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) { Log.w("Settings", "Unable to load: ${EngineFailureLog.describe(failure)}") }
-            combine(settingsRepository.settings, connections.connection.settled(NetworkSpec.CONNECTION_SETTLE_MS)) {
+            combine(settingsRepository.settings, settledConnection) {
                 saved, connection -> NetworkConditions(saved.wifiOnly, connection)
             }.distinctUntilChanged().collect(downloads::applyNetwork)
         }
@@ -296,16 +312,43 @@ class MainViewModel @JvmOverloads internal constructor(
 
     fun setWifiOnly(enabled: Boolean) = updateSettings { it.copy(wifiOnly = enabled) }
 
+    /**
+     * 설정 화면 스위치: 저장된 값 기준으로 뒤집는다. 저장이 끝나야 스위치가 바뀌므로, 저장 중에 다시 누른 탭도
+     * 사라지지 않고 한 번씩 반영된다([SettingsRepository.update]가 차례로 처리).
+     */
+    fun toggleWifiOnly() = updateSettings { it.copy(wifiOnly = !it.wifiOnly) }
+
+    fun toggleAutoSubtitles() = updateSettings { it.copy(autoSubtitles = !it.autoSubtitles) }
+
     fun setAutoSubtitles(enabled: Boolean) = updateSettings { it.copy(autoSubtitles = enabled) }
 
-    /** 재생 화면에서 고른 자막 언어를 "선호 언어"로 기억한다(영상별이 아님, PR #131 PM 결정). */
-    fun rememberSubtitleLanguage(key: String) = updateSettings { it.copy(subtitleLanguage = key) }
+    /**
+     * 재생 화면에서 고른 자막 언어를 "선호 언어"로 기억한다(영상별이 아님, PR #131 PM 결정). 다른 설정과 같이
+     * [SettingsRepository.update]가 저장에 성공해야 값이 바뀐다. 실패는 로그만 남긴다: 사용자가 누른 스위치가 아니라
+     * 설정 화면의 "다시 눌러 주세요" 안내([settingsSaveFailed])를 띄우지 않고, 다음에 고를 때 다시 저장한다.
+     */
+    fun rememberSubtitleLanguage(key: String) {
+        viewModelScope.launch {
+            try { settingsRepository.update { it.copy(subtitleLanguage = key) } }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { Log.w("Settings", "Unable to save: ${EngineFailureLog.describe(failure)}") }
+        }
+    }
+    private val saveNotice = SettingsSaveNotice()
+
+    /** 설정을 디스크에 저장하지 못했으면 true. 설정 화면이 스낵바를 한 번 보이고 [consumeSettingsSaveFailed]를 부른다. */
+    internal val settingsSaveFailed: StateFlow<Boolean> get() = saveNotice.failed
+
+    fun consumeSettingsSaveFailed() = saveNotice.consume()
 
     private fun updateSettings(change: (AppSettings) -> AppSettings) {
         viewModelScope.launch {
             try { settingsRepository.update(change) }
             catch (cancelled: CancellationException) { throw cancelled }
-            catch (failure: Exception) { Log.w("Settings", "Unable to save: ${EngineFailureLog.describe(failure)}") }
+            catch (failure: Exception) {
+                Log.w("Settings", "Unable to save: ${EngineFailureLog.describe(failure)}")
+                saveNotice.report()
+            }
         }
     }
 
@@ -385,8 +428,17 @@ class MainViewModel @JvmOverloads internal constructor(
     /** 오픈소스 라이선스를 연다. 진입점(메인 하단 링크, design 시안 A)은 개인정보처리방침 주소가 정해진 뒤 연결한다. */
     fun openOpenSourceLicenses() = navigator.openOpenSourceLicenses()
 
-    /** 재생 목록·저장 파일 관리·오픈소스 라이선스에서 뒤로 간다. */
-    fun closeList() = navigator.closeList()
+    /** 메인 오른쪽 위 톱니: 설정을 연다. */
+    fun openSettings() {
+        saveNotice.clear()
+        navigator.openSettings()
+    }
+
+    /** 재생 목록·저장 파일 관리·오픈소스 라이선스·설정에서 뒤로 간다. */
+    fun closeList() {
+        if (screen.value == AppScreen.Settings) saveNotice.clear()
+        navigator.closeList()
+    }
 
     /**
      * 재생·준비·오류 화면을 닫는다. 재생 목록에서 시작했으면 다운로드를 이어 가며 재생 목록으로,

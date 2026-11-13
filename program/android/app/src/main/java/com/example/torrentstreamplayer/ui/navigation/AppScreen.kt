@@ -16,6 +16,9 @@ sealed interface AppScreen {
     /** 오픈소스 라이선스(목록과 전문 보기). 목록·전문 전환은 화면 안에서 한다. */
     data object OpenSourceLicenses : AppScreen
 
+    /** 설정(Wi-Fi 전용, 자막 자동 표시, 정보). */
+    data object Settings : AppScreen
+
     /** 준비 화면: 토렌트 정보 가져오기와 버퍼링. */
     sealed interface Preparing : AppScreen {
         data object FetchingMetadata : Preparing

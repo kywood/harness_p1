@@ -36,13 +36,16 @@ internal class SettingsRepository(
     /** Reads saved settings once. Until then [settings] holds the defaults. */
     suspend fun load() = lock.withLock { ensureLoaded() }
 
-    /** Applies [change] to the current settings and saves the result. A failed save keeps the new value in memory. */
+    /**
+     * Applies [change] to the current settings and saves the result. [settings] changes only after the save succeeds:
+     * a failed save throws and leaves the previous value, so memory and disk never disagree (the switch flips back).
+     */
     suspend fun update(change: (AppSettings) -> AppSettings) = lock.withLock {
         ensureLoaded()
         val next = change(mutableSettings.value)
         if (next == mutableSettings.value) return@withLock
-        mutableSettings.value = next
         withContext(io) { store.write(AppSettingsCodec.encode(next)) }
+        mutableSettings.value = next
     }
 
     private suspend fun ensureLoaded() {
