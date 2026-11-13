@@ -9,6 +9,9 @@ internal class StartupIndexState(private val file: File, private val size: Long,
     @Volatile var ready = VideoFormat.ofExtension(extension)?.needsMoovIndex != true
         private set
     private var found: Mp4IndexProbe.Found? = null
+    @Volatile private var probeOffset: Long? = null
+    /** Where the index is, judged from how far the probe walked ([StartupPrefetchPlan.locate]). */
+    fun location(headBytes: Long): IndexLocation = StartupPrefetchPlan.locate(probeOffset, found != null, headBytes)
     private fun pieces(start: Long, length: Long): Set<Int> =
         ((offset + start) / pieceSize).toInt().rangeTo(((offset + start + length - 1) / pieceSize).toInt()).toSet()
     fun update(havePiece: (Int) -> Boolean): Set<Int> {
@@ -20,9 +23,9 @@ internal class StartupIndexState(private val file: File, private val size: Long,
             }
         }
         return when (result) {
-            is Mp4IndexProbe.Need -> pieces(result.offset, result.length.toLong())
+            is Mp4IndexProbe.Need -> { probeOffset = result.offset; pieces(result.offset, result.length.toLong()) }
             is Mp4IndexProbe.Found -> {
-                found = result
+                found = result; probeOffset = result.offset
                 pieces(result.offset, result.length).also { ready = it.all(havePiece) }
             }
             Mp4IndexProbe.Unknown -> { ready = true; emptySet() }

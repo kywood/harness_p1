@@ -13,9 +13,20 @@ class PlaybackStartTraceTest {
         PlaybackStartTrace(key, { clockMs }, limit)
 
     @Test fun linesCarryOnlyTheShortenedKey() {
-        val line = trace().playbackRequested()
-        assertTrue(line.startsWith("[f30a2b70]"))
-        assertFalse(line.contains(key.substring(8, 16)))
+        val trace = trace()
+        val have = mutableSetOf<Int>()
+        val lines = listOfNotNull(
+            trace.observe(0..3) { it in have },
+            trace.playbackRequested(),
+            trace.observe(0..3) { have += 0; it in have },
+            trace.ready(),
+        )
+        assertEquals(4, lines.size)
+        lines.forEach { line ->
+            assertTrue(line, line.startsWith("[f30a2b70] "))
+            assertFalse(line, line.contains(key.substring(8)))
+            assertFalse(line, (8..key.length - 6).any { line.contains(key.substring(it, it + 6)) })
+        }
     }
 
     @Test fun firstObservationCountsResumedPiecesInsteadOfAnOrder() {
@@ -40,6 +51,15 @@ class PlaybackStartTraceTest {
         trace.observe(0..4) { false }
         assertEquals("[f30a2b70] +0ms finished pieces [0, 1]", trace.observe(0..4) { it < 3 })
         assertNull(trace.observe(0..4) { true })
+    }
+
+    @Test fun pastTheLimitPiecesAreNotCheckedAgain() {
+        val trace = trace(limit = 1)
+        trace.observe(0..4) { false }
+        trace.observe(0..4) { it == 0 }
+        var checks = 0
+        repeat(5) { assertNull(trace.observe(0..4) { checks++; true }) }
+        assertEquals(0, checks)
     }
 
     @Test fun readyReportsTimeSinceRequestOnce() {

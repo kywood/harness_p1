@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer.engine
 import android.content.Context
 import android.os.StrictMode
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import com.example.torrentstreamplayer.BuildConfig
 import org.libtorrent4j.Priority
 import org.libtorrent4j.SessionManager
@@ -40,10 +41,13 @@ class TorrentEngine(private val context: Context) {
     internal val isSharingTorrent: Boolean get() = runCatching {
         currentHandle?.let { !it.flags.and_(TorrentFlags.PAUSED).non_zero() } ?: false }.getOrDefault(false)
     /** For tests: whether the selected torrent downloads in native sequential order ([DownloadOrderPolicy]). */
-    internal val sequentialDownload: Boolean get() = runCatching {
+    @VisibleForTesting internal val sequentialDownload: Boolean get() = runCatching {
         currentHandle?.let { it.flags.and_(TorrentFlags.SEQUENTIAL_DOWNLOAD).non_zero() } ?: false }.getOrDefault(false)
+    /** For tests: file-end pieces still fetched early ([StartupPrefetchPlan]) and the currently pinned pieces. */
+    @VisibleForTesting internal val tailPrefetchPieces: Set<Int> get() = prefetchPieces
+    @VisibleForTesting internal val pinnedPieces: Set<Int> @Synchronized get() = priorityPins
     /** For tests: the native priority (0-7) of [piece], or null without a torrent. */
-    internal fun piecePriorityOf(piece: Int): Int? = runCatching { currentHandle?.piecePriority(piece)?.swig()?.toInt() }.getOrNull()
+    @VisibleForTesting internal fun piecePriorityOf(piece: Int): Int? = runCatching { currentHandle?.piecePriority(piece)?.swig()?.toInt() }.getOrNull()
     internal val uploadedBytes: Long get() = runCatching { currentHandle?.status()?.allTimeUpload() ?: 0L }.getOrDefault(0L)
     private var checkpoint: TorrentCheckpoint? = null
     private var activeCache: TorrentCache? = null
@@ -57,6 +61,8 @@ class TorrentEngine(private val context: Context) {
     private val readDemands = ReadDemandRegistry()
     private var priorityPins: Set<Int> = emptySet()
     @Volatile private var startTrace: PlaybackStartTrace? = null
+    /** File-end index pieces pinned like the startup buffer but not waited for ([StartupPrefetchPlan]). */
+    @Volatile private var prefetchPieces: Set<Int> = emptySet()
     private val _pieceMap = MutableStateFlow(PieceMapSnapshot.EMPTY)
     val pieceMap = _pieceMap.asStateFlow()
     private val _metadataDetails = MutableStateFlow(MetadataDetails())
@@ -388,10 +394,16 @@ class TorrentEngine(private val context: Context) {
         if (DownloadOrderPolicy.order(playbackFocused).sequential) handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
         else handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
     }
+    /** Index checks outside the download loop: file or libtorrent errors are logged, never thrown to the caller. */
+    private fun refreshStartupIndex() = runCatching { updateStartupIndex() }
+        .onFailure { Log.w(TAG, "Startup index check failed: ${EngineFailureLog.describe(it)}") }
+    /** Under the engine lock, so a concurrent [updateStartupIndex] cannot bring the tail back. */
+    @Synchronized private fun clearPrefetch() { prefetchPieces = emptySet() }
     @Synchronized private fun updateStartupIndex() {
         val handle = currentHandle ?: return
         val index = startupIndex ?: return
         val added = index.update(handle::havePiece) - startupPieces
+        prefetchPieces = StartupPrefetchPlan.pieces(prefetchPieces, index.location(StartupBufferPlan.HEAD_BYTES))
         if (added.isEmpty()) return
         startupPieces = startupPieces + added
         added.forEach { handle.piecePriority(it, Priority.TOP_PRIORITY); handle.setPieceDeadline(it, 1000) }
@@ -415,7 +427,7 @@ class TorrentEngine(private val context: Context) {
         val buffer = PlaybackBuffer.of(pieceLength, PlaybackBuffer.bytesPerSecond(selectedFileLength, playbackDurationMs) ?: EngineSpec.DEFAULT_BYTES_PER_SECOND)
         val window = SequentialPiecePlan.window(startPieceIndex, lastPieceIndex, buffer)
         val offsets = readDemands.offsets().filter { it in 0 until selectedFileLength }
-        val pins = startupPieces + offsets.flatMap { offset ->
+        val pins = startupPieces + prefetchPieces + offsets.flatMap { offset ->
             val first = ((selectedFileStartOffset + offset) / pieceLength).toInt()
             val missing = SequentialPiecePlan.nextMissing(first, lastPieceIndex, handle::havePiece) ?: first
             SequentialPiecePlan.window(missing, lastPieceIndex, buffer).toList()
@@ -440,7 +452,8 @@ class TorrentEngine(private val context: Context) {
                 handle.resetPieceDeadline(p); handle.piecePriority(p, Priority.fromSwig(background))
             }
             for (p in pins - priorityPins) {
-                handle.piecePriority(p, Priority.TOP_PRIORITY); handle.setPieceDeadline(p, 1000)
+                handle.piecePriority(p, Priority.TOP_PRIORITY)
+                handle.setPieceDeadline(p, StartupPrefetchPlan.deadlineMs(p, prefetchPieces, startupPieces))
             }
             priorityPins = pins
             for (request in SequentialPiecePlan.requests(startPieceIndex, lastPieceIndex, buffer, handle::havePiece)) {
@@ -508,16 +521,18 @@ class TorrentEngine(private val context: Context) {
         currentHandle?.let { applyDownloadOrder(it, playbackFocused = true) }
         startupPieces = StartupBufferPlan.required(selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
+        prefetchPieces = StartupPrefetchPlan.tailPieces(selectedFileLength, selectedFileStartOffset,
+            info.pieceLength().toLong(), selectedVideoFile?.extension.orEmpty())
         startupIndex = StartupIndexState(selectedVideoFile!!, selectedFileLength, selectedFileStartOffset,
             info.pieceLength().toLong(), selectedVideoFile!!.extension)
-        updateStartupIndex()
+        refreshStartupIndex()
         beginSeek(0, 1)
         return true
     }
     @Synchronized internal fun releasePlaybackPriority() {
         StrictMode.noteSlowCall("TorrentEngine.releasePlaybackPriority")
         seekRequests.beginSeek()
-        startupPieces = emptySet(); startupIndex = null
+        startupPieces = emptySet(); startupIndex = null; prefetchPieces = emptySet()
         readDemands.clear()
         runCatching { currentHandle?.clearPieceDeadlines()
             for (piece in firstPieceIndex..lastPieceIndex) currentHandle?.piecePriority(piece, Priority.DEFAULT)
@@ -529,11 +544,14 @@ class TorrentEngine(private val context: Context) {
         if (localVideo != null) return true
         val handle = currentHandle ?: return false
         if (firstPieceIndex < 0 || lastPieceIndex < 0) return false
+        // Polled every 250 ms: finding the index here, not in the 1 s loop, saves up to a second per step.
+        if (startupIndex?.ready == false) refreshStartupIndex()
         if (startupIndex?.ready == false) return false
         return try {
             val required = startupPieces
             if (required.isNotEmpty()) {
                 val ready = StartupBufferPlan.ready(required, handle::havePiece)
+                if (ready) clearPrefetch()
                 if (ready) { startupPieces = emptySet(); if (BuildConfig.DEBUG) Log.d(TAG, "Initial verified playback buffer ready") }
                 if (ready && BuildConfig.DEBUG) startTrace?.ready()?.let { Log.d(TAG, it) }
                 return ready
@@ -631,6 +649,7 @@ class TorrentEngine(private val context: Context) {
         readDemands.clear()
         priorityPins = emptySet()
         startTrace = null
+        prefetchPieces = emptySet()
         worker?.interrupt()
         retiredWorkers.removeAll { !it.isAlive }
         worker?.takeIf { it.isAlive }?.let { retiredWorkers.add(it) }
