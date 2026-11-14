@@ -50,6 +50,7 @@ Subtitles
 Playlist and storage
 • Your recent links are kept in your Playlist, and you can resume where you left off.
 • Download up to three videos at once, with more waiting in a queue.
+• Choose the Download order in Settings: "From the start" makes it easier to play while it's still downloading, and "Fastest" downloads whichever pieces are available. You can also set it for each video in your Playlist.
 • Manage Stored files by type and delete them when you need space.
 
 Save mobile data
@@ -67,7 +68,7 @@ PiecePlay does not provide or find content. Please use it only for content you h
 Screenshots show open movies by the Blender Foundation (Sintel, Big Buck Bunny, Tears of Steel), licensed under CC BY, © Blender Foundation | www.blender.org.
 ```
 
-- 화면 문구 대응: `Download pieces`(`piece_map_title`), `Play now`·`Save for later`(`action_stream_play`·`action_save_for_later`), `Show subtitles automatically`(`settings_auto_subtitles`), `Wi-Fi only`(`settings_wifi_only`), `Playlist`·`Stored files`·`Home`·`Settings`·`Ad privacy settings`.
+- 화면 문구 대응: `Download pieces`(`piece_map_title`), `Play now`·`Save for later`(`action_stream_play`·`action_save_for_later`), `Show subtitles automatically`(`settings_auto_subtitles`), `Wi-Fi only`(`settings_wifi_only`), `Download order`·`From the start`·`Fastest`(`download_order_*`, 2026-11-14 추가), `Playlist`·`Stored files`·`Home`·`Settings`·`Ad privacy settings`.
 - "Ad privacy settings"는 동의가 필요한 지역에서만 보인다(UMP). 1차 국가 중에는 미국 주 메시지를 게시할 때 미국 일부 주에서 보인다. 그래서 "Where required" 문장 안에 두었다.
 
 ## 출시 노트 (500자 이내)
