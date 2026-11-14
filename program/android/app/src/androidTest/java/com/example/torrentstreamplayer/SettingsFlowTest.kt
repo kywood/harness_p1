@@ -2,6 +2,9 @@ package com.example.torrentstreamplayer
 
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -13,6 +16,7 @@ import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.data.SettingsRepository
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.ui.MainViewModel
 import com.example.torrentstreamplayer.ui.navigation.AppScreen
 import kotlinx.coroutines.runBlocking
@@ -26,7 +30,8 @@ import org.junit.runner.RunWith
 
 /**
  * 메인 오른쪽 위 톱니 → 설정 → 뒤로 → 메인(`design/specs/settings-wifi.md` 1·2절). Wi-Fi 전용 스위치를 바꾸면
- * 화면을 다시 열어도, 디스크에서 새로 읽어도 바뀐 값이 남는다. 끝나면 원래 값으로 되돌린다.
+ * 화면을 다시 열어도, 디스크에서 새로 읽어도 바뀐 값이 남는다. "받는 순서"(`design/specs/download-order.md`)도 같다.
+ * 끝나면 원래 값으로 되돌린다.
  */
 @RunWith(AndroidJUnit4::class)
 class SettingsFlowTest {
@@ -34,6 +39,7 @@ class SettingsFlowTest {
 
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private var originalWifiOnly: Boolean? = null
+    private var originalDownloadOrder: DownloadOrderPreference? = null
 
     private fun text(id: Int): String = context.getString(id)
 
@@ -48,6 +54,49 @@ class SettingsFlowTest {
             load()
             settings.value.wifiOnly
         }
+    }
+
+    private fun savedDownloadOrder(): DownloadOrderPreference = runBlocking {
+        SettingsRepository.create(context).run {
+            load()
+            settings.value.downloadOrder
+        }
+    }
+
+    @After fun restoreDownloadOrder() {
+        val original = originalDownloadOrder ?: return
+        compose.runOnUiThread { viewModel().setDownloadOrder(original) }
+        compose.waitUntil(5_000) { savedDownloadOrder() == original }
+    }
+
+    @Test fun downloadOrderIsChosenInASheetShownOnTheRowAndSaved() {
+        awaitText(text(R.string.main_rights_notice))
+        compose.onNodeWithContentDescription(text(R.string.title_settings)).performClick()
+        awaitText(text(R.string.settings_section_download))
+        val before = compose.runOnIdle { viewModel().settings.value.downloadOrder }
+        originalDownloadOrder = before
+        val (target, targetLabel) = if (before == DownloadOrderPreference.FASTEST)
+            DownloadOrderPreference.FROM_START to text(R.string.download_order_from_start)
+            else DownloadOrderPreference.FASTEST to text(R.string.download_order_fastest)
+
+        // 항목 줄(제목 + 지금 값)을 누르면 선택 창이 뜨고, 지금 값이 골라져 있다.
+        compose.onNodeWithText(text(R.string.download_order_title)).performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(isSelectable()).fetchSemanticsNodes().size == 2 }
+        compose.onNode(isSelectable() and hasText(targetLabel)).performClick()
+        compose.waitUntil(5_000) { viewModel().settings.value.downloadOrder == target }
+        compose.waitUntil(5_000) { savedDownloadOrder() == target }
+        compose.waitUntil(5_000) { compose.onAllNodes(isSelectable()).fetchSemanticsNodes().isEmpty() }
+        awaitText(targetLabel)
+
+        // 설정을 다시 열어도 값이 남고, 선택 창에서도 그 값이 골라져 있다.
+        Espresso.pressBack()
+        awaitText(text(R.string.main_rights_notice))
+        compose.onNodeWithContentDescription(text(R.string.title_settings)).performClick()
+        awaitText(text(R.string.settings_section_download))
+        awaitText(targetLabel)
+        compose.onNodeWithText(text(R.string.download_order_title)).performScrollTo().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(isSelectable()).fetchSemanticsNodes().size == 2 }
+        compose.onNode(isSelectable() and hasText(targetLabel)).assertIsSelected()
     }
 
     @After fun restore() {
