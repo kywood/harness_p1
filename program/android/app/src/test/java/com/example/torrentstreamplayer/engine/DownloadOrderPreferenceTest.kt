@@ -19,6 +19,13 @@ class DownloadOrderPreferenceTest {
         }
     }
 
+    @Test fun eachChoiceRegistersItsDownloadOnlyOrder() {
+        assertEquals(DownloadOrder.FILE_START, DownloadOrderPreference.FROM_START.downloadOnly)
+        assertEquals(DownloadOrder.RAREST_FIRST, DownloadOrderPreference.FASTEST.downloadOnly)
+        assertEquals(true, DownloadOrderPreference.FROM_START.downloadOnly.sequential)
+        assertEquals(false, DownloadOrderPreference.FASTEST.downloadOnly.sequential)
+    }
+
     @Test fun theDefaultIsFromTheStart() {
         assertEquals(DownloadOrderPreference.FROM_START, DownloadOrderPreference.DEFAULT)
     }

@@ -5,13 +5,14 @@ package com.example.torrentstreamplayer.engine
  * per video in the playlist. Playback ignores it: while a video plays, pieces follow the read position.
  *
  * @param code the value saved on disk (settings and [MagnetHistory]); never reuse or renumber a code. 0 means "none".
+ * @param downloadOnly the engine order a download-only task uses for this choice.
  */
-enum class DownloadOrderPreference(val code: Int) {
+enum class DownloadOrderPreference(val code: Int, internal val downloadOnly: DownloadOrder) {
     /** From the file start, so a partly downloaded video plays at once. The default. */
-    FROM_START(1),
+    FROM_START(1, DownloadOrder.FILE_START),
 
     /** Any piece a peer offers (libtorrent's rarest-first): the whole file finishes sooner on thin swarms. */
-    FASTEST(2);
+    FASTEST(2, DownloadOrder.RAREST_FIRST);
 
     companion object {
         /** Saved code for "no choice" (a video that follows the app setting). */
