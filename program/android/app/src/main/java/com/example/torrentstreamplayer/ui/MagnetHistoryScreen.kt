@@ -44,6 +44,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.torrentstreamplayer.R
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.PieceMapSnapshot
 import com.example.torrentstreamplayer.engine.SavedMagnet
@@ -54,6 +55,7 @@ import com.example.torrentstreamplayer.ui.components.ProgressBar
 import com.example.torrentstreamplayer.ui.components.SecondaryButton
 import com.example.torrentstreamplayer.ui.components.SectionCard
 import com.example.torrentstreamplayer.ui.components.StatusChip
+import com.example.torrentstreamplayer.ui.components.StatusTone
 import com.example.torrentstreamplayer.ui.components.TextAction
 import com.example.torrentstreamplayer.ui.components.TextActionTone
 import com.example.torrentstreamplayer.ui.theme.Sizes
@@ -74,6 +76,10 @@ private const val REFRESH_INTERVAL_MS = 2000L
 private val ADDED_AT_FORMAT: DateTimeFormatter =
     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault())
 
+/**
+ * @param onDownloadOrderChange 카드의 "받는 순서"에서 고른 값을 저장한다(null이면 기본 설정 따름). 넘기지 않으면 줄을 숨긴다.
+ * @param defaultDownloadOrder 설정의 기본값. 선택 창의 "기본 설정 따름" 옆에 보인다.
+ */
 @Composable
 internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend (String) -> Unit,
     onPlay: (String) -> Unit, onBack: () -> Unit, onDownload: (String) -> Unit = {},
@@ -86,7 +92,9 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     filter: PlaylistFilter = PlaylistFilter.ALL, onFilterChange: (PlaylistFilter) -> Unit = {},
     downloadJobs: Map<String, DownloadEntry> = emptyMap(), onStopItem: (String) -> Unit = {},
     onStopItems: ((Set<String>) -> Unit)? = null, onAddDownload: (() -> Unit)? = null,
-    onResetPosition: (suspend (String) -> Unit)? = null, onDownloadsStarted: () -> Unit = {}) {
+    onResetPosition: (suspend (String) -> Unit)? = null, onDownloadsStarted: () -> Unit = {},
+    onDownloadOrderChange: (suspend (String, DownloadOrderPreference?) -> Unit)? = null,
+    defaultDownloadOrder: DownloadOrderPreference = DownloadOrderPreference.DEFAULT) {
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
     val context = LocalContext.current
@@ -97,6 +105,8 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
     var error by remember { mutableStateOf<String?>(null) }
     var loadError by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf<SavedMagnet?>(null) }
+    // "받는 순서" 선택 창을 연 항목의 마그넷. 목록이 다시 읽혀도 같은 항목을 가리킨다.
+    var orderTarget by remember { mutableStateOf<String?>(null) }
     val liveEntries = entries.map { entry ->
         val task = downloadJobs[MagnetIdentity.key(entry.magnet)]
         val snapshot = task?.takeIf { it.phase.stoppable }?.snapshot
@@ -212,6 +222,9 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
                             else if (active) onStopDownload() else startDownloads(listOf(entry.magnet))
                         },
                         onDelete = { deleting = entry },
+                        downloadOrder = if (onDownloadOrderChange == null) null
+                            else DownloadOrderCardState.of(entry.downloadOrder, PlaylistOrdering.complete(entry)),
+                        onDownloadOrder = { orderTarget = entry.magnet },
                         onResetPosition = onResetPosition?.let { reset -> {
                             scope.launch {
                                 try {
@@ -230,6 +243,26 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
             }
         }
     }
+    val orderEntry = orderTarget?.let { magnet -> liveEntries.firstOrNull { it.magnet == magnet } }
+    if (orderEntry != null && onDownloadOrderChange != null) DownloadOrderSheet(
+        options = DownloadOrderOption.forVideo,
+        selected = DownloadOrderOption.of(orderEntry.downloadOrder),
+        onSelect = { option ->
+            scope.launch {
+                try {
+                    onDownloadOrderChange(orderEntry.magnet, option.preference)
+                    refresh++
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (failure: Exception) {
+                    error = InputFailureText.ownMessage(failure, context)
+                        ?: resources.getString(R.string.settings_save_failed)
+                }
+            }
+        },
+        onDismiss = { orderTarget = null },
+        appDefault = DownloadOrderOption.of(defaultDownloadOrder),
+    )
     deleting?.let { entry ->
         ConfirmDialog(
             title = stringResource(R.string.playlist_delete_title),
@@ -310,7 +343,9 @@ private fun PlaylistItemCard(
     onPlay: () -> Unit,
     onDownloadAction: () -> Unit,
     onDelete: () -> Unit,
-    onResetPosition: (() -> Unit)?
+    onResetPosition: (() -> Unit)?,
+    downloadOrder: DownloadOrderCardState? = null,
+    onDownloadOrder: () -> Unit = {}
 ) {
     val colors = MaterialTheme.colorScheme
     val button = DownloadButton.of(status, active)
@@ -343,6 +378,15 @@ private fun PlaylistItemCard(
                 enabled = actionsEnabled, tone = TextActionTone.MUTED)
         }
         errorMessage?.let { Text(it, color = colors.error, style = MaterialTheme.typography.bodySmall) }
+        // 받는 순서 줄(`design/specs/download-order.md` 3절): 왼쪽에 영상별 값 표시, 오른쪽에 글자 버튼. 동작 줄은 360dp에서
+        // 이미 꽉 차서(재생 + 다운로드 동작 + 삭제) 이어보기 줄과 같은 모양의 줄을 따로 둔다.
+        if (downloadOrder?.showsAction == true) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                downloadOrder.marker?.let { StatusChip(stringResource(it.label), StatusTone.NEUTRAL) }
+            }
+            TextAction(stringResource(R.string.download_order_title), onDownloadOrder, enabled = actionsEnabled,
+                tone = TextActionTone.MUTED)
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SecondaryButton(stringResource(R.string.action_play), onPlay, enabled = actionsEnabled,
