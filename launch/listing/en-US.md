@@ -10,7 +10,8 @@
 - 앱 화면이 이제 영어로 나오므로(기기 언어가 한국어가 아니면 영어) "한국어만 지원" 문장은 지웠다.
 - 저작권 안내 한 줄과 스크린샷 영상 출처(CC BY) 한 줄을 설명 끝에 둔다.
 - 피하는 표현(`marketing/CLAUDE.md`): 영화·드라마 제목, 토렌트 사이트 이름, "free movies", "latest releases", "unlimited downloads". 아래 문안에 없다(2026-11-13 점검). Sintel·Big Buck Bunny·Tears of Steel은 스크린샷 출처 표기라 해당하지 않는다.
-- 스크린샷: `launch/store-assets/*/en-US`의 휴대폰 화면은 아직 **한국어 UI**다. 영어 UI로 다시 찍기 전에는 등록정보와 앱 화면이 다르다(재촬영은 별도 요청 예정).
+- 스크린샷: `launch/store-assets/*/en-US`는 2026-11-14에 **영어 UI**(v.2026.11.13.001 디버그, main 667c06e)로 다시 찍었다. 휴대전화·7인치·10인치 각 8장(`01~06`은 한국어판과 같은 장면, `07` 다른 앱에서 링크 열기, `08` 자막 선택). 화면에 나오는 영상은 Sintel, Big Buck Bunny, Tears of Steel이라 아래 출처 문장과 맞는다. 태블릿 링크 확인 시트의 마그넷(해시만 보임)은 Cosmos Laundromat(같은 Blender Foundation, CC BY)이다.
+- 홍보 영상 `7_Promo_Video/PiecePlay_promo_en-US.mp4`는 자막만 영어이고 영상 속 앱 화면은 **한국어 UI**(v.2026.11.12.003)다(3·9·25초 프레임 확인). 영어 등록정보의 동영상 칸에 넣으려면 다시 만들어야 한다.
 
 ## 앱 이름 (30자 이내)
 

@@ -11,13 +11,14 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 | 앱 아이콘 | `1_Play_Store_Assets/app_icon_512x512.png` | 같은 파일 | 512x512 PNG | 512x512, 32비트 PNG, 1MB 이하, 필수. 지금 Console 아이콘과 같아 그대로 둔다 |
 | 그래픽 이미지 | `1_Play_Store_Assets/feature_graphic_1024x500_ko-KR.png` | `1_Play_Store_Assets/feature_graphic_1024x500_en-US.png` | 1024x500 PNG, 알파 없음 | 1024x500, JPEG 또는 24비트 PNG(알파 없음), 필수 |
 | 동영상 | `7_Promo_Video/PiecePlay_promo_ko-KR.mp4`를 YouTube에 올린 URL | `7_Promo_Video/PiecePlay_promo_en-US.mp4`를 올린 URL | 1920x1080, 30초 | YouTube 동영상 URL만, 공개 또는 일부공개, 광고 끔. 업로드 방법은 `7_Promo_Video/README.md` |
-| 휴대전화 스크린샷 | `4_Play_Store_Screenshots/ko-KR/01~06` | `4_Play_Store_Screenshots/en-US/01~06` | 1080x1920, `03`만 1920x1080 | 2~8장, 변 320~3840px, 긴 변 ≤ 짧은 변 x2, 추천 노출은 1080px 이상 4장 이상 |
-| 7인치 태블릿 | `5_Tablet_7in/ko-KR/01~06` | `5_Tablet_7in/en-US/01~06` | 1080x1920, `03`만 1920x1080 | 대화면: 변 1080~7680px, 9:16 또는 16:9, 4장 이상, 선택 |
-| 10인치 태블릿 | `6_Tablet_10in/ko-KR/01~06` | `6_Tablet_10in/en-US/01~06` | 2560x1440 | 위와 같음 |
+| 휴대전화 스크린샷 | `4_Play_Store_Screenshots/ko-KR/01~06` | `4_Play_Store_Screenshots/en-US/01~08` | 1080x1920, `03`만 1920x1080 | 2~8장, 변 320~3840px, 긴 변 ≤ 짧은 변 x2, 추천 노출은 1080px 이상 4장 이상 |
+| 7인치 태블릿 | `5_Tablet_7in/ko-KR/01~06` | `5_Tablet_7in/en-US/01~08` | 1080x1920, `03`만 1920x1080 | 대화면: 변 1080~7680px, 9:16 또는 16:9, 4장 이상, 선택 |
+| 10인치 태블릿 | `6_Tablet_10in/ko-KR/01~06` | `6_Tablet_10in/en-US/01~08` | 2560x1440 | 위와 같음 |
 | Chromebook | 비움 | 비움 | | 위와 같음, 선택 |
 
 - 현재 Console 기본 등록정보(en-US)에는 로고만 있는 옛 그래픽 이미지와 옛 이름 "Torrent Stream Player"의 휴대전화 스크린샷 2장이 있다. 둘 다 위 en-US 파일로 바꾼다(옛 스크린샷 2장은 삭제).
-- 영어 스크린샷도 앱 화면은 한국어다(앱이 한국어만 지원). 영어 설명에 그 사실을 적는다(`launch/listing/en-US.md`).
+- 영어(en-US) 스크린샷은 2026-11-14에 영어 UI로 다시 찍었다(#144, 아래 "영어 UI 재촬영"). 한국어(ko-KR) 스크린샷은 그대로다(예전 빌드 화면).
+- 영어는 8장이다. `01~06`은 한국어와 같은 장면·순서이고 `07`(다른 앱에서 링크 열기), `08`(자막 선택)을 더했다. Play 휴대전화 한도가 8장이다. 6장만 올리려면 `07`, `08`을 빼면 된다.
 
 규격 출처: [Play Console 고객센터 "미리보기 애셋 추가"](https://support.google.com/googleplay/android-developer/answer/9866151?hl=ko) (2026-11-12 확인). 그 밖의 요구: 실제 앱 화면을 보여 줄 것, "지금 다운로드" 같은 행동 유도 문구 금지, 문구가 이미지의 20%를 넘지 않을 것, 각 애셋에 140자 이하 대체 텍스트 권장.
 
@@ -47,7 +48,11 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 | 4 | Seek, and it downloads from there | 10-second skip · zoom in · zoom out |
 | 5 | Pick up where you left off | Your last 50 links, encrypted on your device |
 | 6 | No uploads. History stays on device | Browse saved files by type and delete them |
+| 7 (영어만) | Open links from other apps | Play now or save for later |
+| 8 (영어만) | Choose your subtitles | Pick subtitle files that come with the video |
 
+- 7·8번 캡션은 launch가 등록정보 문구(`launch/listing/en-US.md`의 "Open links from other apps", "Subtitles" 단락)에서 따 왔다. marketing 검토(`marketing:brand-review`)는 아직 거치지 않았다.
+- 4번 보조 문구의 zoom in · zoom out은 지금 빌드에서 재생 화면 더보기(⋮) 메뉴 안에 있어 화면에 바로 보이지는 않는다(기능은 있다).
 - 예전 4번 보조 문구 "10초 이동 · 확대 · 배속 조절"의 배속 조절은 앱에 없는 기능이라 뺐다.
 - 3번 "재생 중에는 광고 없이"는 사실이다(배너는 메인·재생 목록, 전면 광고는 재생 종료·완료 때만). 광고 정책이 바뀌면 이 캡션도 바꿔야 한다. 이 표현을 쓸지는 `marketing/aso/ko-KR.md` "결정 필요" 2번으로 PM이 정한다.
 - 그래픽 이미지: 한국어 "받으면서 바로 재생" / "다 받기 전에 재생하는 토렌트 플레이어", 영어 "Play while it downloads" / "Paste a magnet link and play right away". 앱 이름 `PiecePlay - 토렌트 플레이어`와 같은 키워드를 쓰고, "바로"가 두 줄에 겹치던 것을 고쳤다.
@@ -59,6 +64,24 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 | `4_Play_Store_Screenshots/raw/` | emulator-5554, 1080x2400 420dpi | v.2026.11.12.002 디버그 (#49) | 이번에 다시 찍지 않았다 |
 | `5_Tablet_7in/raw/` | AVD `Tablet_7in`(Nexus 7 2013 규격), 1200x1920 320dpi, Android 37 | v.2026.11.12.003 디버그 (main 5c8c305) | 세로, 재생만 가로 하나 |
 | `6_Tablet_10in/raw/` | AVD `Tablet_10in`(Nexus 10 규격), 2560x1600(가로) 320dpi, Android 37 | 같음 | 모두 가로 |
+
+### 영어 UI 재촬영 (2026-11-14, #144)
+
+| 폴더 | 기기 | 빌드 |
+|---|---|---|
+| `4_Play_Store_Screenshots/raw-en-US/` | emulator-5554(AVD `Medium_Phone`), 1080x2400 420dpi, 시스템 언어 en-US | v.2026.11.13.001 디버그 (main 667c06e) |
+| `5_Tablet_7in/raw-en-US/` | 같은 에뮬레이터에 `wm size 1200x1920`, `wm density 320` | 같음 |
+| `6_Tablet_10in/raw-en-US/` | 같은 에뮬레이터에 `wm size 1600x2560`, `wm density 320`, `wm user-rotation lock 1`(가로 2560x1600) | 같음 |
+
+- 원본 파일: `main`, `preparing`, `player-landscape`(10인치는 `player`), `player`(10인치는 `player-seek`), `playlist`, `stored-files`, `open-link`, `subtitles`.
+- 영상: 준비·가로 재생·자막은 Sintel, 이동 장면은 Tears of Steel(10인치는 Sintel), 재생 목록·저장 파일에 Big Buck Bunny. 링크 확인 시트의 마그넷은 Tears of Steel(휴대전화)·Cosmos Laundromat(태블릿)이다. 모두 Blender Foundation 오픈 무비(CC BY).
+- 테스트 광고 배너를 피하는 방법은 예전과 같다: 메인·재생 목록·저장 파일·링크 확인 시트는 와이파이·데이터를 끄고 앱을 새로 열어 찍었다. 재생·준비 화면에는 원래 광고가 없다.
+- 7인치(sw600dp)는 앱의 가로 전환 버튼이 아니라 기기 회전(`wm user-rotation lock 1`)으로 가로 재생을 찍었다.
+- 7인치 `preparing.png`는 데모 모드를 다시 걸기 전에 찍어 상태 표시줄에 와이파이 아이콘이 두 개였다. 상태 표시줄 오른쪽 아이콘 영역(240x48px)만 같은 빌드의 7인치 `main.png` 것으로 덮었다. 앱 화면 영역은 손대지 않았다.
+- 메인 화면의 로고·앱 이름·태그라인이 가운데가 아니라 왼쪽으로 치우쳐 있다. 지금 main 빌드의 실제 화면이다(`MainScreen.kt`에서 톱니 줄과 로고 묶음 Column에 가로 정렬이 없다, #128 이후). 앱이 고쳐지면 `01_main`과 `07_open_link`를 다시 찍는다.
+- 찍은 뒤 에뮬레이터는 되돌렸다(`wm size reset`, `wm density reset`, 회전 자동, 데모 모드 종료, 앱 제거).
+
+### 한국어 원본(예전)
 
 - 상태 표시줄은 데모 모드(12:00, 와이파이·배터리 가득, 알림 숨김)로 찍었다.
 - 메인·재생 목록·저장 파일 관리는 와이파이·데이터를 끄고 앱을 다시 열어 찍었다. 디버그 빌드의 테스트 광고 배너가 들어가지 않게 하려는 것이다(릴리스 빌드에서는 메인·재생 목록 하단에 배너가 나온다).
@@ -77,5 +100,5 @@ Play Console > 스토어 등록정보 > 기본 스토어 등록정보(또는 ko-
 
 `tools/`의 스크립트(Python + Pillow, Windows의 Noto Sans KR 가변 글꼴 `NotoSansKR-VF.ttf`. 맑은 고딕은 작은 크기에서 "받"이 깨져 쓰지 않는다)로 만든다. Pillow가 없으면 `uv run --no-project --with pillow python ...`로 실행한다.
 
-- `screens.py <store-assets 폴더> <ko-KR|en-US|all> [phone|tab7|tab10]`: 각 `raw/` 원본으로 휴대전화·7인치·10인치 스크린샷을 만든다. 캡션과 파일 대응은 스크립트 위쪽 `CAPTIONS`, `TARGETS`에 있다. 원본은 비율을 유지한 채 틀 안에 맞춘다.
+- `screens.py <store-assets 폴더> <ko-KR|en-US|all> [phone|tab7|tab10]`: 각 `raw/` 원본(en-US는 `raw-en-US/`, 스크립트의 `RAW_DIRS`)으로 휴대전화·7인치·10인치 스크린샷을 만든다. 캡션과 파일 대응은 스크립트 위쪽 `CAPTIONS`, `TARGETS`, `EXTRA`(언어별 추가 장면)에 있다. 원본은 비율을 유지한 채 틀 안에 맞춘다.
 - `feature.py <적응형 아이콘 전경 png> <출력> [ko-KR|en-US]`: 그래픽 이미지(`2_Android_Adaptive_Icon/ic_launcher_foreground.png` 사용)

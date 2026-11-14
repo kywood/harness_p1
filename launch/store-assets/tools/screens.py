@@ -35,6 +35,21 @@ CAPTIONS = {'ko-KR': {
     'player_seek': ('Seek, and it downloads from there', '10-second skip · zoom in · zoom out'),
     'playlist': ('Pick up where you left off', 'Your last 50 links, encrypted on your device'),
     'stored': ('No uploads. History stays on device', 'Browse saved files by type and delete them'),
+    'open_link': ('Open links from other apps', 'Play now or save for later'),
+    'subtitles': ('Choose your subtitles', 'Pick subtitle files that come with the video'),
+}}
+
+# 언어별 원본 폴더 이름(대상 폴더 아래). 없으면 raw. en-US 는 영어 UI 로 다시 찍은 원본을 쓴다(#144).
+RAW_DIRS = {'en-US': 'raw-en-US'}
+
+# 언어별 추가 장면(기본 6장 뒤에 붙는다): 대상 -> [(출력 파일, 원본 파일, 캡션 키, 캔버스 W, H)]
+EXTRA = {'en-US': {
+    'phone': [('07_open_link.png', 'open-link.png', 'open_link', 1080, 1920),
+              ('08_subtitles.png', 'subtitles.png', 'subtitles', 1080, 1920)],
+    'tab7': [('07_open_link.png', 'open-link.png', 'open_link', 1080, 1920),
+             ('08_subtitles.png', 'subtitles.png', 'subtitles', 1080, 1920)],
+    'tab10': [('07_open_link.png', 'open-link.png', 'open_link', 2560, 1440),
+              ('08_subtitles.png', 'subtitles.png', 'subtitles', 2560, 1440)],
 }}
 
 # 대상별: 출력 폴더, 원본 폴더, [(출력 파일, 원본 파일, 캡션 키, 캔버스 W, H)]
@@ -146,7 +161,8 @@ def main():
         out_tpl, raw_dir, items = TARGETS[name]
         out_dir = out_tpl.format(lang=lang)
         os.makedirs(os.path.join(root, out_dir), exist_ok=True)
-        for out, raw, key, W, H in items:
+        raw_dir = os.path.join(os.path.dirname(raw_dir), RAW_DIRS.get(lang, 'raw'))
+        for out, raw, key, W, H in items + EXTRA.get(lang, {}).get(name, []):
             src = os.path.join(root, raw_dir, raw)
             if not os.path.exists(src):
                 print('skip (no raw):', src)
