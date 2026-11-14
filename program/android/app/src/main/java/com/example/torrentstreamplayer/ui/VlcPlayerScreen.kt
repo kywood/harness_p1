@@ -365,7 +365,7 @@ internal fun VlcPlayerScreen(
                 PlayerTimePill(timeLabel, Modifier.align(Alignment.BottomEnd))
             }
             if (PlayerOverlayPolicy.seekBarOnly(showControls, showSeekBarOnly)) {
-                SwipeSeekBar(sliderPosition, totalLengthMs > 0, Modifier.align(Alignment.BottomCenter),
+                SwipeSeekBar(sliderPosition, PlayerOverlayPolicy.seekEnabled(totalLengthMs), Modifier.align(Alignment.BottomCenter),
                     onChange = { sliderPosition = it; isSeeking = true },
                     onFinished = { isSeeking = false; if (totalLengthMs > 0) seekTo((sliderPosition * totalLengthMs).toLong()) },
                     pieces = pieces)
@@ -430,7 +430,7 @@ internal fun VlcPlayerScreen(
                         downloadLabel = stringResource(R.string.player_downloaded, downloadProgress.toInt()),
                         position = sliderPosition,
                         pieces = pieces,
-                        seekEnabled = true,
+                        seekEnabled = PlayerOverlayPolicy.seekEnabled(totalLengthMs),
                         landscape = landscape,
                         onSeekChange = { pos ->
                             sliderPosition = pos
