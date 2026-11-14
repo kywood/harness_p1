@@ -292,6 +292,12 @@
     <string name="settings_wifi_paused_notice">모바일 데이터에 연결되어 다운로드를 멈췄습니다. Wi-Fi에 연결되면 이어서 받습니다.</string>
     <string name="settings_auto_subtitles">자막 자동 표시</string>
     <string name="settings_auto_subtitles_desc">내 언어 자막이 있으면 재생할 때 바로 켭니다.</string>
+    <string name="download_order_title">받는 순서</string>
+    <string name="download_order_use_default">기본 설정 따름</string>
+    <string name="download_order_from_start">앞부분부터</string>
+    <string name="download_order_from_start_desc">받는 중에도 바로 재생하기 쉽습니다.</string>
+    <string name="download_order_fastest">빠르게 받기</string>
+    <string name="download_order_fastest_desc">전체를 더 빨리 받습니다. 다 받은 뒤에 보기 좋습니다.</string>
     <string name="settings_version">버전</string>
     <string name="settings_save_failed">설정을 저장하지 못했습니다. 다시 눌러 주세요.</string>
     <string name="status_wifi_waiting">Wi-Fi 대기</string>
