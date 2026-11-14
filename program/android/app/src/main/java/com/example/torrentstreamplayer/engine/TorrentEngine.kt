@@ -405,6 +405,7 @@ class TorrentEngine(private val context: Context) {
         StrictMode.noteSlowCall("TorrentEngine.setDownloadOrder")
         orderPreference = preference
         runCatching { currentHandle?.let { applyDownloadOrder(it, orderPlaybackFocused) } }
+            .onFailure { Log.w(TAG, "Download order not applied: ${EngineFailureLog.describe(it)}") }
     }
     /** Index checks outside the download loop: file or libtorrent errors are logged, never thrown to the caller. */
     private fun refreshStartupIndex() = runCatching { updateStartupIndex() }
