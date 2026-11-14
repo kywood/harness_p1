@@ -79,6 +79,15 @@ class TorrentCacheTest {
         assertNull("the lenient read still hides the failure", failing.read("links"))
         assertArrayEquals(byteArrayOf(1, 2, 3), cache().readOrThrow("links"))
     }
+    @Test fun keptAsideFileMovesToBakWithItsBytes() {
+        cache().keepAside("links")
+        assertFalse("nothing to move is not an error", File(folder.root, "$id/links.bak").exists())
+        cache().write("links", byteArrayOf(1, 2, 3))
+        val original = File(folder.root, "$id/links.bin").readBytes()
+        cache().keepAside("links")
+        assertNull(cache().readOrThrow("links"))
+        assertArrayEquals(original, File(folder.root, "$id/links.bak").readBytes())
+    }
     @Test fun failedWriteKeepsPreviousCheckpoint() {
         cache().write("resume", byteArrayOf(7))
         val broken = TorrentCache(folder.root, id, { error("Encryption failed") }, ::decrypt)

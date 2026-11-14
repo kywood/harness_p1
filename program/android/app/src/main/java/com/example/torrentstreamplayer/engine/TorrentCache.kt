@@ -39,6 +39,12 @@ internal class TorrentCache(
             }
         } finally { temporary.delete() }
     }
+    /** Moves a [kind] file that can never be read to `<kind>.bak` (replacing an older one) so a new one can start. */
+    @Synchronized fun keepAside(kind: String) {
+        val file = path(kind)
+        val aside = File(directory, kind + ".bak")
+        if (file.isFile) Files.move(file.toPath(), aside.toPath(), StandardCopyOption.REPLACE_EXISTING)
+    }
     fun recordComplete(file: File, expectedSize: Long) {
         require(file.isFile && expectedSize > 0 && file.length() == expectedSize)
         val bytes = ByteArrayOutputStream()
