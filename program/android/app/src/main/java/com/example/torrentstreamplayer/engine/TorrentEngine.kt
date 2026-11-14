@@ -400,6 +400,12 @@ class TorrentEngine(private val context: Context) {
         if (DownloadOrderPolicy.order(playbackFocused, orderPreference).sequential) handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
         else handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
     }
+    /** Sets the user's order: applied now to a download-only task; a playing task takes it when playback releases it. */
+    @Synchronized internal fun setDownloadOrder(preference: DownloadOrderPreference) {
+        StrictMode.noteSlowCall("TorrentEngine.setDownloadOrder")
+        orderPreference = preference
+        runCatching { currentHandle?.let { applyDownloadOrder(it, orderPlaybackFocused) } }
+    }
     /** Index checks outside the download loop: file or libtorrent errors are logged, never thrown to the caller. */
     private fun refreshStartupIndex() = runCatching { updateStartupIndex() }
         .onFailure { Log.w(TAG, "Startup index check failed: ${EngineFailureLog.describe(it)}") }
