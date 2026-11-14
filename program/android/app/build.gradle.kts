@@ -96,7 +96,9 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.libvlc)
+    implementation(libs.libvlc) { artifact { type = "aar" } }
+    implementation(libs.libvlc.androidx.annotation)
+    implementation(libs.libvlc.androidx.legacy.support)
     implementation(libs.nanohttpd)
     implementation(libs.libtorrent4j)
     implementation(libs.libtorrent4j.arm64)

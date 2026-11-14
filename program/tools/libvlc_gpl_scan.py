@@ -30,6 +30,13 @@ MARKERS = {
     "realrtsp": [b"access_realrtsp", b"Real RTSP"],
     "lua": [b"luaL_newstate"],
     "gpl-module-license": [GPL_MODULE_LICENSE],
+    # libzvbi 0.2.44: src/packet-830.c·pdc.c가 GPL-2이고 LGPL인 packet.c가 packet-830.c를 부른다
+    # (program/libvlc-lgpl-phase4.md 9절). 단어 "zvbi"는 끈 뒤에도 configure 문자열(--disable-zvbi)에
+    # 남으므로 표식으로 쓰지 않는다. VLC zvbi 모듈 설명과 라이브러리 로그 형식을 쓴다.
+    "zvbi": [b"VBI and Teletext decoder", b"libzvbi:%s: %s"],
+    # librist가 묶어 넣는 Mbed TLS는 "Apache-2.0 OR GPL-2.0-or-later"다. RIST는 쓰지 않으므로 뺀다.
+    # 단어 "librist"도 configure 문자열(--disable-librist)에 남으므로 라이브러리 고유 문자열을 쓴다.
+    "librist": [b"librist_api_version", b"RIST Receiver Library version"],
 }
 
 PAGE_16K = 16384
