@@ -21,6 +21,23 @@ class DownloadControllerTest {
         assertEquals(DownloadTaskState(), task.state.value)
         scope.cancel()
     }
+    @Test fun applyingAnOrderBeforeTheTaskStartsNeverCreatesTheEngine() {
+        val scope = CoroutineScope(SupervisorJob())
+        val commands = mutableListOf<Runnable>()
+        val queue = EngineCommandQueue(object : java.util.concurrent.AbstractExecutorService() {
+            override fun execute(command: Runnable) { commands += command }
+            override fun shutdown() = Unit
+            override fun shutdownNow(): MutableList<Runnable> = mutableListOf()
+            override fun isShutdown() = false
+            override fun isTerminated() = false
+            override fun awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit) = true
+        })
+        val task = DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> }, queue)
+        com.example.torrentstreamplayer.engine.DownloadOrderPreference.entries.forEach(task::applyOrder)
+        assertTrue("nothing is queued for a task without an engine", commands.isEmpty())
+        assertEquals(DownloadTaskState(), task.state.value)
+        scope.cancel()
+    }
     @Test fun failedStartShowsOnlyAppTextNeverTheLibraryMessage() = runBlocking {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val network = DownloadController(scope, { throw java.net.UnknownHostException("tracker.example.com") },

@@ -5,20 +5,21 @@ import java.io.*
 
 data class SavedMagnet(val magnet: String, val title: String, val addedAt: Long,
     val fileSize: Long? = null, val downloadedBytes: Long? = null, val pieces: PieceMapSnapshot? = null,
-    val lastPlayedAt: Long = 0, val lastPositionMs: Long = 0)
+    val lastPlayedAt: Long = 0, val lastPositionMs: Long = 0, val downloadOrder: DownloadOrderPreference? = null)
 internal class MagnetHistory(private val cache: TorrentCache) {
     @Synchronized fun list(): List<SavedMagnet> = try {
         val bytes = cache.read("links")
         if (bytes == null) emptyList() else DataInputStream(ByteArrayInputStream(bytes)).use { input ->
             val version = input.readInt()
-            val count = if (version in -3..-1) input.readInt() else version
+            val count = if (version in -4..-1) input.readInt() else version
             require(count in 0..50)
             List(count) {
                 val magnet = input.readUTF()
                 val savedTitle = if (version < 0) input.readUTF() else runCatching { title(magnet) }.getOrDefault("")
                 val receivedAt = input.readLong()
                 SavedMagnet(magnet, savedTitle, receivedAt, lastPlayedAt = if (version <= -2) input.readLong() else 0,
-                    lastPositionMs = if (version == -3) input.readLong().coerceAtLeast(0) else 0)
+                    lastPositionMs = if (version <= -3) input.readLong().coerceAtLeast(0) else 0,
+                    downloadOrder = if (version <= -4) DownloadOrderPreference.fromCode(input.readByte().toInt()) else null)
             }.filter { runCatching { MagnetIdentity.key(it.magnet) }.isSuccess } // A broken entry is skipped alone.
                 .sortedByDescending { it.addedAt }
         }
@@ -29,7 +30,7 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         val previous = list()
         val saved = previous.firstOrNull { MagnetIdentity.key(it.magnet) == key }
         val entries = listOf(SavedMagnet(magnet, saved?.title ?: title(magnet), saved?.addedAt ?: now,
-            lastPlayedAt = saved?.lastPlayedAt ?: 0, lastPositionMs = saved?.lastPositionMs ?: 0)) +
+            lastPlayedAt = saved?.lastPlayedAt ?: 0, lastPositionMs = saved?.lastPositionMs ?: 0, downloadOrder = saved?.downloadOrder)) +
             previous.filter { MagnetIdentity.key(it.magnet) != key }
         write(entries.sortedByDescending { it.addedAt }.take(50))
     }
@@ -54,12 +55,17 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         if (cleanTitle.isEmpty()) return
         write(list().map { if (MagnetIdentity.key(it.magnet) == key) it.copy(title = cleanTitle) else it })
     }
+    /** Saves the video's own download order; null follows the app setting. A link not in the list is not added. */
+    @Synchronized fun setDownloadOrder(magnet: String, order: DownloadOrderPreference?) {
+        val key = MagnetIdentity.key(magnet)
+        write(list().map { if (MagnetIdentity.key(it.magnet) == key) it.copy(downloadOrder = order) else it })
+    }
     private fun write(entries: List<SavedMagnet>) {
         val buffer = ByteArrayOutputStream()
         DataOutputStream(buffer).use { out ->
-            out.writeInt(-3)
+            out.writeInt(-4)
             out.writeInt(entries.size)
-            entries.forEach { out.writeUTF(it.magnet); out.writeUTF(it.title); out.writeLong(it.addedAt); out.writeLong(it.lastPlayedAt); out.writeLong(it.lastPositionMs) }
+            entries.forEach { out.writeUTF(it.magnet); out.writeUTF(it.title); out.writeLong(it.addedAt); out.writeLong(it.lastPlayedAt); out.writeLong(it.lastPositionMs); out.writeByte(DownloadOrderPreference.codeOf(it.downloadOrder)) }
         }
         cache.write("links", buffer.toByteArray())
     }

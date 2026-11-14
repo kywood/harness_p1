@@ -31,6 +31,7 @@ import com.example.torrentstreamplayer.R
  * 최소 높이는 `ListItem` 한 줄 높이다. 묶음은 호출하는 쪽이 `Modifier.selectableGroup()`으로 감싼다.
  *
  * @param tag 글자 오른쪽 태그("파일", "받는 중"). 글자가 길어도 줄어들지 않는다.
+ * @param supporting 글자 아래 설명 줄(`bodyMedium`, `onSurfaceVariant`). "받는 순서" 선택 창이 쓴다.
  * @param description 있으면 행을 이 이름으로만 읽는다(보이는 글자와 태그 대신). 보이는 글자를 앞에 둔다(WCAG 2.5.3).
  */
 @Composable
@@ -42,6 +43,7 @@ fun RadioListItem(
     enabled: Boolean = true,
     tag: String? = null,
     description: String? = null,
+    supporting: String? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val named = if (description != null) Modifier.semantics { contentDescription = description } else Modifier
@@ -49,6 +51,9 @@ fun RadioListItem(
         headlineContent = {
             Text(label, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 modifier = if (description != null) Modifier.clearAndSetSemantics {} else Modifier)
+        },
+        supportingContent = supporting?.let { text ->
+            { Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant) }
         },
         leadingContent = {
             RadioButton(

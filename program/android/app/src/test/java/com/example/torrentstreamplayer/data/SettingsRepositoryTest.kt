@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.data
 
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
@@ -94,6 +95,46 @@ class SettingsRepositoryTest {
         }, Dispatchers.Unconfined)
         assertTrue(runCatching { failing.update { it.copy(subtitleLanguage = "ja") } }.isFailure)
         assertEquals("en", failing.settings.value.subtitleLanguage)
+    }
+
+    @Test fun downloadOrderDefaultsToFromTheStartAndRoundTrips() {
+        assertEquals(DownloadOrderPreference.FROM_START, AppSettingsCodec.decode(null).downloadOrder)
+        DownloadOrderPreference.entries.forEach { order ->
+            val custom = AppSettings(wifiOnly = true, subtitleLanguage = "en", downloadOrder = order)
+            assertEquals(custom, AppSettingsCodec.decode(AppSettingsCodec.encode(custom)))
+        }
+    }
+
+    @Test fun versionTwoStillReadsAndGetsTheDefaultDownloadOrder() {
+        val versionTwo = ByteArrayOutputStream().also { bytes ->
+            DataOutputStream(bytes).use { out ->
+                out.writeInt(2)
+                out.writeBoolean(true)
+                out.writeBoolean(false)
+                out.writeUTF("ja")
+            }
+        }.toByteArray()
+        assertEquals(AppSettings(wifiOnly = true, autoSubtitles = false, subtitleLanguage = "ja",
+            downloadOrder = DownloadOrderPreference.FROM_START), AppSettingsCodec.decode(versionTwo))
+    }
+
+    @Test fun anUnknownDownloadOrderCodeKeepsTheOtherSettingsAndReadsAsTheDefault() {
+        val saved = AppSettingsCodec.encode(AppSettings(wifiOnly = true, downloadOrder = DownloadOrderPreference.FASTEST))
+        saved[saved.lastIndex] = 99
+        assertEquals(AppSettings(wifiOnly = true), AppSettingsCodec.decode(saved))
+    }
+
+    @Test fun downloadOrderChangesOnlyAfterASuccessfulSave() = runBlocking {
+        val store = MemoryStore()
+        val repository = SettingsRepository(store, Dispatchers.Unconfined)
+        repository.update { it.copy(downloadOrder = DownloadOrderPreference.FASTEST) }
+        assertEquals(DownloadOrderPreference.FASTEST, AppSettingsCodec.decode(store.bytes).downloadOrder)
+        val failing = SettingsRepository(object : SettingsStore {
+            override fun read(): ByteArray? = store.bytes
+            override fun write(bytes: ByteArray) = throw IOException("disk full")
+        }, Dispatchers.Unconfined)
+        assertTrue(runCatching { failing.update { it.copy(downloadOrder = DownloadOrderPreference.FROM_START) } }.isFailure)
+        assertEquals(DownloadOrderPreference.FASTEST, failing.settings.value.downloadOrder)
     }
 
     @Test fun emptyStoreLoadsDefaults() = runBlocking {

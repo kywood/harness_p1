@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.ui
 import android.util.Log
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentEngine
@@ -10,11 +11,16 @@ internal data class DownloadTaskState(val key: String? = null, val speed: Long =
     val error: DownloadFailure? = null, val title: String? = null, val complete: Boolean = false) {
     val activeCount: Int get() = if (key != null && !complete && error == null) 1 else 0
 }
+/**
+ * @param order the download order for a magnet key ([DownloadOrderLookup.orderFor]). Called on the engine queue right
+ * before the engine starts, so a change posted by [applyOrder] meanwhile is applied after it and never lost.
+ */
 internal class DownloadController(private val scope: CoroutineScope,
     private val createEngine: () -> TorrentEngine,
     private val save: suspend (String) -> Unit,
     private val title: suspend (String, String) -> Unit,
-    private val commands: EngineCommandQueue = EngineCommandQueue.shared) {
+    private val commands: EngineCommandQueue = EngineCommandQueue.shared,
+    private val order: (String) -> DownloadOrderPreference = { DownloadOrderPreference.DEFAULT }) {
     private val lazyEngine = lazy(createEngine)
     val engine get() = lazyEngine.value
     private val mutableState = MutableStateFlow(DownloadTaskState())
@@ -34,7 +40,8 @@ internal class DownloadController(private val scope: CoroutineScope,
                 save(resolved)
                 if (request != generation) return@launch
                 // startStreaming takes the engine lock; run it on the engine queue, never on the main thread.
-                withContext(commands.dispatcher) { engine.startStreaming(resolved, onMetadataReceived = { name, _ ->
+                withContext(commands.dispatcher) { engine.setDownloadOrder(order(key))
+                    engine.startStreaming(resolved, onMetadataReceived = { name, _ ->
                     scope.launch {
                         if (request != generation) return@launch
                         mutableState.value = mutableState.value.copy(title = name)
@@ -71,6 +78,10 @@ internal class DownloadController(private val scope: CoroutineScope,
     fun awaitStoppedWrites() {
         if (!commands.awaitIdle()) throw TorrentFailure.STOP_PENDING.blocked()
         if (lazyEngine.isInitialized()) engine.awaitStoppedWrites()
+    }
+    /** Applies a changed download order to the running engine through the engine queue. An idle task reads it on start. */
+    fun applyOrder(preference: DownloadOrderPreference) {
+        if (lazyEngine.isInitialized()) engine.let { running -> commands.post { running.setDownloadOrder(preference) } }
     }
     private fun stopEngine() {
         if (lazyEngine.isInitialized()) engine.let { stopping -> commands.post { stopping.stop() } }
