@@ -29,27 +29,37 @@ CAPTIONS = {'ko-KR': {
     'playlist': ('보던 곳부터 이어보기', '최근 50개를 기기 안에 암호화해 보관'),
     'stored': ('업로드 없이, 기록은 기기 안에', '받은 파일은 형식별로 보고 바로 삭제'),
 }, 'en-US': {
-    'main': ('Paste a magnet link, play right away', 'Works with magnet links and .torrent file URLs'),
-    'preparing': ('The beginning downloads first', 'No need to wait for the whole file'),
-    'player_noads': ('No ads during playback', 'See downloaded pieces and your position at a glance'),
-    'player_seek': ('Seek, and it downloads from there', '10-second skip · zoom in · zoom out'),
+    # 제목은 30자 이내 2~5단어. 근거: marketing/reports/store-screenshots-en-2026-11.md
+    'player_noads': ('Watch while it downloads', 'No waiting for the whole file · no ads during playback'),
+    'main': ('Paste a link, press play', 'Works with magnet links and .torrent file URLs'),
+    'player_seek': ('Jump to any point', 'The download follows where you jump · 10-second skip'),
     'playlist': ('Pick up where you left off', 'Your last 50 links, encrypted on your device'),
-    'stored': ('No uploads. History stays on device', 'Browse saved files by type and delete them'),
     'open_link': ('Open links from other apps', 'Play now or save for later'),
     'subtitles': ('Choose your subtitles', 'Pick subtitle files that come with the video'),
+    'stored': ('No seeding, no account', 'Saved files stay on your device. Delete them anytime'),
 }}
 
 # 언어별 원본 폴더 이름(대상 폴더 아래). 없으면 raw. en-US 는 영어 UI 로 다시 찍은 원본을 쓴다(#144).
 RAW_DIRS = {'en-US': 'raw-en-US'}
 
-# 언어별 추가 장면(기본 6장 뒤에 붙는다): 대상 -> [(출력 파일, 원본 파일, 캡션 키, 캔버스 W, H)]
-EXTRA = {'en-US': {
-    'phone': [('07_open_link.png', 'open-link.png', 'open_link', 1080, 1920),
-              ('08_subtitles.png', 'subtitles.png', 'subtitles', 1080, 1920)],
-    'tab7': [('07_open_link.png', 'open-link.png', 'open_link', 1080, 1920),
-             ('08_subtitles.png', 'subtitles.png', 'subtitles', 1080, 1920)],
-    'tab10': [('07_open_link.png', 'open-link.png', 'open_link', 2560, 1440),
-              ('08_subtitles.png', 'subtitles.png', 'subtitles', 2560, 1440)],
+
+def _en(player, seek, W, H, PW, PH):
+    """en-US 7장 순서. player/seek 는 기기별 (출력 파일, 원본 파일), PW·PH 는 첫 장(재생) 캔버스."""
+    return [(player[0], player[1], 'player_noads', PW, PH),
+            ('02_main.png', 'main.png', 'main', W, H),
+            (seek[0], seek[1], 'player_seek', W, H),
+            ('04_playlist.png', 'playlist.png', 'playlist', W, H),
+            ('05_open_link.png', 'open-link.png', 'open_link', W, H),
+            ('06_subtitles.png', 'subtitles.png', 'subtitles', W, H),
+            ('07_stored_files.png', 'stored-files.png', 'stored', W, H)]
+
+
+# 언어별 장면 순서(있으면 TARGETS 의 기본 6장 대신 쓴다): 대상 -> [(출력 파일, 원본 파일, 캡션 키, 캔버스 W, H)]
+# en-US 는 재생 장면을 첫 장으로 올리고 준비(preparing) 장면을 뺐다.
+SCENES = {'en-US': {
+    'phone': _en(('01_player_landscape.png', 'player-landscape.png'), ('03_player.png', 'player.png'), 1080, 1920, 1920, 1080),
+    'tab7': _en(('01_player_landscape.png', 'player-landscape.png'), ('03_player.png', 'player.png'), 1080, 1920, 1920, 1080),
+    'tab10': _en(('01_player.png', 'player.png'), ('03_player_seek.png', 'player-seek.png'), 2560, 1440, 2560, 1440),
 }}
 
 # 대상별: 출력 폴더, 원본 폴더, [(출력 파일, 원본 파일, 캡션 키, 캔버스 W, H)]
@@ -162,7 +172,7 @@ def main():
         out_dir = out_tpl.format(lang=lang)
         os.makedirs(os.path.join(root, out_dir), exist_ok=True)
         raw_dir = os.path.join(os.path.dirname(raw_dir), RAW_DIRS.get(lang, 'raw'))
-        for out, raw, key, W, H in items + EXTRA.get(lang, {}).get(name, []):
+        for out, raw, key, W, H in SCENES.get(lang, {}).get(name, items):
             src = os.path.join(root, raw_dir, raw)
             if not os.path.exists(src):
                 print('skip (no raw):', src)
