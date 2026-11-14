@@ -212,7 +212,7 @@
     <string name="licenses_name_kotlin">Kotlin 표준 라이브러리, kotlinx.coroutines</string>
     <string name="licenses_name_material_icons">Material 아이콘</string>
     <string name="licenses_source_available">소스 코드를 받을 수 있습니다.</string>
-    <string name="licenses_lgpl_notice">LibVLC는 GNU LGPL 2.1 이상으로 배포됩니다. 소스 코드는 아래 주소에서 받을 수 있으며, 라이선스에 따라 이 라이브러리를 수정하거나 다른 버전으로 바꿔 쓸 수 있습니다.</string>
+    <string name="licenses_lgpl_notice">이 앱의 LibVLC는 VideoLAN 소스에서 GPL 구성요소를 빼고 빌드한 것으로, GNU LGPL 2.1 이상으로 배포됩니다. 전체 소스 코드와 변경 내용, 빌드 스크립트, 함께 들어 있는 라이브러리의 소스는 아래 주소에서 받을 수 있으며, 라이선스에 따라 이 라이브러리를 수정하거나 다른 버전으로 바꿔 쓸 수 있습니다.</string>
     <string name="licenses_source_code">소스 코드</string>
     <string name="licenses_others_title">그 밖의 구성요소</string>
     <string name="licenses_others_body">Google 모바일 광고 SDK와 사용자 메시지 플랫폼(UMP)은 오픈소스가 아니며 Google 약관을 따릅니다.</string>
