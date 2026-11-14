@@ -18,10 +18,12 @@ internal class TorrentCache(
         require(kind.matches(KIND))
         return File(directory, kind + ".bin")
     }
-    @Synchronized fun read(kind: String): ByteArray? = try {
+    @Synchronized fun read(kind: String): ByteArray? = try { readOrThrow(kind) } catch (_: Exception) { null }
+    /** Like [read], but null only means no file: a read or decrypt failure is thrown so the caller can keep the file. */
+    @Synchronized fun readOrThrow(kind: String): ByteArray? {
         val file = path(kind)
-        if (!file.isFile || file.length() > 16L * 1024 * 1024) null else decrypt(file.readBytes())
-    } catch (_: Exception) { null }
+        return if (!file.isFile || file.length() > 16L * 1024 * 1024) null else decrypt(file.readBytes())
+    }
     @Synchronized fun write(kind: String, data: ByteArray) {
         require(data.size <= 16 * 1024 * 1024)
         check(directory.isDirectory || directory.mkdirs())
