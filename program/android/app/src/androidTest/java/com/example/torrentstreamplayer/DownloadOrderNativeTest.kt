@@ -3,6 +3,7 @@ package com.example.torrentstreamplayer
 import android.app.Application
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.torrentstreamplayer.engine.DownloadOrderPolicy
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentCache
 import com.example.torrentstreamplayer.engine.TorrentCacheCipher
@@ -24,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference
  * Download order on the real libtorrent session (#150): a download-only task keeps native sequential order with its
  * edge pieces on top, playback switches to the deadline window, and handing playback back restores both. Playback
  * priorities are only applied once the task's own file and edge priorities are set, so they are not overwritten.
+ * The user's order (#178) flips native sequential on a download-only task at once and waits for playback to end.
  */
 class DownloadOrderNativeTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -79,6 +81,75 @@ class DownloadOrderNativeTest {
             val edges = DownloadOrderPolicy.edgePieces(0, pieceCount - 1)
             await { edges.all { engine.piecePriorityOf(it) == top } }
             assertEquals("middle pieces keep the file priority", normal, engine.piecePriorityOf(pieceCount / 2))
+        } finally {
+            engine.stop()
+            engine.awaitStoppedWrites()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun fastestOrderStartsNonSequentialAndChangesApplyWhileDownloading() {
+        val root = File(instrumentation.targetContext.cacheDir, "download-order-" + System.nanoTime()).apply { mkdirs() }
+        val app = object : Application() {
+            override fun getApplicationContext() = this
+            override fun getCacheDir() = File(root, "cache").apply { mkdirs() }
+            override fun getNoBackupFilesDir() = File(root, "private").apply { mkdirs() }
+        }
+        val engine = TorrentEngine(app)
+        try {
+            engine.setDownloadOrder(DownloadOrderPreference.FASTEST)
+            engine.startStreaming(cachedTorrent(app, "order.mkv"), onMetadataReceived = { _, _ -> },
+                onProgress = { _, _ -> }, onError = { }, prioritizePlayback = false)
+            val edges = DownloadOrderPolicy.edgePieces(0, pieceCount - 1)
+            await { engine.isDownloading && edges.all { engine.piecePriorityOf(it) == top } }
+            assertFalse("fastest: native sequential stays off", engine.sequentialDownload)
+            assertEquals("middle pieces keep the file priority", normal, engine.piecePriorityOf(pieceCount / 2))
+
+            engine.setDownloadOrder(DownloadOrderPreference.FROM_START)
+            assertTrue("from the start applies while downloading", engine.sequentialDownload)
+            engine.setDownloadOrder(DownloadOrderPreference.FASTEST)
+            assertFalse("fastest applies while downloading", engine.sequentialDownload)
+            (0 until pieceCount).forEach {
+                assertEquals("piece $it after order changes", if (it in edges) top else normal, engine.piecePriorityOf(it))
+            }
+        } finally {
+            engine.stop()
+            engine.awaitStoppedWrites()
+            root.deleteRecursively()
+        }
+    }
+
+    @Test fun orderChangedDuringPlaybackAppliesWhenPlaybackIsReleased() {
+        val root = File(instrumentation.targetContext.cacheDir, "download-order-" + System.nanoTime()).apply { mkdirs() }
+        val app = object : Application() {
+            override fun getApplicationContext() = this
+            override fun getCacheDir() = File(root, "cache").apply { mkdirs() }
+            override fun getNoBackupFilesDir() = File(root, "private").apply { mkdirs() }
+        }
+        val engine = TorrentEngine(app)
+        val error = AtomicReference<String?>(null)
+        try {
+            engine.startStreaming(cachedTorrent(app, "order.mkv"), onMetadataReceived = { _, _ -> },
+                onProgress = { _, _ -> }, onError = { error.set(it) }, prioritizePlayback = false)
+            await { engine.requestPlayback() || error.get() != null }
+            assertNull(error.get())
+
+            engine.setDownloadOrder(DownloadOrderPreference.FROM_START)
+            assertFalse("playback keeps native sequential off whatever the order", engine.sequentialDownload)
+            engine.setDownloadOrder(DownloadOrderPreference.FASTEST)
+            assertFalse(engine.sequentialDownload)
+            engine.releasePlaybackPriority()
+            assertFalse("released with fastest: still not sequential", engine.sequentialDownload)
+            val edges = DownloadOrderPolicy.edgePieces(0, pieceCount - 1)
+            (0 until pieceCount).forEach {
+                assertEquals("piece $it after release", if (it in edges) top else normal, engine.piecePriorityOf(it))
+            }
+
+            assertTrue(engine.requestPlayback())
+            engine.setDownloadOrder(DownloadOrderPreference.FROM_START)
+            assertFalse(engine.sequentialDownload)
+            engine.releasePlaybackPriority()
+            assertTrue("released with from the start: sequential again", engine.sequentialDownload)
         } finally {
             engine.stop()
             engine.awaitStoppedWrites()

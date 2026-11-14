@@ -32,6 +32,7 @@ import com.example.torrentstreamplayer.data.PlaylistRepository
 import com.example.torrentstreamplayer.data.SettingsRepository
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.EngineFailureLog
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.MetadataDetails
@@ -92,9 +93,13 @@ class MainViewModel @JvmOverloads internal constructor(
         if (engine.isInitialized()) engine.value.awaitStoppedWrites()
         downloads.awaitStoppedWrites(writers)
     }
+    /** 받기 전용 작업의 받는 순서: 영상별 값이 있으면 그 값, 없으면 설정의 기본값. */
+    private val downloadOrders = DownloadOrderLookup({ playlist.downloadOrders() },
+        { settingsRepository.settings.value.downloadOrder })
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { playlist.add(it) }; Unit },
-        { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit }) },
+        { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit },
+        order = downloadOrders::orderFor) },
         onTaskAdded = ::saveQueuedLink)
 
 
@@ -293,6 +298,10 @@ class MainViewModel @JvmOverloads internal constructor(
                 saved, connection -> NetworkConditions(saved.wifiOnly, connection)
             }.distinctUntilChanged().collect(downloads::applyNetwork)
         }
+        // 설정의 받는 순서가 바뀌면(처음 읽은 값 포함) 영상별 값을 정하지 않은 진행 중 작업에도 바로 적용한다.
+        viewModelScope.launch {
+            settingsRepository.settings.map { it.downloadOrder }.distinctUntilChanged().collect { applyDownloadOrders() }
+        }
     }
 
     /**
@@ -341,6 +350,29 @@ class MainViewModel @JvmOverloads internal constructor(
      * 사라지지 않고 한 번씩 반영된다([SettingsRepository.update]가 차례로 처리).
      */
     fun toggleWifiOnly() = updateSettings { it.copy(wifiOnly = !it.wifiOnly) }
+
+    /** 설정의 "받는 순서" 기본값. 저장에 성공해야 값이 바뀌고, 바뀌면 [applyDownloadOrders]가 진행 중 작업에 적용한다. */
+    fun setDownloadOrder(order: DownloadOrderPreference) = updateSettings { it.copy(downloadOrder = order) }
+
+    /**
+     * 재생 목록 카드의 "받는 순서": [magnet] 영상의 값을 저장하고(null이면 기본 설정 따름) 받는 중인 작업에 바로 적용한다.
+     * 재생 중인 작업은 재생이 끝날 때 적용된다. 저장에 실패하면 예외를 던지고 아무것도 바꾸지 않는다.
+     */
+    suspend fun setVideoDownloadOrder(magnet: String, order: DownloadOrderPreference?) {
+        val key = MagnetIdentity.key(magnet)
+        val applied = withContext(Dispatchers.IO) {
+            playlist.setDownloadOrder(magnet, order)
+            downloadOrders.orderFor(key)
+        }
+        withContext(Dispatchers.Main.immediate) { downloads.applyDownloadOrder(key, applied) }
+    }
+
+    /** 살아 있는 작업마다 받는 순서를 다시 정해 엔진에 넘긴다. 엔진 호출은 [DownloadController.applyOrder]가 큐에 넣는다. */
+    private suspend fun applyDownloadOrders() {
+        val keys = downloads.tasks.value.keys
+        val orders = withContext(Dispatchers.IO) { downloadOrders.ordersFor(keys) }
+        orders.forEach { (key, order) -> downloads.applyDownloadOrder(key, order) }
+    }
 
     fun toggleAutoSubtitles() = updateSettings { it.copy(autoSubtitles = !it.autoSubtitles) }
 
