@@ -53,6 +53,7 @@ class TorrentEngine(private val context: Context) {
     internal val uploadedBytes: Long get() = runCatching { currentHandle?.status()?.allTimeUpload() ?: 0L }.getOrDefault(0L)
     private var checkpoint: TorrentCheckpoint? = null
     private var activeCache: TorrentCache? = null
+    private var activeKey: String? = null
     internal val seekRequests = SeekRequestTracker()
     private var priorityWindow = IntRange.EMPTY
     private var backgroundPiecePriority = -1
@@ -102,6 +103,7 @@ class TorrentEngine(private val context: Context) {
     companion object {
         private const val TAG = "TorrentEngine"
         private val sharedSessions = NativeSessionLease<SessionManager> { it.stop() }
+        private val sameKeyTeardowns = SameKeyTeardowns()
     }
 
     @Synchronized
@@ -147,6 +149,7 @@ class TorrentEngine(private val context: Context) {
         val key = try { MagnetIdentity.key(magnetUrl) }
         catch (_: Exception) { onError(TorrentFailure.INVALID_MAGNET.text(context)); return }
         stop()
+        activeKey = key
         val run = activeRun
         startTrace = if (BuildConfig.DEBUG) PlaybackStartTrace(key) else null
         val cache = TorrentCache(stateRoot, key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
@@ -158,7 +161,7 @@ class TorrentEngine(private val context: Context) {
 
         worker = Thread {
             try {
-                check(teardown.await()) { "Previous download is still stopping" }
+                check(teardown.await() && sameKeyTeardowns.await(key)) { "Previous download is still stopping" }
                 if (BuildConfig.DEBUG) Log.d(TAG, "Fetching magnet metadata...")
                 val cachedMetadata = cache.read("metadata")
                 _metadataDetails.value = if (cachedMetadata == null)
@@ -682,5 +685,7 @@ class TorrentEngine(private val context: Context) {
             if (completed != null) runCatching { finalCache?.recordComplete(File(completed.path), completed.size) }
             ActiveTorrentFiles.release(this)
         }
+        activeKey?.let { sameKeyTeardowns.stopped(it, teardown) }
+        activeKey = null
     }
 }
