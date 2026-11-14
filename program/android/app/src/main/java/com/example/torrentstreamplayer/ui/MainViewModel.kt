@@ -96,6 +96,11 @@ class MainViewModel @JvmOverloads internal constructor(
     /** 받기 전용 작업의 받는 순서: 영상별 값이 있으면 그 값, 없으면 설정의 기본값. */
     private val downloadOrders = DownloadOrderLookup({ playlist.downloadOrders() },
         { settingsRepository.settings.value.downloadOrder })
+
+    /** 설정 기본값 변경과 영상별 값 변경을 한 번에 하나씩 계산·적용한다(오래된 값이 새 값을 덮지 않게). */
+    private val downloadOrderSync = DownloadOrderSync(downloadOrders) { key, order ->
+        downloads.applyDownloadOrder(key, order)
+    }
     internal val downloads = DownloadManager(viewModelScope, { DownloadController(viewModelScope, { TorrentEngine(application.applicationContext) },
         { withContext(Dispatchers.IO) { playlist.add(it) }; Unit },
         { magnet, name -> withContext(Dispatchers.IO) { playlist.updateTitle(magnet, name) }; Unit },
@@ -360,19 +365,13 @@ class MainViewModel @JvmOverloads internal constructor(
      */
     suspend fun setVideoDownloadOrder(magnet: String, order: DownloadOrderPreference?) {
         val key = MagnetIdentity.key(magnet)
-        val applied = withContext(Dispatchers.IO) {
-            playlist.setDownloadOrder(magnet, order)
-            downloadOrders.orderFor(key)
+        withContext(Dispatchers.Main.immediate) {
+            downloadOrderSync.sync({ listOf(key) }, save = { playlist.setDownloadOrder(magnet, order) })
         }
-        withContext(Dispatchers.Main.immediate) { downloads.applyDownloadOrder(key, applied) }
     }
 
     /** 살아 있는 작업마다 받는 순서를 다시 정해 엔진에 넘긴다. 엔진 호출은 [DownloadController.applyOrder]가 큐에 넣는다. */
-    private suspend fun applyDownloadOrders() {
-        val keys = downloads.tasks.value.keys
-        val orders = withContext(Dispatchers.IO) { downloadOrders.ordersFor(keys) }
-        orders.forEach { (key, order) -> downloads.applyDownloadOrder(key, order) }
-    }
+    private suspend fun applyDownloadOrders() = downloadOrderSync.sync({ downloads.tasks.value.keys })
 
     fun toggleAutoSubtitles() = updateSettings { it.copy(autoSubtitles = !it.autoSubtitles) }
 

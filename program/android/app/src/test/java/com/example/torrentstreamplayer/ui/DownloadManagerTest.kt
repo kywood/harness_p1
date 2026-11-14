@@ -8,6 +8,7 @@ import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import org.junit.Test
 import kotlin.concurrent.thread
@@ -35,6 +36,22 @@ class DownloadManagerTest {
         thread { manager.awaitStoppedWrites(writers) }.join()
 
         assertEquals("the waited, stopped controller is forgotten; the new one stays", 1, manager.stoppedWriters().size)
+        scope.cancel()
+    }
+
+    @Test fun applyingADownloadOrderIgnoresUnknownKeysAndNeverCreatesAnEngine() {
+        val scope = CoroutineScope(SupervisorJob() + held)
+        val manager = DownloadManager(scope, {
+            DownloadController(scope, { error("Engine must stay lazy") }, {}, { _, _ -> })
+        })
+        manager.applyDownloadOrder("f".repeat(64), DownloadOrderPreference.FASTEST)
+        assertTrue("an unknown key adds no task", manager.tasks.value.isEmpty())
+
+        manager.start(magnet('1')) { true }
+        val before = manager.tasks.value
+        manager.applyDownloadOrder(MagnetIdentity.key(magnet('1')), DownloadOrderPreference.FASTEST)
+        manager.applyDownloadOrder("f".repeat(64), DownloadOrderPreference.FROM_START)
+        assertEquals("the order is not part of the task's phase", before, manager.tasks.value)
         scope.cancel()
     }
 
