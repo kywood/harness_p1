@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.data
 
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
@@ -16,6 +17,8 @@ internal data class AppSettings(
      * The automatic pick prefers it (PM decision, PR #131: one preferred language, not one per video).
      */
     val subtitleLanguage: String? = null,
+    /** Order download-only tasks fetch in unless the video has its own choice (`SavedMagnet.downloadOrder`). */
+    val downloadOrder: DownloadOrderPreference = DownloadOrderPreference.DEFAULT,
 )
 
 /**
@@ -24,9 +27,10 @@ internal data class AppSettings(
  *
  * - 1: wifiOnly, autoSubtitles
  * - 2: + subtitleLanguage (UTF, "" for none)
+ * - 3: + downloadOrder (byte, [DownloadOrderPreference.code]; an unknown code reads as the default)
  */
 internal object AppSettingsCodec {
-    const val VERSION = 2
+    const val VERSION = 3
 
     /** Longest saved language key; longer values are dropped as damaged. */
     private const val MAX_LANGUAGE_CHARS = 8
@@ -37,6 +41,7 @@ internal object AppSettingsCodec {
             out.writeBoolean(settings.wifiOnly)
             out.writeBoolean(settings.autoSubtitles)
             out.writeUTF(settings.subtitleLanguage.orEmpty())
+            out.writeByte(settings.downloadOrder.code)
         }
     }.toByteArray()
 
@@ -51,7 +56,8 @@ internal object AppSettingsCodec {
                 val autoSubtitles = input.readBoolean()
                 val language = if (version >= 2) input.readUTF() else ""
                 val saved = language.takeIf { it.isNotEmpty() && it.length <= MAX_LANGUAGE_CHARS }
-                AppSettings(wifiOnly, autoSubtitles, saved)
+                val order = if (version >= 3) DownloadOrderPreference.fromCode(input.readByte().toInt()) else null
+                AppSettings(wifiOnly, autoSubtitles, saved, order ?: DownloadOrderPreference.DEFAULT)
             }
         }.getOrDefault(AppSettings())
     }
