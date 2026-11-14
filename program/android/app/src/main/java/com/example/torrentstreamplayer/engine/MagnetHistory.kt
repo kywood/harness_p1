@@ -5,20 +5,21 @@ import java.io.*
 
 data class SavedMagnet(val magnet: String, val title: String, val addedAt: Long,
     val fileSize: Long? = null, val downloadedBytes: Long? = null, val pieces: PieceMapSnapshot? = null,
-    val lastPlayedAt: Long = 0, val lastPositionMs: Long = 0)
+    val lastPlayedAt: Long = 0, val lastPositionMs: Long = 0, val downloadOrder: DownloadOrderPreference? = null)
 internal class MagnetHistory(private val cache: TorrentCache) {
     @Synchronized fun list(): List<SavedMagnet> = try {
         val bytes = cache.read("links")
         if (bytes == null) emptyList() else DataInputStream(ByteArrayInputStream(bytes)).use { input ->
             val version = input.readInt()
-            val count = if (version in -3..-1) input.readInt() else version
+            val count = if (version in -4..-1) input.readInt() else version
             require(count in 0..50)
             List(count) {
                 val magnet = input.readUTF()
                 val savedTitle = if (version < 0) input.readUTF() else runCatching { title(magnet) }.getOrDefault("")
                 val receivedAt = input.readLong()
                 SavedMagnet(magnet, savedTitle, receivedAt, lastPlayedAt = if (version <= -2) input.readLong() else 0,
-                    lastPositionMs = if (version == -3) input.readLong().coerceAtLeast(0) else 0)
+                    lastPositionMs = if (version <= -3) input.readLong().coerceAtLeast(0) else 0,
+                    downloadOrder = if (version <= -4) DownloadOrderPreference.fromCode(input.readByte().toInt()) else null)
             }.filter { runCatching { MagnetIdentity.key(it.magnet) }.isSuccess } // A broken entry is skipped alone.
                 .sortedByDescending { it.addedAt }
         }

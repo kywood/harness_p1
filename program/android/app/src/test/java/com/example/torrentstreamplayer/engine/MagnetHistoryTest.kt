@@ -93,6 +93,36 @@ class MagnetHistoryTest {
         assertEquals(10L, history().list().single().addedAt)
         assertEquals(100L, history().list().single().lastPlayedAt)
     }
+    @Test fun versionFourReadsTheDownloadOrderAndDropsUnknownCodes() {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { out ->
+            out.writeInt(-4); out.writeInt(3)
+            listOf(DownloadOrderPreference.FASTEST.code, DownloadOrderPreference.NO_CODE, 99).forEachIndexed { index, code ->
+                out.writeUTF(magnet(index + 1)); out.writeUTF("T$index"); out.writeLong(30L - index)
+                out.writeLong(5); out.writeLong(7000); out.writeByte(code)
+            }
+        }
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).write("links", bytes.toByteArray())
+        val entries = history().list()
+        assertEquals(listOf(DownloadOrderPreference.FASTEST, null, null), entries.map { it.downloadOrder })
+        assertEquals(listOf(7000L, 7000L, 7000L), entries.map { it.lastPositionMs })
+        assertEquals(listOf(magnet(1), magnet(2), magnet(3)), entries.map { it.magnet })
+    }
+    @Test fun versionThreeEntriesReadUnchangedWithoutADownloadOrder() {
+        writeVersionThree()
+        assertEquals(listOf(SavedMagnet(magnet(1), "First", 20, lastPlayedAt = 30, lastPositionMs = 42000),
+            SavedMagnet(magnet(2), "Second", 10)), history().list())
+    }
+    /** Two entries in the -3 format (no download order), as the released app wrote them. */
+    private fun writeVersionThree() {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { out ->
+            out.writeInt(-3); out.writeInt(2)
+            out.writeUTF(magnet(1)); out.writeUTF("First"); out.writeLong(20); out.writeLong(30); out.writeLong(42000)
+            out.writeUTF(magnet(2)); out.writeUTF("Second"); out.writeLong(10); out.writeLong(0); out.writeLong(0)
+        }
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).write("links", bytes.toByteArray())
+    }
     @get:Rule val folder = TemporaryFolder()
     private val key = SecretKeySpec(ByteArray(16) { it.toByte() }, "AES")
     private fun encrypt(bytes: ByteArray): ByteArray {
