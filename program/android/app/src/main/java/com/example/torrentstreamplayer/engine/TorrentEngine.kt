@@ -643,6 +643,8 @@ class TorrentEngine(private val context: Context) {
     fun stop() {
         val completed = _activeDownload.value?.takeIf { it.downloaded == it.size && it.path == selectedVideoFile?.path }
         val finalCache = activeCache
+        val needsTeardown = EngineStopPlan.needsTeardown(started = worker != null, session = sessionManager != null,
+            torrent = currentHandle != null, checkpoint = checkpoint != null)
         activeCache = null
         activeRun++
         _pieceMap.value = PieceMapSnapshot.EMPTY
@@ -676,6 +678,8 @@ class TorrentEngine(private val context: Context) {
         downloadProgress = 0f
         downloadSpeedBytes = 0L
         numPeers = 0
+        // An engine that holds nothing queues no teardown: it would wait behind other engines' teardowns.
+        if (!needsTeardown) return
         // Saving resume data and stopping the native session can block for seconds; never do it on the caller thread.
         teardown.submit {
             runCatching { closing?.save(EngineSpec.RESUME_SAVE_WAIT_MS) }
