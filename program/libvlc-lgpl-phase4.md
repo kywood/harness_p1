@@ -273,4 +273,18 @@ GitHub가 계산한 자산 digest가 위 값과 같다.
   - 한계: `libavcodec.a`(1,004개 중 같은 이름 15개), `libavutil.a`, `libdav1d.a`(13개), `libplacebo.a`, `libswscale.a`는 같은 이름 객체가 있어 `ar x`로 일부를 따로 꺼내지 못했다. 이들은 C·어셈블리 모두 DWARF가 있어(FFmpeg aarch64 `.S`도 단위로 잡혔다) `.so` 쪽 검사에 포함된다고 보지만, 객체 단위 대조는 하지 못했다.
   - x86·x86_64 contrib는 이 객체 단위 대조를 하지 않았다(`.so` 쪽 검사에서 디스크에 없음 8·0개).
 
-**계측 테스트**: `lgpl.3`으로 다시 돌린다(PM에게 에뮬레이터 차례 요청). 결과는 이 절에 더한다.
+**계측 테스트(`lgpl.3`, 2026-11-14 서울 20:4x, emulator-5554 `sdk_gphone64_x86_64`)**
+
+- 빌드: #201+#202(`codex/101-libvlc-license-text`)의 debug APK. APK 안 `libvlc.so`가 `lgpl.3`(arm64 `686c0896…`, x86_64 `7f4f720f…`)이고, #202의 LGPL 안내 문구(영어·한국어)가 `resources.arsc`에 있음을 확인했다. VLC는 `revision 3.0.23-2-852-g453bcced8f`(= `lgpl.3` VLC HEAD)로 떴다.
+- 방식은 7절과 같다(`adb -s emulator-5554` 설치, `am instrument`, 실행마다 `pm clear`). 휴대폰·포트 5038 adb 서버는 쓰지 않았다.
+- 첫 시도는 에뮬레이터 쪽 문제로 실행되지 않았다. 서울 20:20에 zygote64·system_server가 다시 시작된 뒤 `Can't find service: package`가 나왔고, adb shell도 응답하지 않았다. 이 세션의 첫 에뮬레이터 명령은 20:25였다. PM이 콜드 부트한 뒤 다시 돌렸다.
+
+| 실행 | 결과 | 시간 |
+|---|---|---|
+| 다섯 클래스(`SubtitleUiTest` 3개, `CompletedPlaybackSwitchTest`, `QuickDownloadResumeTest`, `IndependentDownloadTest`, `OpenSourceLicensesFlowTest`) | `OK (7 tests)`, 크래시 0 | 153초 |
+| 전체 25개 클래스 | 55개 중 54개 통과, **1개 실패**, 크래시(`FATAL EXCEPTION`·`Fatal signal`) 0 | 180초 |
+| 실패한 클래스만 다시(`MainThreadResponsivenessTest`) | `OK (2 tests)` | 7초 |
+
+- 실패: `MainThreadResponsivenessTest.buttonFlowsKeepEngineWorkOffMainThread` — `blocking engine calls on the main thread expected:<[]> but was:<[gcore.dynamite]>`. 이 테스트는 메인 스레드의 StrictMode 사용자 정의 느린 호출을 모두 모은다. 잡힌 것은 앱 엔진 호출이 아니라 Google Play 서비스가 동적 모듈(광고 SDK·UMP)을 처음 불러올 때 `StrictMode.noteSlowCall`로 남기는 `gcore.dynamite`다. 콜드 부트 직후 GMS 모듈이 캐시에 없어 처음 한 번 메인 스레드에서 불렸다고 본다. 같은 테스트는 `lgpl.2` 전체 실행·공식 빌드 전체 실행에서 통과했고, 다시 돌리니 통과했다. LibVLC와 관계없고 간헐 네이티브 크래시(#169)도 아니다. 다만 이 테스트는 GMS 상태에 따라 깨질 수 있으므로, `gcore.dynamite` 같은 외부 라이브러리 알림을 걸러야 할지는 별도 판단이다(이 PR에서는 고치지 않음).
+- VLC 오류 로그(`E/VLC`) 종류와 수는 `lgpl.2`·공식 빌드 때와 같다: `window: request … not implemented` 48, `video output creation failed` 21, `buffer deadlock prevented` 1, `deinterlace` 안내 22. 모듈을 찾지 못했다는 로그(zvbi·rist 등)는 없다.
+- 하지 못한 것(그대로): arm64 실기기 실행, AC3/E-AC3 음성 재생(arm64 C 경로), 코덱별 스모크 테스트.
