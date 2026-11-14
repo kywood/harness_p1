@@ -48,7 +48,10 @@ internal object SubtitleFilePlan {
         }
         val otherEpisodes = others.filter { it.size >= video.size * SubtitleSpec.PACK_EPISODE_MIN_PERCENT / 100 }
             .mapNotNull { episode(nameWords(SubtitleLanguage.baseName(it.path))) }
-        val singleVideo = otherEpisodes.none { it != episode(videoWords) } &&
+        val videoPart = partNumber(videoWords)
+        val otherParts = others.filter { it.size >= video.size * SubtitleSpec.PART_MIN_PERCENT / 100 }
+            .filter { partNumber(nameWords(SubtitleLanguage.baseName(it.path))) != videoPart }
+        val singleVideo = otherEpisodes.none { it != episode(videoWords) } && otherParts.isEmpty() &&
             others.count { it.size >= packMinBytes } < SubtitleSpec.PACK_MIN_BIG_VIDEOS
         val found = files.asSequence()
             .filter { it.index != videoIndex && SubtitleFormat.of(it.path) != null }
@@ -117,6 +120,9 @@ internal object SubtitleFilePlan {
     }
 
     private fun episode(words: List<String>) = words.firstOrNull(SubtitleSpec.EPISODE_WORD::matches)
+
+    /** Digits of the last word with a digit (`movie 2` → 2, `cd1` → 1): the part number of a multi-part title. */
+    private fun partNumber(words: List<String>) = words.lastOrNull { it.any(Char::isDigit) }?.filter(Char::isDigit)
 
     private fun folder(path: String): String = path.replace('\\', '/').substringBeforeLast('/', "")
 }
