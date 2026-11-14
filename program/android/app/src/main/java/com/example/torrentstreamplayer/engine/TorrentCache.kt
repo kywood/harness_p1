@@ -18,10 +18,12 @@ internal class TorrentCache(
         require(kind.matches(KIND))
         return File(directory, kind + ".bin")
     }
-    @Synchronized fun read(kind: String): ByteArray? = try {
+    @Synchronized fun read(kind: String): ByteArray? = try { readOrThrow(kind) } catch (_: Exception) { null }
+    /** Like [read], but null only means no file: a read or decrypt failure is thrown so the caller can keep the file. */
+    @Synchronized fun readOrThrow(kind: String): ByteArray? {
         val file = path(kind)
-        if (!file.isFile || file.length() > 16L * 1024 * 1024) null else decrypt(file.readBytes())
-    } catch (_: Exception) { null }
+        return if (!file.isFile || file.length() > 16L * 1024 * 1024) null else decrypt(file.readBytes())
+    }
     @Synchronized fun write(kind: String, data: ByteArray) {
         require(data.size <= 16 * 1024 * 1024)
         check(directory.isDirectory || directory.mkdirs())
@@ -36,6 +38,12 @@ internal class TorrentCache(
                 Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
             }
         } finally { temporary.delete() }
+    }
+    /** Moves a [kind] file that can never be read to `<kind>.bak` (replacing an older one) so a new one can start. */
+    @Synchronized fun keepAside(kind: String) {
+        val file = path(kind)
+        val aside = File(directory, kind + ".bak")
+        if (file.isFile) Files.move(file.toPath(), aside.toPath(), StandardCopyOption.REPLACE_EXISTING)
     }
     fun recordComplete(file: File, expectedSize: Long) {
         require(file.isFile && expectedSize > 0 && file.length() == expectedSize)

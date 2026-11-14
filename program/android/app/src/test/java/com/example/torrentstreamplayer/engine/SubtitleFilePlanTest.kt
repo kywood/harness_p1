@@ -117,6 +117,21 @@ class SubtitleFilePlanTest {
         assertTrue(plan.single().fallbackAllowed)
     }
 
+    @Test fun aTwoPartMovieDoesNotTurnOnTheOtherPartsSubtitle() {
+        val torrent = files("M/Movie.1.mkv" to 4_000_000_000, "M/Movie.2.mkv" to 4_000_000_000,
+            "M/Movie.1.ko.srt" to 10)
+        assertEquals("part 2 has no subtitle of its own", emptyList<String>(), chosen(torrent, videoIndex = 1))
+        assertEquals(listOf("M/Movie.1.ko.srt"), chosen(torrent, videoIndex = 0))
+    }
+
+    @Test fun cdPartsNeedANameMatchButAnotherCutOfTheSamePartDoesNot() {
+        val cds = files("M/Movie.CD1.avi" to 700_000_000, "M/Movie.CD2.avi" to 690_000_000, "M/Korean.srt" to 10)
+        assertEquals(emptyList<String>(), chosen(cds, videoIndex = 1))
+        val cuts = files("M/Movie.2019.mkv" to 4_000_000_000, "M/Movie.2019.Extended.mkv" to 4_200_000_000,
+            "M/Korean.srt" to 10)
+        assertEquals("same number: still one title", listOf("M/Korean.srt"), chosen(cuts))
+    }
+
     @Test fun seasonPacksKeepSubtitlesNamedExactlyLikeTheVideo() {
         val anime = files("S/[Grp] Show - 01 [1080p].mkv" to 500_000_000,
             "S/[Grp] Show - 02 [1080p].mkv" to 500_000_000,

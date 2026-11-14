@@ -1,5 +1,7 @@
 package com.example.torrentstreamplayer.engine
 import java.io.File
+import java.security.ProviderException
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -152,6 +154,36 @@ class MagnetHistoryTest {
         history().setDownloadOrder(magnet(1), DownloadOrderPreference.FASTEST)
         assertTrue(history().list().isEmpty())
     }
+    @Test fun aReadThatMayPassLaterKeepsTheSavedListThroughEveryWrite() {
+        history().add(magnet(1), 10); history().savePosition(magnet(1), 42000, 120000)
+        val saved = linksFile().readBytes()
+        val failing = MagnetHistory(TorrentCache(folder.root, "0".repeat(64), ::encrypt) { throw ProviderException() })
+        assertTrue("the screen still sees an empty list", failing.list().isEmpty())
+        failing.add(magnet(2), 20)
+        failing.markPlayed(magnet(1), 30)
+        failing.savePosition(magnet(1), 1000, 120000)
+        failing.setDownloadOrder(magnet(1), DownloadOrderPreference.FASTEST)
+        failing.updateTitle(magnet(1), "Other")
+        failing.delete(magnet(1))
+        assertArrayEquals(saved, linksFile().readBytes())
+        assertEquals(42000L, history().list().single().lastPositionMs)
+        assertFalse(File(linksFile().parentFile, "links.bak").exists())
+    }
+    @Test fun aFileThatCanNeverBeReadIsMovedAsideAndANewListStarts() {
+        history().add(magnet(1), 10)
+        val saved = linksFile().readBytes()
+        val otherKey = MagnetHistory(TorrentCache(folder.root, "0".repeat(64), ::encrypt) { throw AEADBadTagException() })
+        otherKey.add(magnet(2), 20)
+        assertArrayEquals(saved, File(linksFile().parentFile, "links.bak").readBytes())
+        assertEquals(listOf(magnet(2)), history().list().map { it.magnet })
+    }
+    @Test fun withNoFileTheFirstWriteStartsTheList() {
+        assertFalse(linksFile().exists())
+        history().add(magnet(1), 10)
+        assertEquals(listOf(magnet(1)), history().list().map { it.magnet })
+        assertFalse(File(linksFile().parentFile, "links.bak").exists())
+    }
+    private fun linksFile() = File(folder.root, "0".repeat(64) + "/links.bin")
     private fun savedVersion(): Int = java.io.DataInputStream(java.io.ByteArrayInputStream(
         TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).read("links"))).use { it.readInt() }
     /** Two entries in the -3 format (no download order), as the released app wrote them. */

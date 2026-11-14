@@ -7,8 +7,11 @@ data class SavedMagnet(val magnet: String, val title: String, val addedAt: Long,
     val fileSize: Long? = null, val downloadedBytes: Long? = null, val pieces: PieceMapSnapshot? = null,
     val lastPlayedAt: Long = 0, val lastPositionMs: Long = 0, val downloadOrder: DownloadOrderPreference? = null)
 internal class MagnetHistory(private val cache: TorrentCache) {
+    /** What the last [list] found. Every write lists first under the same lock, so [write] sees its own read. */
+    private var lastRead = HistoryReadState.READ
     @Synchronized fun list(): List<SavedMagnet> = try {
-        val bytes = cache.read("links")
+        lastRead = HistoryReadState.READ
+        val bytes = cache.readOrThrow("links")
         if (bytes == null) emptyList() else DataInputStream(ByteArrayInputStream(bytes)).use { input ->
             val version = input.readInt()
             val count = if (version in -4..-1) input.readInt() else version
@@ -23,7 +26,7 @@ internal class MagnetHistory(private val cache: TorrentCache) {
             }.filter { runCatching { MagnetIdentity.key(it.magnet) }.isSuccess } // A broken entry is skipped alone.
                 .sortedByDescending { it.addedAt }
         }
-    } catch (_: Exception) { emptyList() }
+    } catch (failure: Exception) { lastRead = HistoryReadState.after(failure); emptyList() }
     @Synchronized fun add(magnet: String, now: Long = System.currentTimeMillis()) {
         require(magnet.length <= NetworkSpec.MAX_LINK_CHARS)
         val key = MagnetIdentity.key(magnet)
@@ -61,6 +64,8 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         write(list().map { if (MagnetIdentity.key(it.magnet) == key) it.copy(downloadOrder = order) else it })
     }
     private fun write(entries: List<SavedMagnet>) {
+        if (!lastRead.writable) return // An unreadable list is kept, not replaced by what this call saw (nothing).
+        if (lastRead.keepAside) cache.keepAside("links")
         val buffer = ByteArrayOutputStream()
         DataOutputStream(buffer).use { out ->
             out.writeInt(-4)

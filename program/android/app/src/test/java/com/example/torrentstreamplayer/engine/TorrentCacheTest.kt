@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.engine
 
 import java.io.File
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -69,6 +70,23 @@ class TorrentCacheTest {
         val bytes = file.readBytes().also { it[it.lastIndex] = (it.last().toInt() xor 1).toByte() }
         file.writeBytes(bytes)
         assertNull(cache().read("resume"))
+    }
+    @Test fun strictReadTellsAMissingFileFromAFailedRead() {
+        assertNull("no file is not a failure", cache().readOrThrow("links"))
+        cache().write("links", byteArrayOf(1, 2, 3))
+        val failing = TorrentCache(folder.root, id, ::encrypt) { throw AEADBadTagException() }
+        assertThrows(AEADBadTagException::class.java) { failing.readOrThrow("links") }
+        assertNull("the lenient read still hides the failure", failing.read("links"))
+        assertArrayEquals(byteArrayOf(1, 2, 3), cache().readOrThrow("links"))
+    }
+    @Test fun keptAsideFileMovesToBakWithItsBytes() {
+        cache().keepAside("links")
+        assertFalse("nothing to move is not an error", File(folder.root, "$id/links.bak").exists())
+        cache().write("links", byteArrayOf(1, 2, 3))
+        val original = File(folder.root, "$id/links.bin").readBytes()
+        cache().keepAside("links")
+        assertNull(cache().readOrThrow("links"))
+        assertArrayEquals(original, File(folder.root, "$id/links.bak").readBytes())
     }
     @Test fun failedWriteKeepsPreviousCheckpoint() {
         cache().write("resume", byteArrayOf(7))

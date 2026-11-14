@@ -34,6 +34,13 @@ internal object SubtitleSpec {
     /** Other large videos (see [PACK_VIDEO_MIN_PERCENT]) that make a folder without episode markers a season pack. */
     const val PACK_MIN_BIG_VIDEOS = 2
 
+    /**
+     * Smallest other video, in percent of the selected video's size, that is another part of the same title when the
+     * last number in its name differs (`Movie.1` / `Movie.2`, `CD1` / `CD2`). Then the folder is treated like a
+     * season pack, so one part's subtitle is not turned on for the other (review M2, #194).
+     */
+    const val PART_MIN_PERCENT = 80L
+
     /** Folders searched below the video's folder: the subtitle folder and one episode folder inside it. */
     const val MAX_FOLDER_DEPTH = 2
 
