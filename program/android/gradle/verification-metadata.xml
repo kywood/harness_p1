@@ -18,9 +18,9 @@
       </trusted-artifacts>
    </configuration>
    <components>
-      <component group="pieceplay.libvlc" name="libvlc-lgpl" version="3.7.5-lgpl.2">
-         <artifact name="libvlc-lgpl-3.7.5-lgpl.2.aar">
-            <sha256 value="5ef801c030ead76871bf9cd4662137bd8ce1d5f038e024e99fa2ce84c34c2058" origin="kywood/pieceplay-libvlc Release 3.7.5-lgpl.2 SHA256SUMS"/>
+      <component group="pieceplay.libvlc" name="libvlc-lgpl" version="3.7.5-lgpl.3">
+         <artifact name="libvlc-lgpl-3.7.5-lgpl.3.aar">
+            <sha256 value="aafbb3ca121b69f8e87e381fd4c8cb286cb0e64010a10d6d7407af5c4f62f854" origin="kywood/pieceplay-libvlc Release 3.7.5-lgpl.3 SHA256SUMS"/>
          </artifact>
       </component>
    </components>
