@@ -244,6 +244,8 @@ internal fun MagnetHistoryScreen(load: () -> List<SavedMagnet>, delete: suspend 
         }
     }
     val orderEntry = orderTarget?.let { magnet -> liveEntries.firstOrNull { it.magnet == magnet } }
+    // 대상 항목이 목록에서 사라지면(삭제, 빈 목록) 대상을 비워, 나중에 다시 읽혔을 때 창이 저절로 뜨지 않게 한다.
+    LaunchedEffect(orderTarget, orderEntry == null) { if (orderEntry == null) orderTarget = null }
     if (orderEntry != null && onDownloadOrderChange != null) DownloadOrderSheet(
         options = DownloadOrderOption.forVideo,
         selected = DownloadOrderOption.of(orderEntry.downloadOrder),
@@ -380,7 +382,8 @@ private fun PlaylistItemCard(
         errorMessage?.let { Text(it, color = colors.error, style = MaterialTheme.typography.bodySmall) }
         // 받는 순서 줄(`design/specs/download-order.md` 3절): 왼쪽에 영상별 값 표시, 오른쪽에 글자 버튼. 동작 줄은 360dp에서
         // 이미 꽉 차서(재생 + 다운로드 동작 + 삭제) 이어보기 줄과 같은 모양의 줄을 따로 둔다.
-        if (downloadOrder?.showsAction == true) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (downloadOrder?.showsAction == true) Row(Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                 downloadOrder.marker?.let { StatusChip(stringResource(it.label), StatusTone.NEUTRAL) }
             }

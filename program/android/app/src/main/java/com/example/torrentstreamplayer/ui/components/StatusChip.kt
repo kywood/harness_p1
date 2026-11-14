@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.Shapes
@@ -54,7 +55,7 @@ fun StatusChip(label: String, tone: StatusTone, modifier: Modifier = Modifier, i
         if (icon != null) Icon(icon, contentDescription = null, tint = tone.dot, modifier = Modifier.size(Sizes.iconSmall))
         else Box(Modifier.size(Spacing.sm).background(tone.dot, CircleShape))
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1)
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

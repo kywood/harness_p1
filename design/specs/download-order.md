@@ -34,7 +34,8 @@
 │ (●) 앞부분부터                                      │
 │     받는 중에도 바로 재생하기 쉽습니다.               │
 │ ( ) 빠르게 받기                                     │
-│     전체를 더 빨리 받습니다. 다 받은 뒤에 보기 좋습니다. │
+│     받을 수 있는 조각부터 받습니다.                   │
+│     전체 받기가 빨라질 수 있습니다.                   │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -46,6 +47,7 @@
 | "기본 설정 따름" 태그 | 기존 `tag` 인자에 지금 앱 기본값의 이름을 넣는다. "기본 설정"이 지금 무엇인지 창을 닫지 않고 알 수 있게 |
 | 항목 순서 | 설정: 앞부분부터(기본값) → 빠르게 받기. 영상별: 기본 설정 따름(기본) → 앞부분부터 → 빠르게 받기 |
 | 동작 | 항목을 누르면 바로 고르고 창이 내려간다(확인 버튼 없음, 자막 시트와 같은 방식) |
+| 스크롤 | 항목 묶음에 `verticalScroll`을 둔다(가로 화면·큰 글자에서 맨 아래 항목이 잘리지 않게, 다른 시트와 같다) |
 
 ## 3. 재생 목록 카드
 
@@ -81,7 +83,7 @@
 | 저장 | 저장에 성공하면 목록을 다시 읽어 표시가 바뀐다. 실패하면 값은 그대로이고 목록 위 오류 줄에 `settings_save_failed` |
 | 간단히 보기 | 줄을 그대로 보인다(동작이므로 숨기지 않는다) |
 
-360dp에서 한 줄 폭: 칩 "From the start"(약 125dp) + 버튼 "Download order"(약 135dp) = 약 260dp < 296dp. 칩 글자는 한 줄이고, 글자 크기를 키워 폭이 모자라면 칩이 줄어든다(버튼이 먼저 자리를 잡는다).
+360dp에서 한 줄 폭: 칩 "From the start"(약 125dp) + 버튼 "Download order"(약 135dp) = 약 260dp < 296dp. 칩 글자는 한 줄이고, 글자 크기를 키워 폭이 모자라면 칩이 줄어들며 글자는 말줄임(…)된다(버튼이 먼저 자리를 잡는다). 말줄임은 `StatusChip` 공통 동작으로 넣었다.
 
 ## 4. 적용 규칙 (program)
 
@@ -104,9 +106,10 @@
 | `download_order_from_start` | 앞부분부터 | From the start |
 | `download_order_from_start_desc` | 받는 중에도 바로 재생하기 쉽습니다. | Easier to play while it's still downloading. |
 | `download_order_fastest` | 빠르게 받기 | Fastest |
-| `download_order_fastest_desc` | 전체를 더 빨리 받습니다. 다 받은 뒤에 보기 좋습니다. | Finishes the whole download sooner. Best for watching after it's done. |
+| `download_order_fastest_desc` | 받을 수 있는 조각부터 받습니다. 전체 받기가 빨라질 수 있습니다. | Downloads whichever pieces are available. The whole download may finish sooner. |
 
 - 설정 항목 제목, 선택 창 제목, 카드의 글자 버튼이 모두 `download_order_title`을 쓴다(같은 뜻은 같은 키).
+- "빠르게 받기" 설명은 효과를 단정하지 않는다(PR #184 리뷰: 실제 스웜에서 속도 차이를 측정하지 않았다).
 - 저장 실패는 새 문구를 만들지 않고 기존 `settings_save_failed`("설정을 저장하지 못했습니다. 다시 눌러 주세요.")를 쓴다.
 
 ## 6. 접근성

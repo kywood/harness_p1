@@ -1,7 +1,9 @@
 package com.example.torrentstreamplayer.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -23,8 +25,13 @@ internal fun DownloadOrderSheet(
     onDismiss: () -> Unit,
     appDefault: DownloadOrderOption? = null,
 ) {
-    AppBottomSheet(onDismiss, title = stringResource(R.string.download_order_title), skipPartiallyExpanded = true) { dismiss ->
-        Column(Modifier.selectableGroup()) {
+    AppBottomSheet(
+        onDismiss = onDismiss,
+        title = stringResource(R.string.download_order_title),
+        skipPartiallyExpanded = true,
+    ) { dismiss ->
+        // 가로 화면이나 큰 글자에서 항목이 시트 높이를 넘어도 맨 아래 항목을 고를 수 있게 스크롤한다(다른 시트와 같다).
+        Column(Modifier.verticalScroll(rememberScrollState()).selectableGroup()) {
             options.forEach { option ->
                 RadioListItem(
                     label = stringResource(option.label),

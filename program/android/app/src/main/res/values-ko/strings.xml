@@ -297,7 +297,7 @@
     <string name="download_order_from_start">앞부분부터</string>
     <string name="download_order_from_start_desc">받는 중에도 바로 재생하기 쉽습니다.</string>
     <string name="download_order_fastest">빠르게 받기</string>
-    <string name="download_order_fastest_desc">전체를 더 빨리 받습니다. 다 받은 뒤에 보기 좋습니다.</string>
+    <string name="download_order_fastest_desc">받을 수 있는 조각부터 받습니다. 전체 받기가 빨라질 수 있습니다.</string>
     <string name="settings_version">버전</string>
     <string name="settings_save_failed">설정을 저장하지 못했습니다. 다시 눌러 주세요.</string>
     <string name="status_wifi_waiting">Wi-Fi 대기</string>
