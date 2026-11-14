@@ -122,7 +122,11 @@ internal fun MagnetLinkInputScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // 톱니 줄은 로고를 아래로 너무 밀지 않게 lg 대신 xs만큼 띄운다(settings-wifi.md 1절).
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                // 톱니 줄이 폭을 다 차지하므로, 가로 정렬을 주지 않으면 로고·이름·설명이 왼쪽에 붙는다(#182).
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     SettingsEntry(onOpenSettings)
                     BrandHeader()
                 }

@@ -7,8 +7,8 @@
 | 팀 | 형태 | 디렉터리 | 소유 | 고치지 않는 것 |
 |---|---|---|---|---|
 | PM | 메인 세션 (루트에서 연다) | 루트 | `PM.md`, GitHub 이슈, 우선순위·출시 결정, `program/android/PATCH_NOTES.md` | 코드, 리소스 |
-| launch | 별도 세션 (`launch/`에서 연다) | `launch/` | 스토어 등록정보·자료, Play Console 양식, 출시 체크리스트, 심사·출시 후 대응 | 코드, 리소스 |
-| marketing | 별도 세션 (`marketing/`에서 연다) | `marketing/` | ASO, 시장·경쟁 분석, 리뷰·평점 관리, 지표 보고, 홍보안 | 코드, 리소스, 승인 없는 외부 게시·유료 집행 |
+| launch | 별도 세션 (`launch/`에서 연다) | `launch/` | Play Console 양식, 출시 체크리스트, 스토어 자료 정책·규격 확인과 업로드, 심사·출시 후 대응 | 코드, 리소스, 스토어 자료 제작 |
+| marketing | 별도 세션 (`marketing/`에서 연다) | `marketing/`, 스토어 자료는 `launch/store-assets/`·`launch/listing/` | 스토어 스크린샷·그래픽 이미지·홍보 영상·등록정보 문구 제작, ASO, 시장·경쟁 분석, 리뷰·평점 관리, 지표 보고, 홍보안 | 코드, 리소스, 승인 없는 외부 게시·유료 집행 |
 | planning | 별도 세션 (`planning/`에서 연다) | `planning/` | 요구사항, 화면 정의, 사용자 흐름, 스펙 | 코드, 리소스 |
 | design | 서브에이전트 `design` | `design/` | `ui/theme/`, `res/`, 컴포저블의 시각 부분, `design/`의 토큰·시안 문서 | `engine/`, ViewModel, `StreamUiState`, `*Policy`·`*Plan` 로직 |
 | program | 서브에이전트 `program` | `program/` | `engine/`, ViewModel, 상태·정책 객체, 테스트, Gradle·릴리스 | 색·간격·문구를 임의로 새로 만드는 일 |
