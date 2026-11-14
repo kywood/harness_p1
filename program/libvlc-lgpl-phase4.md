@@ -109,12 +109,25 @@ AAB 안 ABI별 네이티브(`libvlc.so`+`libvlcjni.so`+`libc++_shared.so`+libtor
 | `OpenSourceLicensesFlowTest` | 라이선스 화면에서 LibVLC 항목과 LGPL 안내 |
 | 전체 `connectedDebugAndroidTest` | 그 밖의 회귀 |
 
-결과: **아직 실행하지 않았다**(PM에게 에뮬레이터 차례 요청). 결과가 나오면 이 절에 적는다.
+### 결과(2026-11-14, emulator-5554 `sdk_gphone64_x86_64`, PM 차례 받아 실행)
+
+기본 adb 서버에 실기기도 연결되어 있어 Gradle `connected…` 작업은 쓰지 않았다(연결된 기기 전체에 설치한다). `app-debug.apk`·`app-debug-androidTest.apk`를 `adb -s emulator-5554 install -r -t`로 넣고 `am instrument -w -r`로 돌렸다. 빌드는 #201+#202(`codex/101-libvlc-license-text`).
+
+| 실행 | 결과 | 시간 |
+|---|---|---|
+| 다섯 클래스(`SubtitleUiTest` 3개, `CompletedPlaybackSwitchTest`, `QuickDownloadResumeTest`, `IndependentDownloadTest`, `OpenSourceLicensesFlowTest`) | `OK (7 tests)` | 120초 |
+| 전체(25개 클래스), 앱 데이터 초기화 후 | `OK (55 tests)`, 크래시(`FATAL EXCEPTION`·`Fatal signal`) 0 | 229초 |
+| 비교: 공식 `libvlc-all 3.7.5` main(`e39b1bc`) 전체, 같은 조건 | `OK (55 tests)`, 크래시 0 | 395초 |
+
+- VLC는 `revision 3.0.23-2-851-gb793163796`(= 이 빌드의 VLC HEAD)으로 떴다. `http` 접근, `mp4`·`subtitle` demux, `avcodec` 디코더, `filesystem`(자막 slave), `android_audiotrack`, `scaletempo`가 쓰였다.
+- VLC 오류 로그(`E/VLC`)를 두 빌드에서 세었다. `video output creation failed` 21건, `window: request … not implemented` 48건, `buffer deadlock prevented` 1건으로 **두 빌드가 같다.** 테스트가 끝나 화면(Surface)이 사라진 뒤 남은 재생기가 vout을 만들려다 실패하는 정리 단계 로그다. 새 빌드에만 있는 것은 `option sout-deinterlace-mode does not exist` 22건(`deinterlace` 모듈을 뺀 데서 나오는 안내, 기본값으로 계속 진행)뿐이다.
+- 참고: sintel 재생에서 자막 렌더러(freetype+fontconfig)가 처음에 "Building font databases"로 약 13초를 쓰고, 그동안 첫 화면이 늦게 뜬다. **공식 빌드도 같다**(앱 데이터 초기화 뒤 sintel 테스트 하나로 비교: 공식 12.98초). 이번 교체와는 관계없는 기존 동작이다. 개선할 가치가 있으면 별도 이슈로 다룬다.
+- 같은 비교에서 공식 빌드의 sintel 테스트가 한 번 실패했다(토렌트로 자막 파일을 받는 단계 60초 초과, 네트워크·스웜 시간 문제). VLC와 관계없고 네이티브 크래시(#169)도 아니다. 새 빌드는 같은 테스트를 통과했다.
 
 ## 8. 남은 위험과 [확인 필요]
 
-- 계측 테스트·실재생 확인 전이다(7절).
-- 코덱별 스모크 테스트(H.265·AV1·VP9 × AAC·AC3·Opus, mkv+ASS)는 아직 없다(계획 5.2). 지금 계측 테스트는 PNG와 sintel(H.264/mkv 계열)만 지난다.
+- 계측 테스트는 x86_64 에뮬레이터에서만 돌렸다(소프트웨어 디코딩). arm64·armeabi-v7a 실기기의 `mediacodec` 하드웨어 디코딩 경로는 확인하지 않았다(실기기 사용 금지 지침).
+- 코덱별 스모크 테스트(H.265·AV1·VP9 × AAC·AC3·Opus, mkv+ASS)는 아직 없다(계획 5.2). 지금 계측 테스트는 PNG, sintel(H.264 mp4 + SRT), 테스트용 mp4만 지난다.
 - 빌드는 GitHub Release에 기대고 있다. Release 자산이 지워지면 새 PC·CI의 첫 빌드가 실패한다(캐시가 있으면 계속 된다). 해시는 고정되어 있으므로 바꿔치기는 막힌다.
 - [확인 필요] LGPL 2.1 §6 요건(재링크 가능성, 서명된 APK에서의 교체, 소스 제공 방식)은 법률 확인이 필요하다(계획 6절). 이번 Release는 VLC 소스와 contrib 원본을 같은 자리에 두어 소스 제공 위치를 하나로 모았다.
 - [확인 필요] 고지 목록에 LibVLC 안의 LGPL·BSD·MIT·FTL 구성요소(contrib 57개)를 각각 적어야 하는지. 지금은 LibVLC·FFmpeg만 따로 적는다(기존과 같은 범위).
