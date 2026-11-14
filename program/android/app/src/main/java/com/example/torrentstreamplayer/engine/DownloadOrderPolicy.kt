@@ -18,7 +18,7 @@ internal enum class DownloadOrder(val sequential: Boolean) {
 internal object DownloadOrderPolicy {
     fun order(playbackFocused: Boolean, preference: DownloadOrderPreference = DownloadOrderPreference.DEFAULT) = when {
         playbackFocused -> DownloadOrder.PLAYBACK_WINDOW
-        else -> if (preference == DownloadOrderPreference.FASTEST) DownloadOrder.RAREST_FIRST else DownloadOrder.FILE_START
+        else -> preference.downloadOnly
     }
 
     /** First and last two pieces of the video: the header and, for many containers, the index. */
