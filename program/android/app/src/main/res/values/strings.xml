@@ -309,6 +309,12 @@ If you delete it, you may need to download it again.</string>
     <string name="settings_wifi_paused_notice">Downloads paused on mobile data. They\'ll continue when you connect to Wi-Fi.</string>
     <string name="settings_auto_subtitles">Show subtitles automatically</string>
     <string name="settings_auto_subtitles_desc">Turn on subtitles in your language when available.</string>
+    <string name="download_order_title">Download order</string>
+    <string name="download_order_use_default">Use default setting</string>
+    <string name="download_order_from_start">From the start</string>
+    <string name="download_order_from_start_desc">Easier to play while it\'s still downloading.</string>
+    <string name="download_order_fastest">Fastest</string>
+    <string name="download_order_fastest_desc">Downloads whichever pieces are available. The whole download may finish sooner.</string>
     <string name="settings_version">Version</string>
     <string name="settings_save_failed">Couldn\'t save the setting. Tap again.</string>
     <string name="status_wifi_waiting">Waiting for Wi-Fi</string>

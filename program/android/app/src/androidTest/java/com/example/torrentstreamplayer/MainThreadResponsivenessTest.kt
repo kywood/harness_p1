@@ -7,6 +7,7 @@ import android.os.StrictMode
 import android.os.strictmode.Violation
 import android.util.Log
 import androidx.test.platform.app.InstrumentationRegistry
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentCache
 import com.example.torrentstreamplayer.engine.TorrentCacheCipher
@@ -15,6 +16,7 @@ import com.example.torrentstreamplayer.engine.TorrentStorage
 import com.example.torrentstreamplayer.meta.TorrentStorageDir
 import com.example.torrentstreamplayer.ui.MainViewModel
 import com.example.torrentstreamplayer.ui.StreamUiState
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -70,6 +72,11 @@ class MainThreadResponsivenessTest {
                 stalls["start 3 downloads"] = probe {
                     instrumentation.runOnMainSync { links.forEach { model.startStreaming(it, downloadOnly = true) } }
                     Thread.sleep(2_000)
+                }
+                stalls["change download order"] = probe {
+                    instrumentation.runOnMainSync { model.setDownloadOrder(DownloadOrderPreference.FASTEST) }
+                    runBlocking { model.setVideoDownloadOrder(links[0], DownloadOrderPreference.FROM_START) }
+                    Thread.sleep(1_000)
                 }
                 stalls["stop all downloads"] = probe {
                     instrumentation.runOnMainSync { model.stopDownloads() }

@@ -1,5 +1,6 @@
 package com.example.torrentstreamplayer.data
 
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.MagnetHistory
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.TorrentCache
@@ -42,6 +43,28 @@ class PlaylistRepositoryTest {
         repository().resetPosition(magnet(1))
         val positions = repository().savedMagnets().associate { it.magnet to it.lastPositionMs }
         assertEquals(mapOf(magnet(1) to 0L, magnet(2) to 50_000L), positions)
+    }
+
+    @Test fun downloadOrdersListOnlyVideosWithTheirOwnValue() {
+        repository().add(magnet(1))
+        repository().add(magnet(2))
+        repository().setDownloadOrder(magnet(1), DownloadOrderPreference.FASTEST)
+        assertEquals(mapOf(MagnetIdentity.key(magnet(1)) to DownloadOrderPreference.FASTEST), repository().downloadOrders())
+        assertEquals(DownloadOrderPreference.FASTEST,
+            repository().savedMagnets().first { it.magnet == magnet(1) }.downloadOrder)
+        repository().setDownloadOrder(magnet(1), null)
+        assertEquals(emptyMap<String, DownloadOrderPreference>(), repository().downloadOrders())
+    }
+
+    @Test fun aFailedSaveThrowsAndKeepsTheSavedDownloadOrder() {
+        repository().add(magnet(1))
+        repository().setDownloadOrder(magnet(1), DownloadOrderPreference.FASTEST)
+        val failing = PlaylistRepository(MagnetHistory(TorrentCache(folder.root, "0".repeat(64),
+            { throw java.io.IOException("disk full") }, { it }))) { it }
+        val failure = runCatching { failing.setDownloadOrder(magnet(1), DownloadOrderPreference.FROM_START) }
+        assertEquals(true, failure.isFailure)
+        assertEquals(DownloadOrderPreference.FASTEST, failing.savedMagnets().single().downloadOrder)
+        assertEquals(DownloadOrderPreference.FASTEST, repository().savedMagnets().single().downloadOrder)
     }
 
     @Test fun keysListThePlaylistWithoutTheLookup() {

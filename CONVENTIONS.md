@@ -49,6 +49,9 @@ planning(무엇을·왜, 화면 정의) → PM(우선순위 결정, 이슈로 �
 | 설정 | Settings | `SettingsScreen` (`ui/screens/SettingsScreen.kt`, `AppScreen.Settings`) |
 | Wi-Fi 전용 | Wi-Fi only | `AppSettings.wifiOnly` (설정 항목) |
 | Wi-Fi 대기 | Waiting for Wi-Fi | `DownloadPhase.WAITING_FOR_WIFI`, `PlaylistItemStatus.WAITING_FOR_WIFI` (재생 목록 상태 칩) |
+| 받는 순서 | Download order | `download_order_title`, `DownloadOrderPreference` (`AppSettings.downloadOrder`, `SavedMagnet.downloadOrder`) |
+| 앞부분부터 | From the start | `DownloadOrderPreference.FROM_START` (`download_order_from_start`) |
+| 빠르게 받기 | Fastest | `DownloadOrderPreference.FASTEST` (`download_order_fastest`) |
 | 바로 재생 | Play now | `action_stream_play` |
 | 받아 두기 | Save for later | `action_save_for_later` |
 | 이어서 재생 | Resume | `action_resume_play` |

@@ -171,6 +171,11 @@ internal class DownloadManager(private val scope: CoroutineScope,
         pump()
     }
 
+    /** Applies [order] to [key]'s engine if the task exists; playback in progress takes it when it ends. */
+    fun applyDownloadOrder(key: String, order: DownloadOrderPreference) {
+        nodes[key]?.controller?.applyOrder(order)
+    }
+
     /** "이번만 허용": lets [key] use mobile data until it is stopped, even while Wi-Fi only is on. */
     fun allowOnce(key: String) {
         allowedOnce += key
