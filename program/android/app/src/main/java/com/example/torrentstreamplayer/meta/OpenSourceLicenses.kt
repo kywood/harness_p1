@@ -10,7 +10,6 @@ import com.example.torrentstreamplayer.R
  */
 internal enum class LicenseDocument(@RawRes val resource: Int, val fileName: String) {
     LGPL_2_1(R.raw.license_lgpl_2_1, "license_lgpl_2_1"),
-    GPL_2_0(R.raw.license_gpl_2_0, "license_gpl_2_0"),
     MIT_LIBTORRENT4J(R.raw.license_mit_libtorrent4j, "license_mit_libtorrent4j"),
     BSD3_LIBTORRENT(R.raw.license_bsd3_libtorrent, "license_bsd3_libtorrent"),
     BSL_1_0(R.raw.license_bsl_1_0, "license_bsl_1_0"),
@@ -39,7 +38,7 @@ internal sealed interface LicenseText {
 private fun literal(value: String) = LicenseText.Literal(value)
 private fun orLater(license: String) = LicenseText.Localized(R.string.licenses_license_or_later, license)
 private fun bundledIn(host: String) = LicenseText.Localized(R.string.licenses_version_bundled, host)
-private const val LIBVLC_VERSION = "3.7.5"
+private const val LIBVLC_VERSION = "3.7.5-lgpl.2"
 private const val LIBTORRENT4J_NAME = "libtorrent4j"
 private val APACHE = literal("Apache 2.0")
 private val MIT = literal("MIT")
@@ -50,10 +49,11 @@ private val BSD3 = literal("BSD 3-Clause")
  * 고유명사라 번역하지 않고, "이상"·"포함"처럼 한국어가 붙는 값은 [LicenseText.Localized]로 strings.xml 문구를 쓴다.
  * 의존성(`gradle/libs.versions.toml`, `app/build.gradle.kts`)을 바꾸면 이 목록도 같이 바꾼다.
  *
- * 포함 여부는 실제 산출물에서 확인했다: libvlc-all 3.7.5 AAR의 `libvlc.so`, libtorrent4j 2.1.0-39의 `libtorrent4j.so`.
- * 순서는 고지 의무가 큰 것(GPL·LGPL) → 앱의 핵심(토렌트·서버) → 플랫폼 라이브러리다.
+ * 포함 여부는 실제 산출물에서 확인했다: GPL 구성요소를 뺀 자체 빌드 LibVLC 3.7.5-lgpl.2 AAR의 `libvlc.so`
+ * (`program/libvlc-lgpl-phase4.md`), libtorrent4j 2.1.0-39의 `libtorrent4j.so`.
+ * 순서는 고지 의무가 큰 것(LGPL) → 앱의 핵심(토렌트·서버) → 플랫폼 라이브러리다.
  *
- * @property sourceOffer 라이선스가 소스 제공 안내를 요구한다(GPL·LGPL·MPL).
+ * @property sourceOffer 라이선스가 소스 제공 안내를 요구한다(LGPL·MPL).
  *   목록에 "소스 코드를 받을 수 있습니다."를 보인다.
  * @property lgplNotice 전문 보기에 LibVLC LGPL 안내 문구를 보인다.
  */
@@ -67,14 +67,13 @@ internal enum class OpenSourceComponent(
     val sourceOffer: Boolean = false,
     val lgplNotice: Boolean = false,
 ) {
+    /**
+     * GPL 구성요소를 빼고 직접 빌드한 LibVLC. [url]은 이 빌드의 소스(libvlcjni·VLC·패치·빌드 스크립트)와 AAR을
+     * 함께 공개한 저장소이며, 전문 보기의 "소스 코드" 링크가 이 주소를 연다.
+     */
     LIBVLC(literal("LibVLC"), literal(LIBVLC_VERSION), orLater("LGPL 2.1"),
-        "https://code.videolan.org/videolan/libvlcjni", "Copyright © VideoLAN and VLC authors",
+        "https://github.com/kywood/pieceplay-libvlc", "Copyright © VideoLAN and VLC authors",
         LicenseDocument.LGPL_2_1, sourceOffer = true, lgplNotice = true),
-
-    /** libvlc.so에 정적으로 들어 있는 GPL 구성요소. */
-    LIBVLC_GPL_COMPONENTS(literal("x264, libdvdnav, libdvdread, libpostproc"), bundledIn("LibVLC $LIBVLC_VERSION"),
-        orLater("GPL 2.0"), "https://code.videolan.org/videolan/vlc",
-        "Copyright © x264 project, VideoLAN, FFmpeg developers", LicenseDocument.GPL_2_0, sourceOffer = true),
 
     /** libvlc.so에 들어 있는 FFmpeg(libavcodec 62.28.102, libavformat 62.12.102). */
     FFMPEG(literal("FFmpeg"), literal("libavcodec 62.28.102"), orLater("LGPL 2.1"), "https://ffmpeg.org",

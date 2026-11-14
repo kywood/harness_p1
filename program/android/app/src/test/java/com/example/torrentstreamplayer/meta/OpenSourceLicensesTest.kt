@@ -25,7 +25,7 @@ class OpenSourceLicensesTest {
     }
 
     @Test fun copyleftLicensesOfferSourceAndLinkToIt() {
-        val copyleft = setOf(LicenseDocument.LGPL_2_1, LicenseDocument.GPL_2_0, LicenseDocument.MPL_2_0)
+        val copyleft = setOf(LicenseDocument.LGPL_2_1, LicenseDocument.MPL_2_0)
         OpenSourceComponent.entries.forEach { component ->
             assertEquals(component.name, component.document in copyleft, component.sourceOffer)
             assertTrue(component.name, component.url.startsWith("https://"))
@@ -38,12 +38,28 @@ class OpenSourceLicensesTest {
         val catalog = File("../gradle/libs.versions.toml").readText()
         val libvlc = OpenSourceComponent.LIBVLC.version.value
         assertTrue(catalog.contains("libvlc = \"$libvlc\""))
-        assertEquals("LibVLC $libvlc", OpenSourceComponent.LIBVLC_GPL_COMPONENTS.version.value)
+        assertTrue("자체 빌드 LGPL LibVLC", libvlc.contains("-lgpl."))
+        assertTrue(catalog.contains("group = \"pieceplay.libvlc\""))
         assertTrue(catalog.contains("nanohttpd = \"${OpenSourceComponent.NANOHTTPD.version.value}\""))
         assertTrue(catalog.contains("version = \"${OpenSourceComponent.LIBTORRENT4J.version.value}\""))
         assertTrue(catalog.contains("kotlin = \"${OpenSourceComponent.KOTLIN.version.value}\""))
         val composeBom = Regex("composeBom = \"([^\"]+)\"").find(catalog)!!.groupValues[1]
         assertTrue(OpenSourceComponent.ANDROIDX.version.value.endsWith(composeBom))
+    }
+
+    /** LibVLC는 GPL 구성요소를 뺀 빌드라 GPL 고지가 남아 있으면 안 된다(program/libvlc-lgpl-phase4.md). */
+    @Test fun noGplNoticeIsLeft() {
+        assertFalse(File(raw, "license_gpl_2_0.txt").exists())
+        OpenSourceComponent.entries.forEach { component ->
+            assertFalse(component.name, component.licenseName.value.startsWith("GPL"))
+        }
+    }
+
+    /** 소스 코드 링크는 이 앱이 쓰는 빌드의 소스를 공개한 저장소를 연다. */
+    @Test fun libVlcSourceLinkIsThePublishedBuild() {
+        assertEquals("https://github.com/kywood/pieceplay-libvlc", OpenSourceComponent.LIBVLC.url)
+        val settings = File("../settings.gradle.kts").readText()
+        assertTrue(settings.contains("https://github.com/kywood/pieceplay-libvlc/releases/download"))
     }
 
     @Test fun bundledComponentsNameAListedHost() {

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Gradle dependency verification for the self-built LGPL LibVLC only (program/libvlc-lgpl-phase4.md).
+  The AAR is downloaded from a GitHub Release (settings.gradle.kts, repository "PiecePlayLibVlcReleases"), so Gradle
+  must reject any file whose SHA-256 is not the one below. Every other dependency is trusted as before by the
+  regular expression, so adding or upgrading other libraries does not need an entry here.
+  When the LibVLC version changes: update gradle/libs.versions.toml, the component below and its sha256
+  (the value in the Release's SHA256SUMS).
+-->
+<verification-metadata xmlns="https://schema.gradle.org/dependency-verification"
+                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                       xsi:schemaLocation="https://schema.gradle.org/dependency-verification https://schema.gradle.org/dependency-verification/dependency-verification-1.3.xsd">
+   <configuration>
+      <verify-metadata>true</verify-metadata>
+      <verify-signatures>false</verify-signatures>
+      <trusted-artifacts>
+         <trust group="^(?!pieceplay[.]libvlc$).*$" regex="true" reason="Only the self-built LibVLC is verified"/>
+      </trusted-artifacts>
+   </configuration>
+   <components>
+      <component group="pieceplay.libvlc" name="libvlc-lgpl" version="3.7.5-lgpl.2">
+         <artifact name="libvlc-lgpl-3.7.5-lgpl.2.aar">
+            <sha256 value="5ef801c030ead76871bf9cd4662137bd8ce1d5f038e024e99fa2ce84c34c2058" origin="kywood/pieceplay-libvlc Release 3.7.5-lgpl.2 SHA256SUMS"/>
+         </artifact>
+      </component>
+   </components>
+</verification-metadata>
