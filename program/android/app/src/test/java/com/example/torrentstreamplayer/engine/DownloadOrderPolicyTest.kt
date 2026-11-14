@@ -18,6 +18,24 @@ class DownloadOrderPolicyTest {
         assertFalse(order.sequential)
     }
 
+    @Test fun fromTheStartPreferenceKeepsDownloadOnlyTasksSequential() {
+        val order = DownloadOrderPolicy.order(playbackFocused = false, DownloadOrderPreference.FROM_START)
+        assertEquals(DownloadOrder.FILE_START, order)
+        assertTrue(order.sequential)
+    }
+
+    @Test fun fastestPreferenceTurnsSequentialOffForDownloadOnlyTasks() {
+        val order = DownloadOrderPolicy.order(playbackFocused = false, DownloadOrderPreference.FASTEST)
+        assertEquals(DownloadOrder.RAREST_FIRST, order)
+        assertFalse(order.sequential)
+    }
+
+    @Test fun playbackIgnoresThePreference() {
+        DownloadOrderPreference.entries.forEach {
+            assertEquals(DownloadOrder.PLAYBACK_WINDOW, DownloadOrderPolicy.order(playbackFocused = true, it))
+        }
+    }
+
     @Test fun edgePiecesAreTheFirstAndLastTwo() {
         assertEquals(setOf(10, 11, 98, 99), DownloadOrderPolicy.edgePieces(10, 99))
     }

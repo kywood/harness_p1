@@ -89,10 +89,11 @@ internal fun AppRoot(
                     val saveFailed by viewModel.settingsSaveFailed.collectAsState()
                     SettingsScreen(settings, viewModel::toggleWifiOnly, viewModel::toggleAutoSubtitles,
                         onBack = viewModel::closeList, onOpenLicenses = viewModel::openOpenSourceLicenses,
-                        onPrivacyOptions = onPrivacyOptions,
+                        onPrivacyOptions = onPrivacyOptions, onDownloadOrderChange = viewModel::setDownloadOrder,
                         waitsForWifi = waitsForWifi, saveFailed = saveFailed, onSaveFailedShown = viewModel::consumeSettingsSaveFailed)
                 }
                 AppScreen.Playlist -> {
+                    val settings by viewModel.settings.collectAsState()
                     MagnetHistoryScreen(viewModel::savedMagnets, viewModel::deleteSavedMagnet,
                         onPlay = viewModel::playFromPlaylist,
                         onBack = viewModel::closeList, onDownload = { viewModel.startStreaming(it, downloadOnly = true) },
@@ -104,7 +105,9 @@ internal fun AppRoot(
                         sort = playlistSort, onSortChange = { playlistSort = it },
                         filter = playlistFilter, onFilterChange = { playlistFilter = it },
                         onAddDownload = { showDownloadDialog = true }, onResetPosition = viewModel::resetPlaybackPosition,
-                        onDownloadsStarted = announceWifiWait)
+                        onDownloadsStarted = announceWifiWait,
+                        onDownloadOrderChange = viewModel::setVideoDownloadOrder,
+                        defaultDownloadOrder = settings.downloadOrder)
                 }
                 is AppScreen.Main -> MagnetLinkInputScreen(
                     onStartStream = viewModel::playFromMain,

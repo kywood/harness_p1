@@ -53,6 +53,7 @@ class TorrentEngine(private val context: Context) {
     internal val uploadedBytes: Long get() = runCatching { currentHandle?.status()?.allTimeUpload() ?: 0L }.getOrDefault(0L)
     private var checkpoint: TorrentCheckpoint? = null
     private var activeCache: TorrentCache? = null
+    private var activeKey: String? = null
     internal val seekRequests = SeekRequestTracker()
     private var priorityWindow = IntRange.EMPTY
     private var backgroundPiecePriority = -1
@@ -102,6 +103,7 @@ class TorrentEngine(private val context: Context) {
     companion object {
         private const val TAG = "TorrentEngine"
         private val sharedSessions = NativeSessionLease<SessionManager> { it.stop() }
+        private val sameKeyTeardowns = SameKeyTeardowns()
     }
 
     @Synchronized
@@ -147,6 +149,7 @@ class TorrentEngine(private val context: Context) {
         val key = try { MagnetIdentity.key(magnetUrl) }
         catch (_: Exception) { onError(TorrentFailure.INVALID_MAGNET.text(context)); return }
         stop()
+        activeKey = key
         val run = activeRun
         startTrace = if (BuildConfig.DEBUG) PlaybackStartTrace(key) else null
         val cache = TorrentCache(stateRoot, key, TorrentCacheCipher::encrypt, TorrentCacheCipher::decrypt)
@@ -158,7 +161,7 @@ class TorrentEngine(private val context: Context) {
 
         worker = Thread {
             try {
-                check(teardown.await()) { "Previous download is still stopping" }
+                check(teardown.await() && sameKeyTeardowns.await(key)) { "Previous download is still stopping" }
                 if (BuildConfig.DEBUG) Log.d(TAG, "Fetching magnet metadata...")
                 val cachedMetadata = cache.read("metadata")
                 _metadataDetails.value = if (cachedMetadata == null)
@@ -392,9 +395,20 @@ class TorrentEngine(private val context: Context) {
         }.also { it.start() }
     }
 
-    private fun applyDownloadOrder(handle: TorrentHandle, playbackFocused: Boolean) {
-        if (DownloadOrderPolicy.order(playbackFocused).sequential) handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+    /** The user's order for this task and whether playback owns it now; the lock keeps the flag in step with both. */
+    @Volatile private var orderPreference = DownloadOrderPreference.DEFAULT
+    @Volatile private var orderPlaybackFocused = false
+    @Synchronized private fun applyDownloadOrder(handle: TorrentHandle, playbackFocused: Boolean) {
+        orderPlaybackFocused = playbackFocused
+        if (DownloadOrderPolicy.order(playbackFocused, orderPreference).sequential) handle.setFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
         else handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+    }
+    /** Sets the user's order: applied now to a download-only task; a playing task takes it when playback releases it. */
+    @Synchronized internal fun setDownloadOrder(preference: DownloadOrderPreference) {
+        StrictMode.noteSlowCall("TorrentEngine.setDownloadOrder")
+        orderPreference = preference
+        runCatching { currentHandle?.let { applyDownloadOrder(it, orderPlaybackFocused) } }
+            .onFailure { Log.w(TAG, "Download order not applied: ${EngineFailureLog.describe(it)}") }
     }
     /** Index checks outside the download loop: file or libtorrent errors are logged, never thrown to the caller. */
     private fun refreshStartupIndex() = runCatching { updateStartupIndex() }
@@ -640,6 +654,8 @@ class TorrentEngine(private val context: Context) {
     fun stop() {
         val completed = _activeDownload.value?.takeIf { it.downloaded == it.size && it.path == selectedVideoFile?.path }
         val finalCache = activeCache
+        val needsTeardown = EngineStopPlan.needsTeardown(started = worker != null, session = sessionManager != null,
+            torrent = currentHandle != null, checkpoint = checkpoint != null)
         activeCache = null
         activeRun++
         _pieceMap.value = PieceMapSnapshot.EMPTY
@@ -673,6 +689,8 @@ class TorrentEngine(private val context: Context) {
         downloadProgress = 0f
         downloadSpeedBytes = 0L
         numPeers = 0
+        // An engine that holds nothing queues no teardown: it would wait behind other engines' teardowns.
+        if (!needsTeardown) return
         // Saving resume data and stopping the native session can block for seconds; never do it on the caller thread.
         teardown.submit {
             runCatching { closing?.save(EngineSpec.RESUME_SAVE_WAIT_MS) }
@@ -682,5 +700,7 @@ class TorrentEngine(private val context: Context) {
             if (completed != null) runCatching { finalCache?.recordComplete(File(completed.path), completed.size) }
             ActiveTorrentFiles.release(this)
         }
+        activeKey?.let { sameKeyTeardowns.stopped(it, teardown) }
+        activeKey = null
     }
 }
