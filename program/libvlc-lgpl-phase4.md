@@ -9,8 +9,8 @@ PM 결정(2026-11-14): 3단계 (b)안 — 새 Release를 내서 쓴다. 내일 �
 - 앱 의존성 `org.videolan.android:libvlc-all:3.7.5` → `pieceplay.libvlc:libvlc-lgpl:3.7.5-lgpl.3`(자체 빌드, 링크된 GPL 소스 0).
 - Release: https://github.com/kywood/pieceplay-libvlc/releases/tag/3.7.5-lgpl.3
   - Actions 실행 [43586876344](https://github.com/kywood/pieceplay-libvlc/actions/runs/43586876344)(태그 커밋 `41e7e12`, PR #2 병합)의 산출물을 그대로 올렸다. `.so` 12개는 PR 실행 [43584765658](https://github.com/kywood/pieceplay-libvlc/actions/runs/43584765658)과 SHA-256이 같고, arm64·armeabi-v7a `libvlc.so`는 로컬 WSL 빌드와도 같다.
-  - 자산: `libvlc-lgpl-3.7.5-lgpl.3.aar`(80,910,311 B, SHA-256 `aafbb3ca121b69f8e87e381fd4c8cb286cb0e64010a10d6d7407af5c4f62f854`), `libvlc-lgpl-3.7.5-lgpl.3-vlc-sources.tar.xz`(패치 22개를 적용한 VLC 소스, 15 MB), `libvlc-lgpl-3.7.5-lgpl.3-contrib-sources.tar`(번들 라이브러리 원본 55개, 458 MB), `SHA256SUMS`.
-  - (`lgpl.2`: 82,043,842 B, SHA-256 `5ef801c0…`, contrib 57개. GPL 코드 포함으로 대체됨. Release 본문에 경고를 달았고 지우지 않았다.)
+  - 자산: `libvlc-lgpl-3.7.5-lgpl.3.aar`(80,910,311 B, SHA-256 `aafbb3ca121b69f8e87e381fd4c8cb286cb0e64010a10d6d7407af5c4f62f854`), `libvlc-lgpl-3.7.5-lgpl.3-vlc-sources.tar.xz`(패치 22개를 적용한 VLC 소스, 15 MB), `libvlc-lgpl-3.7.5-lgpl.3-contrib-sources.tar`(번들 라이브러리 소스 아카이브 54개 + fluidlite `.githash` 1개 = 파일 55개, 458 MB), `SHA256SUMS`.
+  - (`lgpl.2`: 82,043,842 B, SHA-256 `5ef801c0…`, contrib 소스 아카이브 56개 + `.githash` 1개 = 파일 57개. GPL 코드 포함으로 대체됨. Release 본문에 경고를 달았고 지우지 않았다.)
   - 4 ABI가 받은 contrib 원본 목록·해시가 모두 같았다(ABI별 `contrib-tarballs-<abi>.sha256` 동일).
 - 앱 코드(Kotlin) 변경은 오픈소스 고지 목록 데이터뿐이다. 재생 코드와 VLC 옵션은 바꾸지 않았다(공개 API 차이 없음, phase2 4절).
 
@@ -132,7 +132,7 @@ AAB 안 ABI별 네이티브(`libvlc.so`+`libvlcjni.so`+`libc++_shared.so`+libtor
 - 코덱별 스모크 테스트(H.265·AV1·VP9 × AAC·AC3·Opus, mkv+ASS)는 아직 없다(계획 5.2). 지금 계측 테스트는 PNG, sintel(H.264 mp4 + SRT), 테스트용 mp4만 지난다.
 - 빌드는 GitHub Release에 기대고 있다. Release 자산이 지워지면 새 PC·CI의 첫 빌드가 실패한다(캐시가 있으면 계속 된다). 해시는 고정되어 있으므로 바꿔치기는 막힌다.
 - [확인 필요] LGPL 2.1 §6 요건(재링크 가능성, 서명된 APK에서의 교체, 소스 제공 방식)은 법률 확인이 필요하다(계획 6절). 이번 Release는 VLC 소스와 contrib 원본을 같은 자리에 두어 소스 제공 위치를 하나로 모았다.
-- [확인 필요] 고지 목록에 LibVLC 안의 LGPL·BSD·MIT·FTL 구성요소(contrib 57개)를 각각 적어야 하는지. 지금은 LibVLC·FFmpeg만 따로 적는다(기존과 같은 범위).
+- [확인 필요] 고지 목록에 LibVLC 안의 LGPL·BSD·MIT·FTL 구성요소(`lgpl.3` 기준 contrib 소스 아카이브 54개)를 각각 적어야 하는지. 지금은 LibVLC·FFmpeg만 따로 적는다(기존과 같은 범위).
 - `libvlccore`·`libgpg-error`에 남은 "GNU General Public License" 안내 문자열 2건(phase1 3절)은 그대로다.
 
 ## 9. reviewer 지적과 `3.7.5-lgpl.3`(2026-11-14)
@@ -143,7 +143,7 @@ reviewer 검토에서 PR #201·#202가 보류됐다. 높음 1(zvbi)을 직접 �
 
 - 대상: 3단계 로컬 빌드 트리(`c845e23`, `lgpl.2`와 같은 소스·패치·contrib). strip 전 `libvlc/jni/obj/local/<abi>/libvlc.so`에 DWARF가 남아 있다.
 - `buildsystem/pieceplay-gpl-sources.py`(이번에 추가, 공개 저장소): 링크된 컴파일 단위(DW_AT_comp_dir + DW_AT_name)의 소스 파일 앞 6000바이트를 읽어 GPL 전용(LGPL·Library GPL 문구 없음, 다른 라이선스 선택지 없음)인지 가린다. arm64는 컴파일 단위 4,182개를 모두 찾아 읽었다(디스크에 없음 0). 32비트는 NDK r21 런타임(libgcc는 GCC Runtime Library Exception, bionic·libunwind는 BSD/MIT) 16개·8개만 없었다.
-- 보조: contrib tarball 57개에서 GPL 헤더 소스를 모두 뽑아 위 결과와 대조했고, 이름이 겹친 경우(`iconv.o`, `plural-exp.o` 등)는 심볼로 확인했다.
+- 보조: contrib tarball 디렉터리의 파일 57개(소스 아카이브 56개 + fluidlite `.githash` 1개, `lgpl.2` 소스 기준)에서 GPL 헤더 소스를 모두 뽑아 위 결과와 대조했고, 이름이 겹친 경우(`iconv.o`, `plural-exp.o` 등)는 심볼로 확인했다.
 
 ### 9.2 링크된 GPL 코드
 
@@ -168,7 +168,9 @@ reviewer 검토에서 PR #201·#202가 보류됐다. 높음 1(zvbi)을 직접 �
 | VLC webvtt | `modules/codec/webvtt/CSSGrammar.c`(bison 3.8.2 생성) | GPL 본문 + Bison 예외("As a special exception, you may create a larger work that contains part or all of the Bison parser skeleton and distribute that work under terms of your choice") |
 | NDK r21 런타임(32비트) | libgcc `libgcc2.c` 등 | GCC Runtime Library Exception. 모든 NDK 앱에 같은 것 |
 
-### 9.4 contrib 57개 표
+### 9.4 contrib 표(`lgpl.2` 소스 기준, 소스 아카이브 56개)
+
+**세는 기준**: VLC contrib가 `contrib/tarballs/`에 받는 파일 수다. 대부분은 소스 아카이브(`.tar.*`)이고, git으로 받는 fluidlite는 받은 커밋을 적은 `fluidlite-<커밋>.githash`도 함께 남긴다(소스는 같은 이름의 `.tar.xz`). 그래서 `lgpl.2`는 파일 57개 = 소스 아카이브 56개 + `.githash` 1개, `lgpl.3`은 zvbi·librist가 빠져 파일 55개 = 소스 아카이브 54개 + `.githash` 1개다. Release의 contrib 소스 묶음에는 이 파일들이 그대로 들어 있다.
 
 `GPL 헤더` = tarball 안 GPL 전용 헤더 소스 수(테스트·예제·도구 포함). `링크` = 그중 `libvlc.so`에 링크된 것(9.1 방법, arm64·armeabi-v7a·x86·x86_64).
 
@@ -247,7 +249,7 @@ PR: https://github.com/kywood/pieceplay-libvlc/pull/2 (브랜치 `pieceplay/no-z
 |---|---:|---|
 | `libvlc-lgpl-3.7.5-lgpl.3.aar` | 80,910,311 B | `aafbb3ca121b69f8e87e381fd4c8cb286cb0e64010a10d6d7407af5c4f62f854` |
 | `libvlc-lgpl-3.7.5-lgpl.3-vlc-sources.tar.xz`(VLC `453bcced8f` = `ac6c2a40` + 패치 22개) | 15,092,100 B | `92f5e3801888cbc789039b6db42cfcfdb53e32e14218016f8fa018ae64d42786` |
-| `libvlc-lgpl-3.7.5-lgpl.3-contrib-sources.tar`(원본 55개, zvbi·librist 빠짐, 4 ABI 같은 세트) | 458,424,320 B | `fbbddcacd0ccce5ba1704d65a6cf17df533f3b1dc327aef54eca9ccdc18dec20` |
+| `libvlc-lgpl-3.7.5-lgpl.3-contrib-sources.tar`(파일 55개 = 소스 아카이브 54개 + `.githash` 1개, zvbi·librist 빠짐, 4 ABI 같은 세트) | 458,424,320 B | `fbbddcacd0ccce5ba1704d65a6cf17df533f3b1dc327aef54eca9ccdc18dec20` |
 
 GitHub가 계산한 자산 digest가 위 값과 같다.
 
@@ -288,3 +290,38 @@ GitHub가 계산한 자산 digest가 위 값과 같다.
 - 실패: `MainThreadResponsivenessTest.buttonFlowsKeepEngineWorkOffMainThread` — `blocking engine calls on the main thread expected:<[]> but was:<[gcore.dynamite]>`. 이 테스트는 메인 스레드의 StrictMode 사용자 정의 느린 호출을 모두 모은다. 잡힌 것은 앱 엔진 호출이 아니라 Google Play 서비스가 동적 모듈(광고 SDK·UMP)을 처음 불러올 때 `StrictMode.noteSlowCall`로 남기는 `gcore.dynamite`다. 콜드 부트 직후 GMS 모듈이 캐시에 없어 처음 한 번 메인 스레드에서 불렸다고 본다. 같은 테스트는 `lgpl.2` 전체 실행·공식 빌드 전체 실행에서 통과했고, 다시 돌리니 통과했다. LibVLC와 관계없고 간헐 네이티브 크래시(#169)도 아니다. 다만 이 테스트는 GMS 상태에 따라 깨질 수 있으므로, `gcore.dynamite` 같은 외부 라이브러리 알림을 걸러야 할지는 별도 판단이다(이 PR에서는 고치지 않음).
 - VLC 오류 로그(`E/VLC`) 종류와 수는 `lgpl.2`·공식 빌드 때와 같다: `window: request … not implemented` 48, `video output creation failed` 21, `buffer deadlock prevented` 1, `deinterlace` 안내 22. 모듈을 찾지 못했다는 로그(zvbi·rist 등)는 없다.
 - 하지 못한 것(그대로): arm64 실기기 실행, AC3/E-AC3 음성 재생(arm64 C 경로), 코덱별 스모크 테스트.
+
+### 9.8 GPL 소스 검사 판정 강화(reviewer 재검토 낮음 1·2)
+
+reviewer 재검토에서 #201·#202는 병합 가능(높음 없음) 판정이었다. 낮음 지적에 따라 공개 저장소 PR https://github.com/kywood/pieceplay-libvlc/pull/3 으로 `buildsystem/pieceplay-gpl-sources.py`의 판정을 고쳤다. 빌드 자체는 바꾸지 않았다.
+
+- 문제: 앞 6000바이트에 단어 "LGPL"만 있어도 LGPL로 보고 `other`로 통과시켰다(예: FFmpeg `libavfilter/vf_owdenoise.c`, 이번 산출물에는 없음). `dual`은 검토 없이 통과했다.
+- 바꾼 것:
+  - 헤더의 주석 기호와 줄바꿈을 공백 하나로 접은 뒤 판정한다. 여러 줄에 걸친 허가문도 맞는다.
+  - GPL과 LGPL 모두 허가 문장("terms of the GNU General Public License", "terms of the GNU Lesser/Library General Public License", SPDX 식별자)으로 판정한다.
+  - GPL 허가문과 LGPL 허가문이 함께 있으면 `mixed`다. LGPL 허가문 없이 GPL 이름만 있으면 `gpl`(또는 `dual`)이다.
+  - `dual`·`mixed`는 이유를 적은 허용 목록(`ALLOWED`)에 있을 때만 통과하고, 없으면 빌드가 실패한다. `exception`(Bison·GCC 예외)은 통과하되 목록에 표시한다.
+  - 36줄 주석을 사실대로 고쳤다(`lgpl.1`·`lgpl.2`에는 zvbi `packet-830.c`와 FFmpeg aarch64 3개가 링크됐고, zvbi `pdc.c`는 `libzvbi.a`에만 있었다).
+- 허용 목록(파일을 읽고 넣음):
+
+  | 종류 | 파일 | 이유 | ABI |
+  |---|---|---|---|
+  | dual | libgcrypt `random/rndjent.c` | BSD-3-Clause, 또는 사용자가 고르면 GPL | 4개 |
+  | mixed | libgpg-error `src/estream.c`, `src/estream-printf.c` | libestream: LGPL-2.1-or-later, ALTERNATIVELY BSD 계열. GPL은 BSD 선택 조항 문장에 이름만 나옴 | 4개 |
+  | mixed | libgcrypt `cipher/keccak-amd64-avx512.S` | libgcrypt 부분 LGPL-2.1-or-later, KeccakF1600 핵심은 CRYPTOGAMS BSD-3-Clause("ALTERNATIVELY … may be distributed under the terms of the GNU General Public License"). libgcrypt `LICENSES`도 이 파일을 CRYPTOGAMS로 적음 | x86_64만 |
+
+- 판정 시험(알려진 파일 15개, 모두 기대대로): FFmpeg `vf_owdenoise.c`·`aarch64/ac3dsp_neon.S`·`aarch64/crc.S` gpl, `crc.c`·`h264dec.c` other / zvbi `packet-830.c` gpl, `packet.c` other / Mbed TLS `aes.c` dual / libgcrypt `rndjent.c` dual / libgpg-error `estream.c` mixed, `argparse.c` other / VLC `ts_pid.c` other, `rotate.c` gpl, `CSSGrammar.c` exception / "LGPL" 단어가 든 합성 GPL 헤더 gpl.
+- 처음에는 GPL도 단어(이름)로만 찾았더니 `mixed`가 21개 나왔다. VLC 모듈 14개(`ts_*.c`, `atsc_a65.c`, `scte18.c`)와 libgpg-error `argparse.c`·`b64enc.c`는 LGPL 허가문인데 안내 문장("See/You should have received a copy of the GNU General Public License")에 GPL 이름을 잘못 적은 것이었다. `name-value.c`·`strlist.c`·libestream 2개는 LGPL 또는 BSD였고, FFmpeg `crc.c`는 우리 패치 0022의 주석 때문이었다. GPL도 허가문으로 판정하도록 바꾸자 libestream 2개만 남았다.
+- `lgpl.3` 빌드에 새 규칙 적용: 로컬 arm64-v8a·armeabi-v7a 빌드 트리는 GPL 0, 종료 코드 0. Actions 첫 실행(43593648075)은 x86_64에서 `keccak-amd64-avx512.S`(위 표)를 `mixed, not allowed`로 멈췄다(로컬에서 x86 계열을 돌리지 않아 놓쳤던 것). 읽어 보고 허용 목록에 넣어 다시 돌렸다.
+
+- Actions 두 번째 실행 [43595417243](https://github.com/kywood/pieceplay-libvlc/actions/runs/43595417243)(`6d42d7c`): 4 ABI 모두 성공.
+
+  | ABI | 컴파일 단위 | GPL | dual(허용) | mixed(허용) | exception | 디스크에 없음 |
+  |---|---:|---:|---:|---:|---:|---:|
+  | arm64-v8a | 4,072 | 0 | 1 | 2 | 1 | 0 |
+  | armeabi-v7a | 4,086 | 0 | 1 | 2 | 1 | 16 |
+  | x86 | 3,973 | 0 | 1 | 2 | 1 | 8 |
+  | x86_64 | 4,124 | 0 | 1 | 3 | 1 | 0 |
+
+- 산출물: `.so` 12개와 `classes.jar`가 `3.7.5-lgpl.3`과 SHA-256까지 같다. AAR 안에서 다른 것은 `res/values/values.xml`의 `build_libvlc_revision`(이 저장소 커밋 문자열)뿐이다. **라이브러리 내용이 같으므로 새 Release는 내지 않았다**(PM 결정). 앱은 계속 `3.7.5-lgpl.3`을 쓴다.
+- 3번 지적(contrib 개수)은 9.4의 "세는 기준"과 1·9.7절 숫자로 맞췄다. 4번(PR #202 본문)은 결과로 고쳤다. 5번(GMS `gcore.dynamite` 간헐 실패)은 PM이 별도 이슈로 다룬다.
