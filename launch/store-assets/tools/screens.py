@@ -22,12 +22,16 @@ NOTO = 'C:/Windows/Fonts/NotoSansKR-VF.ttf'
 
 # (제목, 보조) — 언어별, 화면 키별 캡션
 CAPTIONS = {'ko-KR': {
-    'main': ('링크를 넣으면 바로 재생', '마그넷 링크나 토렌트 파일 주소만 붙여넣으세요'),
-    'preparing': ('앞부분부터 먼저 받아요', '다 받을 때까지 기다리지 않아도 돼요'),
-    'player_noads': ('재생 중에는 광고 없이', '받은 조각과 재생 위치를 한눈에'),
-    'player_seek': ('이동하면 그 위치부터 받아요', '10초 이동 · 확대 · 축소'),
+    # 영어(en-US) 7장과 같은 장면·뜻. 화면에 보이지 않는 기능(확대·축소)은 적지 않는다.
+    'player_noads': ('받으면서 바로 보기', '다 받을 때까지 기다리지 않고, 재생 중에는 광고 없이'),
+    'main': ('링크를 넣고 바로 재생', '마그넷 링크와 .torrent 파일 주소를 지원해요'),
+    'player_seek': ('원하는 곳으로 바로 이동', '이동한 위치부터 받아요 · 10초 이동'),
     'playlist': ('보던 곳부터 이어보기', '최근 50개를 기기 안에 암호화해 보관'),
-    'stored': ('업로드 없이, 기록은 기기 안에', '받은 파일은 형식별로 보고 바로 삭제'),
+    'open_link': ('다른 앱의 링크도 바로 열기', '바로 재생하거나 받아 두기'),
+    'subtitles': ('자막 골라 보기', '영상과 함께 받은 자막 파일을 선택'),
+    'stored': ('업로드 없이, 가입 없이', '받은 파일은 기기 안에만. 언제든 삭제'),
+    # 예전 6장 구성에서만 쓰던 키(TARGETS 기본값용)
+    'preparing': ('앞부분부터 먼저 받아요', '다 받을 때까지 기다리지 않아도 돼요'),
 }, 'en-US': {
     # 제목은 30자 이내 2~5단어. 근거: marketing/reports/store-screenshots-en-2026-11.md
     'player_noads': ('Watch while it downloads', 'No waiting for the whole file · no ads during playback'),
@@ -39,8 +43,8 @@ CAPTIONS = {'ko-KR': {
     'stored': ('No seeding, no account', 'Saved files stay on your device. Delete them anytime'),
 }}
 
-# 언어별 원본 폴더 이름(대상 폴더 아래). 없으면 raw. en-US 는 영어 UI 로 다시 찍은 원본을 쓴다(#144).
-RAW_DIRS = {'en-US': 'raw-en-US'}
+# 언어별 원본 폴더 이름(대상 폴더 아래). 없으면 raw. en-US·ko-KR 은 2026-11-14 빌드로 다시 찍은 원본을 쓴다(#144).
+RAW_DIRS = {'en-US': 'raw-en-US', 'ko-KR': 'raw-ko-KR'}
 
 
 def _en(player, seek, W, H, PW, PH):
@@ -55,8 +59,12 @@ def _en(player, seek, W, H, PW, PH):
 
 
 # 언어별 장면 순서(있으면 TARGETS 의 기본 6장 대신 쓴다): 대상 -> [(출력 파일, 원본 파일, 캡션 키, 캔버스 W, H)]
-# en-US 는 재생 장면을 첫 장으로 올리고 준비(preparing) 장면을 뺐다.
+# en-US·ko-KR 은 같은 7장: 재생 장면을 첫 장으로 올리고 준비(preparing) 장면을 뺐다.
 SCENES = {'en-US': {
+    'phone': _en(('01_player_landscape.png', 'player-landscape.png'), ('03_player.png', 'player.png'), 1080, 1920, 1920, 1080),
+    'tab7': _en(('01_player_landscape.png', 'player-landscape.png'), ('03_player.png', 'player.png'), 1080, 1920, 1920, 1080),
+    'tab10': _en(('01_player.png', 'player.png'), ('03_player_seek.png', 'player-seek.png'), 2560, 1440, 2560, 1440),
+}, 'ko-KR': {
     'phone': _en(('01_player_landscape.png', 'player-landscape.png'), ('03_player.png', 'player.png'), 1080, 1920, 1920, 1080),
     'tab7': _en(('01_player_landscape.png', 'player-landscape.png'), ('03_player.png', 'player.png'), 1080, 1920, 1920, 1080),
     'tab10': _en(('01_player.png', 'player.png'), ('03_player_seek.png', 'player-seek.png'), 2560, 1440, 2560, 1440),

@@ -4,6 +4,8 @@
 
 피하는 표현: 영화·드라마 제목, 토렌트 사이트 이름, "무료 영화", "최신 개봉작", "무제한 다운로드".
 
+스크린샷: `launch/store-assets/*/ko-KR`는 2026-11-14에 v.2026.11.14.001 빌드(한국어 UI)로 다시 찍어 영어와 같은 7장 구성으로 바꿨다(재생 가로 → 메인 → 이동 → 재생 목록 → 링크 열기 → 자막 → 저장 파일, 준비 장면은 뺐다). 캡션은 `launch/store-assets/README.md` "캡션" 표, 근거는 `marketing/reports/store-screenshots-en-2026-11.md`. 화면 속 영상은 Sintel, Big Buck Bunny, Tears of Steel이라 아래 출처 문장과 맞는다. 예전 4번 캡션의 "확대 · 축소"는 화면에 보이지 않아 뺐다.
+
 ## 앱 이름 (30자 이내)
 
 ```
