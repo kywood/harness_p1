@@ -16,7 +16,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.torrentstreamplayer.engine.PieceCell
 import com.example.torrentstreamplayer.engine.PieceMapSnapshot
 import com.example.torrentstreamplayer.ui.theme.BrandColors
 import com.example.torrentstreamplayer.ui.theme.PlaybackColors
@@ -25,7 +24,7 @@ import com.example.torrentstreamplayer.ui.theme.Sizes
 import com.example.torrentstreamplayer.ui.theme.TorrentStreamPlayerTheme
 
 /**
- * 재생 막대: 트랙(`outline`) 위에 받은 구간(`PlaybackColors.Downloaded`)을 조각 맵 순서대로 칠하고,
+ * 재생 막대: 트랙(`outline`) 위에 다 받은 칸([SeekTrackPlan])만 받은 색(`PlaybackColors.Downloaded`)으로 조각 맵 순서대로 칠하고,
  * 재생한 구간은 브랜드 그라데이션으로 덮는다. 손잡이는 영상 위 흰색.
  * 조각 맵은 파일 앞 → 뒤 순서라 영상 시간과 대략 겹친다.
  */
@@ -60,7 +59,7 @@ private fun SeekTrack(position: Float, pieces: PieceMapSnapshot) {
         if (pieces.cells.isNotEmpty()) {
             val step = size.width / pieces.cells.size
             pieces.cells.forEachIndexed { index, cell ->
-                if (cell != PieceCell.MISSING) {
+                if (SeekTrackPlan.downloaded(cell)) {
                     drawRect(PlaybackColors.Downloaded, Offset(index * step, 0f), Size(step, size.height))
                 }
             }
