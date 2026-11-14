@@ -10,11 +10,16 @@ internal enum class DownloadOrder(val sequential: Boolean) {
 
     /** Playback owns the task: deadline windows follow the read position, which native sequential would fight. */
     PLAYBACK_WINDOW(sequential = false),
+
+    /** A download-only task the user set to [DownloadOrderPreference.FASTEST]: libtorrent picks any offered piece. */
+    RAREST_FIRST(sequential = false),
 }
 
 internal object DownloadOrderPolicy {
-    fun order(playbackFocused: Boolean): DownloadOrder =
-        if (playbackFocused) DownloadOrder.PLAYBACK_WINDOW else DownloadOrder.FILE_START
+    fun order(playbackFocused: Boolean, preference: DownloadOrderPreference = DownloadOrderPreference.DEFAULT) = when {
+        playbackFocused -> DownloadOrder.PLAYBACK_WINDOW
+        else -> if (preference == DownloadOrderPreference.FASTEST) DownloadOrder.RAREST_FIRST else DownloadOrder.FILE_START
+    }
 
     /** First and last two pieces of the video: the header and, for many containers, the index. */
     fun edgePieces(first: Int, last: Int): Set<Int> =
