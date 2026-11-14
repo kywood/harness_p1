@@ -3,6 +3,7 @@
 작성: program, 2026-11-12. 범위: 조사와 계획까지. 앱 의존성(`libvlc-all 3.7.5`)은 이번에 바꾸지 않았다.
 법률 판단은 하지 않는다. 법적 해석이 필요한 곳은 **[확인 필요]**로 표시했다.
 1단계(패치 + arm64 시험 빌드) 결과는 `program/libvlc-lgpl-phase1.md`에 있다.
+2단계(4 ABI·AAR·Release)는 `program/libvlc-lgpl-phase2.md`, 3단계(GitHub Actions 재현 빌드)는 `program/libvlc-lgpl-phase3.md`에 있다.
 
 ## 0. 요약
 
