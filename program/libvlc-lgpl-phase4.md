@@ -35,7 +35,7 @@ PM 결정(2026-11-14): 3단계 (b)안 — `3.7.5-lgpl.2`를 새로 내서 쓴다
 - `LIBVLC`: 버전 `3.7.5-lgpl.2`, 주소 `https://github.com/kywood/pieceplay-libvlc`(전문 보기의 "소스 코드" 링크가 여는 곳 = 이 빌드의 소스·패치·스크립트·AAR·소스 묶음이 있는 저장소).
 - `LIBVLC_GPL_COMPONENTS`(x264, libdvdnav, libdvdread, libpostproc, GPL 2.0) 항목과 `res/raw/license_gpl_2_0.txt`를 뺐다.
 - 테스트: GPL 항목·GPL 전문이 남지 않았는지(`noGplNoticeIsLeft`), LibVLC 링크가 공개 저장소이고 Gradle이 같은 저장소의 Release에서 받는지(`libVlcSourceLinkIsThePublishedBuild`)를 더했다.
-- 화면 문구(`licenses_lgpl_notice` 등, `values`·`values-ko`)는 다음 PR에서 다룬다.
+- 화면 문구는 다음 PR(브랜치 `codex/101-libvlc-license-text`)에서 다룬다. `licenses_lgpl_notice`(LibVLC 전문 보기 위 안내)를 영어·한국어 모두 "VideoLAN 소스에서 GPL 구성요소를 빼고 빌드했다, 전체 소스·변경 내용·빌드 스크립트·함께 들어 있는 라이브러리 소스를 아래 주소(공개 저장소)에서 받을 수 있다, 수정·교체할 수 있다"로 고쳤다. 그 밖의 문구는 GPL을 언급하지 않아 그대로 둔다. **[확인 필요: 안내 문구가 LGPL 2.1 고지 요건에 맞는지, design 명세 103줄과 같이 launch 또는 사용자가 확인]**
 - design 명세 `design/specs/open-source-licenses.md` 62줄은 아직 `libvlc-all`, `https://code.videolan.org/videolan/vlc-android`, "GPL 모듈이 들어 있는지"를 적고 있다. design 소유라 고치지 않았다(PM에 전달).
 
 ## 4. 크기(릴리스, 같은 main `c246ddd` 기준 공식 AAR 빌드와 비교)

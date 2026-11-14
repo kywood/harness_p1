@@ -225,7 +225,7 @@ If you delete it, you may need to download it again.</string>
     <string name="licenses_name_kotlin">Kotlin standard library, kotlinx.coroutines</string>
     <string name="licenses_name_material_icons">Material Icons</string>
     <string name="licenses_source_available">Source code is available.</string>
-    <string name="licenses_lgpl_notice">LibVLC is distributed under GNU LGPL 2.1 or later. You can get the source code at the address below, and under the license you may modify this library or replace it with another version.</string>
+    <string name="licenses_lgpl_notice">The LibVLC in this app is built from the VideoLAN sources without GPL components and is distributed under GNU LGPL 2.1 or later. Its complete source code, our changes, the build scripts and the sources of the libraries it includes are available at the address below. Under the license you may modify this library or replace it with another version.</string>
     <string name="licenses_source_code">Source code</string>
     <string name="licenses_others_title">Other components</string>
     <string name="licenses_others_body">The Google Mobile Ads SDK and User Messaging Platform (UMP) are not open source and are governed by Google\'s terms.</string>
