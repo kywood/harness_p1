@@ -30,7 +30,7 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         val previous = list()
         val saved = previous.firstOrNull { MagnetIdentity.key(it.magnet) == key }
         val entries = listOf(SavedMagnet(magnet, saved?.title ?: title(magnet), saved?.addedAt ?: now,
-            lastPlayedAt = saved?.lastPlayedAt ?: 0, lastPositionMs = saved?.lastPositionMs ?: 0)) +
+            lastPlayedAt = saved?.lastPlayedAt ?: 0, lastPositionMs = saved?.lastPositionMs ?: 0, downloadOrder = saved?.downloadOrder)) +
             previous.filter { MagnetIdentity.key(it.magnet) != key }
         write(entries.sortedByDescending { it.addedAt }.take(50))
     }
@@ -58,9 +58,9 @@ internal class MagnetHistory(private val cache: TorrentCache) {
     private fun write(entries: List<SavedMagnet>) {
         val buffer = ByteArrayOutputStream()
         DataOutputStream(buffer).use { out ->
-            out.writeInt(-3)
+            out.writeInt(-4)
             out.writeInt(entries.size)
-            entries.forEach { out.writeUTF(it.magnet); out.writeUTF(it.title); out.writeLong(it.addedAt); out.writeLong(it.lastPlayedAt); out.writeLong(it.lastPositionMs) }
+            entries.forEach { out.writeUTF(it.magnet); out.writeUTF(it.title); out.writeLong(it.addedAt); out.writeLong(it.lastPlayedAt); out.writeLong(it.lastPositionMs); out.writeByte(DownloadOrderPreference.codeOf(it.downloadOrder)) }
         }
         cache.write("links", buffer.toByteArray())
     }

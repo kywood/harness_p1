@@ -113,6 +113,30 @@ class MagnetHistoryTest {
         assertEquals(listOf(SavedMagnet(magnet(1), "First", 20, lastPlayedAt = 30, lastPositionMs = 42000),
             SavedMagnet(magnet(2), "Second", 10)), history().list())
     }
+    @Test fun writingMigratesVersionThreeToFourAndKeepsEveryEntry() {
+        writeVersionThree()
+        history().markPlayed(magnet(2), 99)
+        assertEquals(-4, savedVersion())
+        assertEquals(listOf(SavedMagnet(magnet(1), "First", 20, lastPlayedAt = 30, lastPositionMs = 42000),
+            SavedMagnet(magnet(2), "Second", 10, lastPlayedAt = 99)), history().list())
+    }
+    @Test fun downloadOrderSurvivesEveryOtherWrite() {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.io.DataOutputStream(bytes).use { out ->
+            out.writeInt(-4); out.writeInt(1); out.writeUTF(magnet(1)); out.writeUTF("T"); out.writeLong(10)
+            out.writeLong(0); out.writeLong(0); out.writeByte(DownloadOrderPreference.FASTEST.code)
+        }
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).write("links", bytes.toByteArray())
+        history().add(magnet(1) + "&dn=again", 50)
+        history().add(magnet(2), 60)
+        history().markPlayed(magnet(1), 70)
+        history().savePosition(magnet(1), 15000, 90000)
+        history().updateTitle(magnet(1), "Video.mkv")
+        assertEquals(DownloadOrderPreference.FASTEST, history().list().first { it.title == "Video.mkv" }.downloadOrder)
+        assertNull(history().list().first { it.magnet == magnet(2) }.downloadOrder)
+    }
+    private fun savedVersion(): Int = java.io.DataInputStream(java.io.ByteArrayInputStream(
+        TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).read("links"))).use { it.readInt() }
     /** Two entries in the -3 format (no download order), as the released app wrote them. */
     private fun writeVersionThree() {
         val bytes = java.io.ByteArrayOutputStream()
