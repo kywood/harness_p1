@@ -55,6 +55,11 @@ internal class MagnetHistory(private val cache: TorrentCache) {
         if (cleanTitle.isEmpty()) return
         write(list().map { if (MagnetIdentity.key(it.magnet) == key) it.copy(title = cleanTitle) else it })
     }
+    /** Saves the video's own download order; null follows the app setting. A link not in the list is not added. */
+    @Synchronized fun setDownloadOrder(magnet: String, order: DownloadOrderPreference?) {
+        val key = MagnetIdentity.key(magnet)
+        write(list().map { if (MagnetIdentity.key(it.magnet) == key) it.copy(downloadOrder = order) else it })
+    }
     private fun write(entries: List<SavedMagnet>) {
         val buffer = ByteArrayOutputStream()
         DataOutputStream(buffer).use { out ->

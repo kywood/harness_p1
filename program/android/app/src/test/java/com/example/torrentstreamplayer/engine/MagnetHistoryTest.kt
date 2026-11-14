@@ -135,6 +135,23 @@ class MagnetHistoryTest {
         assertEquals(DownloadOrderPreference.FASTEST, history().list().first { it.title == "Video.mkv" }.downloadOrder)
         assertNull(history().list().first { it.magnet == magnet(2) }.downloadOrder)
     }
+    @Test fun downloadOrderIsSavedPerVideoAndClearedWithNull() {
+        history().add(magnet(1), 10); history().add(magnet(2), 20)
+        history().savePosition(magnet(1), 15000, 90000)
+        history().setDownloadOrder(magnet(1) + "&tr=https%3A%2F%2Fother.test", DownloadOrderPreference.FASTEST)
+        assertEquals(DownloadOrderPreference.FASTEST, history().list().first { it.magnet == magnet(1) }.downloadOrder)
+        assertEquals(15000L, history().list().first { it.magnet == magnet(1) }.lastPositionMs)
+        assertNull(history().list().first { it.magnet == magnet(2) }.downloadOrder)
+        history().setDownloadOrder(magnet(1), DownloadOrderPreference.FROM_START)
+        assertEquals(DownloadOrderPreference.FROM_START, history().list().first { it.magnet == magnet(1) }.downloadOrder)
+        history().setDownloadOrder(magnet(1), null)
+        assertNull(history().list().first { it.magnet == magnet(1) }.downloadOrder)
+    }
+    @Test fun settingTheOrderOfADeletedVideoDoesNotBringItBack() {
+        history().add(magnet(1)); history().delete(magnet(1))
+        history().setDownloadOrder(magnet(1), DownloadOrderPreference.FASTEST)
+        assertTrue(history().list().isEmpty())
+    }
     private fun savedVersion(): Int = java.io.DataInputStream(java.io.ByteArrayInputStream(
         TorrentCache(folder.root, "0".repeat(64), ::encrypt, ::decrypt).read("links"))).use { it.readInt() }
     /** Two entries in the -3 format (no download order), as the released app wrote them. */
