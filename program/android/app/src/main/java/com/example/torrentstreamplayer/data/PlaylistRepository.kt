@@ -1,6 +1,7 @@
 package com.example.torrentstreamplayer.data
 
 import android.content.Context
+import com.example.torrentstreamplayer.engine.DownloadOrderPreference
 import com.example.torrentstreamplayer.engine.MagnetHistory
 import com.example.torrentstreamplayer.engine.MagnetIdentity
 import com.example.torrentstreamplayer.engine.SavedMagnet
@@ -43,6 +44,14 @@ internal class PlaylistRepository(
         history.savePosition(magnet, positionMs.coerceAtLeast(0), durationMs.coerceAtLeast(0))
 
     fun resetPosition(magnet: String) = history.savePosition(magnet, 0, 0)
+
+    /** [magnet] 영상의 받는 순서를 저장한다. null이면 설정의 기본값을 따른다. 저장에 실패하면 예외를 던진다. */
+    fun setDownloadOrder(magnet: String, order: DownloadOrderPreference?) = history.setDownloadOrder(magnet, order)
+
+    /** 영상별로 정한 받는 순서(마그넷 키 → 값). 정하지 않은 영상은 들어 있지 않다. 다운로드 정보는 읽지 않는다. */
+    fun downloadOrders(): Map<String, DownloadOrderPreference> = history.list().mapNotNull { entry ->
+        entry.downloadOrder?.let { MagnetIdentity.key(entry.magnet) to it }
+    }.toMap()
 
     companion object {
         /** 재생 목록 파일 위치(noBackupFilesDir 아래). 바꾸면 기존 목록을 읽지 못한다. */
