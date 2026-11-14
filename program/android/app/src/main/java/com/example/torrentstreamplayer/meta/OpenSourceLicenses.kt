@@ -38,7 +38,7 @@ internal sealed interface LicenseText {
 private fun literal(value: String) = LicenseText.Literal(value)
 private fun orLater(license: String) = LicenseText.Localized(R.string.licenses_license_or_later, license)
 private fun bundledIn(host: String) = LicenseText.Localized(R.string.licenses_version_bundled, host)
-private const val LIBVLC_VERSION = "3.7.5-lgpl.2"
+private const val LIBVLC_VERSION = "3.7.5-lgpl.3"
 private const val LIBTORRENT4J_NAME = "libtorrent4j"
 private val APACHE = literal("Apache 2.0")
 private val MIT = literal("MIT")
@@ -49,7 +49,7 @@ private val BSD3 = literal("BSD 3-Clause")
  * 고유명사라 번역하지 않고, "이상"·"포함"처럼 한국어가 붙는 값은 [LicenseText.Localized]로 strings.xml 문구를 쓴다.
  * 의존성(`gradle/libs.versions.toml`, `app/build.gradle.kts`)을 바꾸면 이 목록도 같이 바꾼다.
  *
- * 포함 여부는 실제 산출물에서 확인했다: GPL 구성요소를 뺀 자체 빌드 LibVLC 3.7.5-lgpl.2 AAR의 `libvlc.so`
+ * 포함 여부는 실제 산출물에서 확인했다: GPL 구성요소를 뺀 자체 빌드 LibVLC 3.7.5-lgpl.3 AAR의 `libvlc.so`
  * (`program/libvlc-lgpl-phase4.md`), libtorrent4j 2.1.0-39의 `libtorrent4j.so`.
  * 순서는 고지 의무가 큰 것(LGPL) → 앱의 핵심(토렌트·서버) → 플랫폼 라이브러리다.
  *
